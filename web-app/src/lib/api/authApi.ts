@@ -1,0 +1,87 @@
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+import type { CurrentUser, MeResponse } from "@/lib/auth/types";
+import { env } from "@/lib/env";
+
+export type { CurrentUser, MeResponse };
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
+export const authApi = createApi({
+  reducerPath: "authApi",
+  baseQuery: fetchBaseQuery({
+    baseUrl: `${env.NEXT_PUBLIC_API_URL}/api`,
+    credentials: "include",
+  }),
+  tagTypes: ["Me"],
+  endpoints: (builder) => ({
+    getMe: builder.query<MeResponse, void>({
+      query: () => "/me",
+      providesTags: ["Me"],
+    }),
+    login: builder.mutation<MeResponse, LoginRequest>({
+      query: (body) => ({
+        url: "/token",
+        method: "POST",
+        body,
+      }),
+      async onQueryStarted(_arg, { queryFulfilled, dispatch }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(authApi.util.upsertQueryData("getMe", undefined, data));
+        } catch {
+          dispatch(
+            authApi.util.upsertQueryData("getMe", undefined, { user: null }),
+          );
+        }
+      },
+    }),
+    register: builder.mutation<MeResponse, RegisterRequest>({
+      query: (body) => ({
+        url: "/register",
+        method: "POST",
+        body,
+      }),
+      async onQueryStarted(_arg, { queryFulfilled, dispatch }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(authApi.util.upsertQueryData("getMe", undefined, data));
+        } catch {
+          dispatch(
+            authApi.util.upsertQueryData("getMe", undefined, { user: null }),
+          );
+        }
+      },
+    }),
+    logout: builder.mutation<{ success: true }, void>({
+      query: () => ({
+        url: "/logout",
+        method: "POST",
+      }),
+      async onQueryStarted(_arg, { queryFulfilled, dispatch }) {
+        try {
+          await queryFulfilled;
+        } finally {
+          dispatch(
+            authApi.util.upsertQueryData("getMe", undefined, { user: null }),
+          );
+        }
+      },
+    }),
+  }),
+});
+
+export const {
+  useGetMeQuery,
+  useLoginMutation,
+  useRegisterMutation,
+  useLogoutMutation,
+} = authApi;
