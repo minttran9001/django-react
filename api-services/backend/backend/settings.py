@@ -163,6 +163,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 CORS_ALLOWED_ORIGINS = [

@@ -1,0 +1,21 @@
+from django.db import models
+from .sport import Sport
+from .court_center import CourtCenter
+from .image import Image
+from django.contrib.contenttypes.fields import GenericRelation
+
+class Court(models.Model):
+    sport = models.ForeignKey(Sport, on_delete=models.CASCADE, related_name="courts")
+    center = models.ForeignKey(CourtCenter, on_delete=models.CASCADE, related_name="courts")
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    images = GenericRelation(Image, related_query_name="court")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.title
+
+    @property
+    def images(self):
+        return self.images.filter(kind=Image.Kind.GALLERY)
