@@ -12,28 +12,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useGetMeQuery, useLogoutMutation } from "@/lib/api/authApi";
+import { useInitialUser } from "@/providers/InitialUserContext";
 
 export default function HomePage() {
   const router = useRouter();
-  const { data, isLoading } = useGetMeQuery(undefined, {
+  const initialUser = useInitialUser();
+  const { data } = useGetMeQuery(undefined, {
     refetchOnMountOrArgChange: false,
   });
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
+  const user = data?.user ?? initialUser;
 
   const handleLogout = async () => {
     await logout().unwrap();
     router.push("/login");
   };
 
-  if (isLoading) {
-    return (
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
-        <p className="text-muted-foreground">Loading...</p>
-      </main>
-    );
-  }
-
-  if (!data?.user) {
+  if (!user) {
     return (
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md text-center">
@@ -57,7 +52,7 @@ export default function HomePage() {
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Welcome, {data.user.email}</CardTitle>
+          <CardTitle>Welcome, {user.email}</CardTitle>
           <CardDescription>
             You are signed in. Your session is stored in secure httpOnly
             cookies.

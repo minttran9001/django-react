@@ -8,6 +8,8 @@ import { authApi } from "@/lib/api/authApi";
 import type { CurrentUser } from "@/lib/auth/types";
 import { makeStore, type AppStore } from "@/lib/store";
 
+import { InitialUserContext } from "./InitialUserContext";
+
 export function StoreProvider({
   initialUser,
   children,
@@ -16,7 +18,6 @@ export function StoreProvider({
   children: React.ReactNode;
 }) {
   const storeRef = useRef<AppStore | null>(null);
-
   if (!storeRef.current) {
     storeRef.current = makeStore();
     storeRef.current.dispatch(
@@ -24,5 +25,9 @@ export function StoreProvider({
     );
   }
 
-  return <Provider store={storeRef.current}>{children}</Provider>;
+  return (
+    <InitialUserContext.Provider value={initialUser}>
+      <Provider store={storeRef.current}>{children}</Provider>
+    </InitialUserContext.Provider>
+  );
 }
