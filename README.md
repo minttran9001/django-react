@@ -35,9 +35,16 @@ django-react/
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.11+ (`python3 --version` should show 3.11 or newer)
 - Node.js 20+
 - npm
+
+> **pyenv users:** if `python` points to 2.7, install and select a modern Python first:
+> ```bash
+> pyenv install 3.12.8
+> pyenv local 3.12.8   # run inside api-services/backend
+> python -m venv venv
+> ```
 
 ## Getting started
 
@@ -46,8 +53,8 @@ django-react/
 ```bash
 cd api-services/backend
 
-# Create and activate a virtual environment
-python -m venv venv
+# Create and activate a virtual environment (requires Python 3.11+)
+python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
 pip install -r requirements.txt
