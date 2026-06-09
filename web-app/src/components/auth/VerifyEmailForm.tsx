@@ -10,12 +10,15 @@ import {
   verifyEmailSchema,
   type VerifyEmailFormValues,
 } from "@/features/auth/schemas/verifyEmailSchema";
+import Link from "next/link";
 
 type VerifyEmailFormProps = {
   defaultValues?: Partial<VerifyEmailFormValues>;
   inProgress?: boolean;
   error?: string;
   onSubmit: (values: VerifyEmailFormValues) => void;
+  onResendVerificationEmail: (email: string) => void;
+  isResendingVerificationEmail: boolean;
 };
 
 export function VerifyEmailForm({
@@ -23,10 +26,13 @@ export function VerifyEmailForm({
   inProgress,
   error,
   onSubmit,
+  onResendVerificationEmail,
+  isResendingVerificationEmail,
 }: VerifyEmailFormProps) {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<VerifyEmailFormValues>({
     resolver: zodResolver(verifyEmailSchema),
@@ -35,6 +41,8 @@ export function VerifyEmailForm({
       token: defaultValues?.token ?? "",
     },
   });
+
+  const email = getValues("email");
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
@@ -67,9 +75,21 @@ export function VerifyEmailForm({
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={inProgress}>
-        {inProgress ? "Verifying..." : "Verify Email"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" className="flex-1" disabled={inProgress} isLoading={inProgress}>
+          {inProgress ? "Verifying..." : "Verify Email"}
+        </Button>
+        <Button variant="outline" className="flex-1" onClick={() => onResendVerificationEmail(email)} isLoading={isResendingVerificationEmail} disabled={inProgress || isResendingVerificationEmail}>
+          Resend Verification Email
+        </Button>
+      </div>
+
+      <Link
+        href="/login"
+        className="text-sm hover:underline"
+      >
+        Back to login
+      </Link>
 
       {error && (
         <p className="rounded-md border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">

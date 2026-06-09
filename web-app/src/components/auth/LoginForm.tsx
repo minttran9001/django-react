@@ -12,12 +12,12 @@ import {
   type LoginFormValues,
 } from "@/features/auth/schemas/loginSchema";
 import { useLoginMutation, useResendVerificationEmailMutation } from "@/lib/api/authApi";
-import { useState } from "react";
+import { useEffect } from "react";
 
 export function LoginForm() {
   const router = useRouter();
-  const [login, { isLoading, isError, error: loginError }] = useLoginMutation();
-  const [resendVerificationEmail, { isLoading: isResendingVerificationEmail, isError: isResendingVerificationEmailError }] = useResendVerificationEmailMutation();
+  const [login, { isLoading, isError, error: loginError, reset: resetLogin }] = useLoginMutation();
+  const [resendVerificationEmail, { isLoading: isResendingVerificationEmail, reset: resetResendVerificationEmail }] = useResendVerificationEmailMutation();
   const {
     register,
     handleSubmit,
@@ -31,10 +31,16 @@ export function LoginForm() {
     },
   });
 
+  useEffect(() => {
+    return () => {
+      resetLogin();
+      resetResendVerificationEmail();
+    };
+  }, [resetLogin, resetResendVerificationEmail]);
+
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      const response = await login(values).unwrap();
-      console.log(response);
+      await login(values).unwrap();
       router.push("/");
     } catch (error) {
       // Error state is handled via isError below.
@@ -95,9 +101,9 @@ export function LoginForm() {
       </p>
       {
         isNotVerifiedError(loginError) ? (
-          <Button onClick={onResendVerificationEmail}>Resend Verification Email</Button>
+          <Button onClick={onResendVerificationEmail} isLoading={isResendingVerificationEmail}>Resend Verification Email</Button>
         ) : (
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading} isLoading={isLoading}>
             {isLoading ? "Signing in..." : "Login"}
           </Button>
         )

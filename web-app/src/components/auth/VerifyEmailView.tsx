@@ -7,8 +7,8 @@ import { FcOk } from "react-icons/fc";
 
 import { VerifyEmailForm } from "@/components/auth/VerifyEmailForm";
 import { Card } from "@/components/ui/card";
-import { useVerifyEmail } from "@/hooks/useVerifyEmail";
-import { useVerifyEmailMutation } from "@/lib/api/authApi";
+import { useResendVerificationEmailMutation, useVerifyEmailMutation } from "@/lib/api/authApi";
+import { VerifyEmailFormValues } from "@/features/auth/schemas/verifyEmailSchema";
 
 export function VerifyEmailView() {
   const searchParams = useSearchParams();
@@ -17,6 +17,7 @@ export function VerifyEmailView() {
   const hasAutoVerified = useRef(false);
 
   const [verifyEmail, { isLoading, error, isSuccess }] = useVerifyEmailMutation();
+  const [resendVerificationEmail, { isLoading: isResendingVerificationEmail }] = useResendVerificationEmailMutation();
 
   useEffect(() => {
     if (!token || !email || hasAutoVerified.current) {
@@ -26,6 +27,22 @@ export function VerifyEmailView() {
     hasAutoVerified.current = true;
     verifyEmail({ token, email });
   }, [token, email, verifyEmail]);
+
+  const onVerifyEmail = async (values: VerifyEmailFormValues) => {
+    try {
+      await verifyEmail({ token: values.token, email: values.email }).unwrap();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const onResendVerificationEmail = async (email: string) => {
+    try {
+      await resendVerificationEmail({ email }).unwrap();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
 
   return (
@@ -58,7 +75,9 @@ export function VerifyEmailView() {
               }}
               inProgress={isLoading}
               error={(error as any)?.data?.message}
-              onSubmit={(values) => verifyEmail({ token: values.token, email: values.email })}
+              onSubmit={onVerifyEmail}
+              onResendVerificationEmail={onResendVerificationEmail}
+              isResendingVerificationEmail={isResendingVerificationEmail}
             />
           </>
         )}

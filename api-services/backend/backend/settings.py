@@ -68,6 +68,11 @@ INSTALLED_APPS = [
     'corsheaders',
 ]
 
+RESEND_SECRET = os.getenv('RESEND_SECRET')
+
+if RESEND_SECRET:
+    INSTALLED_APPS.append('anymail')
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -173,6 +178,16 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'thanhminh.uit@gmail.com')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'onboarding@resend.dev')
+
+if RESEND_SECRET:
+    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+    ANYMAIL = {
+        'RESEND_API_KEY': RESEND_SECRET,
+    }
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    print(
+        'WARNING: RESEND_SECRET is not set — emails print to this terminal only. '
+        'Add RESEND_SECRET to api-services/backend/.env to send real email via Resend.'
+    )
