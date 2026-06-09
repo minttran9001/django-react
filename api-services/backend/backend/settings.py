@@ -172,3 +172,7 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'thanhminh.uit@gmail.com')

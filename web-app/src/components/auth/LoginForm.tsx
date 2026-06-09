@@ -11,15 +11,17 @@ import {
   loginSchema,
   type LoginFormValues,
 } from "@/features/auth/schemas/loginSchema";
-import { useLoginMutation } from "@/lib/api/authApi";
+import { useLoginMutation, useResendVerificationEmailMutation } from "@/lib/api/authApi";
+import { useState } from "react";
 
 export function LoginForm() {
   const router = useRouter();
-  const [login, { isLoading, isError }] = useLoginMutation();
-
+  const [login, { isLoading, isError, error: loginError }] = useLoginMutation();
+  const [resendVerificationEmail, { isLoading: isResendingVerificationEmail, isError: isResendingVerificationEmailError }] = useResendVerificationEmailMutation();
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -31,10 +33,28 @@ export function LoginForm() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      await login(values).unwrap();
+      const response = await login(values).unwrap();
+      console.log(response);
       router.push("/");
-    } catch {
+    } catch (error) {
       // Error state is handled via isError below.
+    }
+  };
+
+  const isNotVerifiedError = (error: unknown): boolean => {
+    if (error && typeof error === "object" && "data" in error && error.data && typeof error.data === "object") {
+      return error.data.code === "email_not_verified";
+    }
+    return false;
+  };
+
+  const onResendVerificationEmail = async () => {
+    try {
+      const email = getValues("email");
+      await resendVerificationEmail({ email }).unwrap();
+      router.push(`/verify-email?email=${email}`);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -70,11 +90,20 @@ export function LoginForm() {
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Signing in..." : "Login"}
-      </Button>
+      <p className="text-sm text-destructive">
+        {isNotVerifiedError(loginError) ? "Email not verified. Please check your inbox for a verification link." : "Invalid email or password."}
+      </p>
+      {
+        isNotVerifiedError(loginError) ? (
+          <Button onClick={onResendVerificationEmail}>Resend Verification Email</Button>
+        ) : (
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Login"}
+          </Button>
+        )
+      }
 
-      {isError && (
+      {isError && !isNotVerifiedError(loginError) && (
         <p className="rounded-md border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">
           Invalid email or password. Please try again.
         </p>

@@ -3,9 +3,10 @@ from .views import (
     CreateUserView,
     CurrentUserView,
     CookieTokenRefreshView,
-    NoteAPIView,
     LogoutView,
     EmailTokenObtainPairView,
+    VerifyEmailView,
+    ResendVerificationEmailView,
 )
 
 urlpatterns = [
@@ -14,6 +15,7 @@ urlpatterns = [
     path('token', EmailTokenObtainPairView.as_view(), name='get_token'),
     path('token/refresh', CookieTokenRefreshView.as_view(), name='refresh_token'),
     path('logout', LogoutView.as_view(), name='logout'),
+    path('verify-email', VerifyEmailView.as_view(), name='verify_email'),
     path('api-auth', include('rest_framework.urls')),
-    path('notes', NoteAPIView.as_view(), name='note_api'),
+    path('resend-verification-email', ResendVerificationEmailView.as_view(), name='resend_verification_email'),
 ]

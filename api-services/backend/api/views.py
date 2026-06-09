@@ -11,13 +11,21 @@ from .cookies import (
     set_access_token_cookie,
     set_jwt_cookies,
 )
-from .models import Note
+from .models import EmailVerificationToken
 from .serializers import (
     CurrentUserSerializer,
     EmailTokenObtainPairSerializer,
-    NoteSerializer,
     UserSerializer,
+    VerifyEmailSerializer,
+    ResendVerificationEmailSerializer
 )
+
+from .email_verification import create_verification_token
+from .emails import send_verification_email
+
+from django.utils import timezone
+
+
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -30,20 +38,17 @@ class CreateUserView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        token_serializer = EmailTokenObtainPairSerializer(
-            data={
-                "email": request.data["email"],
-                "password": request.data["password"],
-            }
-        )
-        token_serializer.is_valid(raise_exception=True)
-        tokens = token_serializer.validated_data
+        verification = create_verification_token(user)
+        send_verification_email(user, verification.token)
 
         response = Response(
-            {"user": CurrentUserSerializer(user).data},
+            {
+                "user": CurrentUserSerializer(user).data,
+                "message": "Verification email sent.",
+            },
             status=status.HTTP_201_CREATED,
         )
-        set_jwt_cookies(response, tokens["access"], tokens["refresh"])
+        
         return response
 
 
@@ -99,32 +104,44 @@ class LogoutView(APIView):
         return response
 
 
-class NoteAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        notes = Note.objects.filter(author=request.user)
-        serializer = NoteSerializer(notes, many=True)
-        return Response(serializer.data)
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = NoteSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(author=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        token = serializer.validated_data["token"]
 
-    def put(self, request, pk):
-        note = Note.objects.get(id=pk)
-        serializer = NoteSerializer(note, data=request.data)
-        if serializer.is_valid():
-            serializer.save(author=request.user)
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
-    def delete(self, request, pk):
-        note = Note.objects.get(id=pk)
-        if note.author == request.user:
-            note.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(status=status.HTTP_403_FORBIDDEN)
+        if user.is_active:
+            return Response({"detail": "User is already verified."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            verification = EmailVerificationToken.objects.get(user=user, token=token)
+        except EmailVerificationToken.DoesNotExist:
+            return Response({"detail": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if verification.expires_at < timezone.now():
+            return Response({"detail": "Token expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+        verification.delete()
+        return Response({"detail": "Email verified successfully."}, status=status.HTTP_200_OK)
+
+class ResendVerificationEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResendVerificationEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        user = User.objects.get(email=email)
+        verification = create_verification_token(user)
+        send_verification_email(user, verification.token)
+        return Response({"detail": "Verification email sent."}, status=status.HTTP_200_OK)

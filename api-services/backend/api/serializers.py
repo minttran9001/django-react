@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
-from .models import Note
+from .models import EmailVerificationToken
 
 # User serializer
 class UserSerializer(serializers.ModelSerializer):
@@ -19,6 +19,8 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['username'] = validated_data['email']
         user = User.objects.create_user(**validated_data)
+        user.is_active = False
+        user.save(update_fields=['is_active'])
         return user
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -32,6 +34,11 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         email = attrs.pop("email")
         try:
             user = User.objects.get(email=email)
+            if not user.is_active:
+                raise AuthenticationFailed(
+                    "Email not verified. Check your inbox.",
+                    "email_not_verified",
+                )
         except User.DoesNotExist:
             raise AuthenticationFailed(
                 self.error_messages["no_active_account"],
@@ -46,8 +53,22 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'email']
 
-class NoteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Note
-        fields = ['id', 'title', 'content', 'author']
-        extra_kwargs = {'author': {'read_only': True}}
+class VerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        token = attrs.get('token')
+        if not email or not token:
+            raise serializers.ValidationError("Email and token are required.")
+        return attrs
+
+class ResendVerificationEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        if not email:
+            raise serializers.ValidationError("Email is required.")
+        return attrs

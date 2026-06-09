@@ -8,6 +8,7 @@ import { FcOk } from "react-icons/fc";
 import { VerifyEmailForm } from "@/components/auth/VerifyEmailForm";
 import { Card } from "@/components/ui/card";
 import { useVerifyEmail } from "@/hooks/useVerifyEmail";
+import { useVerifyEmailMutation } from "@/lib/api/authApi";
 
 export function VerifyEmailView() {
   const searchParams = useSearchParams();
@@ -15,7 +16,7 @@ export function VerifyEmailView() {
   const email = searchParams.get("email");
   const hasAutoVerified = useRef(false);
 
-  const { onVerifyEmail, inProgress, error, success } = useVerifyEmail();
+  const [verifyEmail, { isLoading, error, isSuccess }] = useVerifyEmailMutation();
 
   useEffect(() => {
     if (!token || !email || hasAutoVerified.current) {
@@ -23,13 +24,14 @@ export function VerifyEmailView() {
     }
 
     hasAutoVerified.current = true;
-    onVerifyEmail({ token, email });
-  }, [token, email, onVerifyEmail]);
+    verifyEmail({ token, email });
+  }, [token, email, verifyEmail]);
+
 
   return (
     <div className="flex min-h-screen w-screen items-start justify-center px-4 pt-36">
       <Card className="mx-auto w-full max-w-[500px] p-8">
-        {success ? (
+        {isSuccess ? (
           <>
             <div className="mb-2 flex items-center gap-2">
               <FcOk size={30} />
@@ -54,9 +56,9 @@ export function VerifyEmailView() {
                 email: email ?? undefined,
                 token: token ?? undefined,
               }}
-              inProgress={inProgress}
-              error={error}
-              onSubmit={onVerifyEmail}
+              inProgress={isLoading}
+              error={(error as any)?.data?.message}
+              onSubmit={(values) => verifyEmail({ token: values.token, email: values.email })}
             />
           </>
         )}
