@@ -8,7 +8,7 @@ import {
 import { AUTH_USER_HEADER, prefetchUser } from "@/lib/auth/fetch-user";
 import { CurrentUser } from "./lib/auth/types";
 
-const AUTH_ROUTES = new Set(["/login", "/register"]);
+const AUTH_ROUTES = new Set(["/login", "/register", "/verify-email"]);
 
 function clearTokens(response: NextResponse) {
   response.cookies.delete(ACCESS_TOKEN_COOKIE);
@@ -71,5 +71,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/register"],
+  matcher: ["/", "/login", "/register", "/verify-email"],
 };

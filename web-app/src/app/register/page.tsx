@@ -1,9 +1,5 @@
-import { RegisterForm } from "@/components/auth/RegisterForm";
+import { AuthPageView } from "@/components/auth/AuthPageView";
 
 export default function RegisterPage() {
-  return (
-    <main className="flex flex-1 items-center justify-center px-4 py-12">
-      <RegisterForm />
-    </main>
-  );
+  return <AuthPageView />;
 }

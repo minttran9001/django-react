@@ -1,0 +1,72 @@
+"use client";
+
+import Image, { type StaticImageData } from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export type BannerSlide = {
+  backgroundImage: StaticImageData;
+  title: string;
+  description: string;
+  primaryLabel: string;
+  primaryHref: string;
+  secondaryLabel: string;
+  secondaryHref: string;
+};
+
+type BannerSliderProps = {
+  slides: BannerSlide[];
+  intervalTime?: number;
+};
+
+export function BannerSlider({
+  slides,
+  intervalTime = 5000,
+}: BannerSliderProps) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, intervalTime);
+
+    return () => clearInterval(interval);
+  }, [slides.length, intervalTime]);
+
+  return (
+    <div className="relative h-screen w-full">
+      {slides.map((slide, index) => (
+        <div
+          key={slide.title}
+          className={cn(
+            "absolute h-full w-full bg-cover bg-center transition-opacity duration-500",
+            currentSlide === index ? "opacity-100" : "opacity-0",
+          )}
+        >
+          <Image
+            src={slide.backgroundImage}
+            alt={slide.title}
+            fill
+            priority={index === 0}
+            className="object-cover"
+          />
+          <div className="relative z-10 flex h-full flex-col justify-center gap-3 bg-black/60 px-[10%] pt-[30%]">
+            <h2 className="text-6xl font-bold text-white">{slide.title}</h2>
+            <p className="text-md font-bold text-white">{slide.description}</p>
+            <div className="flex gap-2">
+              <Button variant="outline" render={<Link href={slide.primaryHref} />}>
+                {slide.primaryLabel}
+              </Button>
+              <Button render={<Link href={slide.secondaryHref} />}>
+                {slide.secondaryLabel}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

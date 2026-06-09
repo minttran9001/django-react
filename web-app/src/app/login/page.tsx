@@ -1,9 +1,5 @@
-import { LoginForm } from "@/components/auth/LoginForm";
+import { AuthPageView } from "@/components/auth/AuthPageView";
 
 export default function LoginPage() {
-  return (
-    <main className="flex flex-1 items-center justify-center px-4 py-12">
-      <LoginForm />
-    </main>
-  );
+  return <AuthPageView isLogin />;
 }
