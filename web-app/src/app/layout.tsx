@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
+import { RootLayoutShell } from "@/components/layout/RootLayoutShell";
 import { getCurrentUser } from "@/lib/auth/server";
 import { StoreProvider } from "@/providers/StoreProvider";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,9 @@ export default async function RootLayout({
         )}
         suppressHydrationWarning
       >
-        <StoreProvider initialUser={user}>{children}</StoreProvider>
+        <StoreProvider initialUser={user}>
+          <RootLayoutShell>{children}</RootLayoutShell>
+        </StoreProvider>
       </body>
     </html>
   );

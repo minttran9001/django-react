@@ -5,14 +5,16 @@ import {
   ACCESS_TOKEN_COOKIE,
   REFRESH_TOKEN_COOKIE,
 } from "@/lib/auth/constants";
+import {
+  AUTH_ROUTE_SET,
+  PATHNAME_HEADER,
+  PUBLIC_ROUTE_SET,
+} from "@/lib/routes";
 import { AUTH_USER_HEADER, prefetchUser } from "@/lib/auth/fetch-user";
 import { CurrentUser } from "./lib/auth/types";
 
-const AUTH_ROUTES = new Set(["/login", "/register", "/verify-email"]);
-const PUBLIC_ROUTES = new Set(["/", "/listings"]);
-
 function isProtectedRoute(pathname: string) {
-  return !AUTH_ROUTES.has(pathname) && !PUBLIC_ROUTES.has(pathname);
+  return !AUTH_ROUTE_SET.has(pathname) && !PUBLIC_ROUTE_SET.has(pathname);
 }
 
 function clearTokens(response: NextResponse) {
@@ -40,7 +42,7 @@ const shouldRedirectToHome = (
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAuthRoute = AUTH_ROUTES.has(pathname);
+  const isAuthRoute = AUTH_ROUTE_SET.has(pathname);
 
   const { user, setCookies } = await prefetchUser(request);
 
@@ -60,6 +62,7 @@ export async function proxy(request: NextRequest) {
 
   // Pass through: attach user to request headers for layout/server components
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(PATHNAME_HEADER, pathname);
   requestHeaders.set(AUTH_USER_HEADER, user ? JSON.stringify(user) : "null");
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
@@ -76,13 +79,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/login",
-    "/register",
-    "/verify-email",
-    "/listings",
-    "/listings/create",
-    "/listings/mine",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

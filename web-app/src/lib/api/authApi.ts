@@ -23,9 +23,10 @@ export const authApi = createApi({
   }),
   tagTypes: ["Me"],
   endpoints: (builder) => ({
-    getMe: builder.query<MeResponse, void>({
+    getMe: builder.query<CurrentUser | null, void>({
       query: () => "/me",
       providesTags: ["Me"],
+      transformResponse: (response: { user: CurrentUser }) => response.user,
     }),
     login: builder.mutation<MeResponse, LoginRequest>({
       query: (body) => ({
@@ -36,15 +37,13 @@ export const authApi = createApi({
       async onQueryStarted(_arg, { queryFulfilled, dispatch }) {
         try {
           const { data } = await queryFulfilled;
-          dispatch(authApi.util.upsertQueryData("getMe", undefined, data));
+          dispatch(authApi.util.upsertQueryData("getMe", undefined, data.user));
         } catch {
-          dispatch(
-            authApi.util.upsertQueryData("getMe", undefined, { user: null }),
-          );
+          dispatch(authApi.util.upsertQueryData("getMe", undefined, null));
         }
       },
     }),
-    register: builder.mutation<MeResponse, RegisterRequest>({
+    register: builder.mutation<CurrentUser | null, RegisterRequest>({
       query: (body) => ({
         url: "/register",
         method: "POST",
@@ -55,9 +54,7 @@ export const authApi = createApi({
           const { data } = await queryFulfilled;
           dispatch(authApi.util.upsertQueryData("getMe", undefined, data));
         } catch {
-          dispatch(
-            authApi.util.upsertQueryData("getMe", undefined, { user: null }),
-          );
+          dispatch(authApi.util.upsertQueryData("getMe", undefined, null));
         }
       },
     }),
@@ -70,13 +67,14 @@ export const authApi = createApi({
         try {
           await queryFulfilled;
         } finally {
-          dispatch(
-            authApi.util.upsertQueryData("getMe", undefined, { user: null }),
-          );
+          dispatch(authApi.util.upsertQueryData("getMe", undefined, null));
         }
       },
     }),
-    verifyEmail: builder.mutation<{ success: true }, VerifyEmailRequest>({
+    verifyEmail: builder.mutation<
+      { success: true },
+      { email: string; token: string }
+    >({
       query: (body) => ({
         url: "/verify-email",
         method: "POST",
@@ -85,7 +83,7 @@ export const authApi = createApi({
     }),
     resendVerificationEmail: builder.mutation<
       { success: true },
-      ResendVerificationEmailRequest
+      { email: string }
     >({
       query: (body) => ({
         url: "/resend-verification-email",

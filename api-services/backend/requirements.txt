@@ -11,3 +11,4 @@ python-dotenv
 dj-database-url
 django-anymail
 Pillow
+cloudinary

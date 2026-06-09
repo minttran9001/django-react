@@ -2,20 +2,12 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 import type {
   CourtCenter,
-  CourtCenterImage,
   CreateCourtCenterRequest,
   Sport,
+  UpdateCourtCenterRequest,
+  UploadImagesResponse,
 } from "@/features/court-centers/types";
 import { env } from "@/lib/env";
-
-export interface UploadImageRequest {
-  file: File;
-  contentType: "courtcenter" | "court";
-  objectId: number;
-  kind: "logo" | "gallery";
-  caption?: string;
-  sortOrder?: number;
-}
 
 export const courtCenterApi = createApi({
   reducerPath: "courtCenterApi",
@@ -51,9 +43,24 @@ export const courtCenterApi = createApi({
             ]
           : [{ type: "MyCourtCenters", id: "LIST" }],
     }),
+    getMyCourtCenter: builder.query<CourtCenter, string>({
+      query: (id) => `/court-centers/mine/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "MyCourtCenters", id }],
+    }),
     getSports: builder.query<Sport[], void>({
       query: () => "/sports",
       providesTags: ["Sports"],
+    }),
+    uploadImages: builder.mutation<UploadImagesResponse, File[]>({
+      query: (files) => {
+        const formData = new FormData();
+        files.forEach((file) => formData.append("images", file));
+        return {
+          url: "/images/upload",
+          method: "POST",
+          body: formData,
+        };
+      },
     }),
     createCourtCenter: builder.mutation<CourtCenter, CreateCourtCenterRequest>({
       query: (body) => ({
@@ -66,26 +73,19 @@ export const courtCenterApi = createApi({
         { type: "MyCourtCenters", id: "LIST" },
       ],
     }),
-    uploadImage: builder.mutation<CourtCenterImage, UploadImageRequest>({
-      query: ({ file, contentType, objectId, kind, caption, sortOrder }) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("content_type", contentType);
-        formData.append("object_id", String(objectId));
-        formData.append("kind", kind);
-        if (caption) formData.append("caption", caption);
-        if (sortOrder !== undefined) {
-          formData.append("sort_order", String(sortOrder));
-        }
-        return {
-          url: "/images",
-          method: "POST",
-          body: formData,
-        };
-      },
-      invalidatesTags: [
-        { type: "CourtCenters", id: "LIST" },
+    updateCourtCenter: builder.mutation<
+      CourtCenter,
+      { id: string; body: UpdateCourtCenterRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/court-centers/mine/${id}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "MyCourtCenters", id },
         { type: "MyCourtCenters", id: "LIST" },
+        { type: "CourtCenters", id: "LIST" },
       ],
     }),
   }),
@@ -94,7 +94,9 @@ export const courtCenterApi = createApi({
 export const {
   useGetCourtCentersQuery,
   useGetMyCourtCentersQuery,
+  useGetMyCourtCenterQuery,
   useGetSportsQuery,
+  useUploadImagesMutation,
   useCreateCourtCenterMutation,
-  useUploadImageMutation,
+  useUpdateCourtCenterMutation,
 } = courtCenterApi;

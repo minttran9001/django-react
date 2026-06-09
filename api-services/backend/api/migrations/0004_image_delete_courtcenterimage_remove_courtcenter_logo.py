@@ -1,8 +1,12 @@
 # Generated manually — replace CourtCenterImage with generic Image model
 
-import api.models.image
 import django.db.models.deletion
 from django.db import migrations, models
+
+
+def image_upload_to(instance, filename):
+    model_name = instance.content_type.model if instance.content_type_id else "unknown"
+    return f"images/{model_name}/{instance.object_id}/{filename}"
 
 
 class Migration(migrations.Migration):
@@ -18,7 +22,7 @@ class Migration(migrations.Migration):
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("object_id", models.PositiveBigIntegerField()),
-                ("file", models.ImageField(upload_to=api.models.image.image_upload_to)),
+                ("file", models.ImageField(upload_to=image_upload_to)),
                 (
                     "kind",
                     models.CharField(

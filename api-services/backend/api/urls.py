@@ -12,6 +12,7 @@ from .views import (
     CourtCenterCustomerListView,
     MyCourtCenterListView,
     ImageUploadView,
+    MyCourtCenterDetailsView,
 )
 
 urlpatterns = [
@@ -24,8 +25,10 @@ urlpatterns = [
     path('api-auth', include('rest_framework.urls')),
     path('resend-verification-email', ResendVerificationEmailView.as_view(), name='resend_verification_email'),
     path('sports', SportListView.as_view(), name='sport_list'),
-    path('court-centers', CourtCenterCustomerListView.as_view(), name='court_center_customer_list'),
-    path('court-centers/mine', MyCourtCenterListView.as_view(), name='court_center_owner_list'),
-    path('court-centers/create', CourtCenterCreateView.as_view(), name='court_center_create'),
-    path('images', ImageUploadView.as_view(), name='image_upload'),
+    path('images/upload', ImageUploadView.as_view(), name='image_upload'),
+    # court center
+    path('court-centers', CourtCenterCustomerListView.as_view(), name='court_center_customer_list'), # list all court centers
+    path('court-centers/mine', MyCourtCenterListView.as_view(), name='court_center_owner_list'), # list all court centers owned by the current user
+    path('court-centers/create', CourtCenterCreateView.as_view(), name='court_center_create'), # create a new court center
+    path('court-centers/mine/<int:pk>', MyCourtCenterDetailsView.as_view(), name='court_center_detail'), # get/patch/delete a court center by id
 ]

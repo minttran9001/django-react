@@ -4,6 +4,7 @@ from .court_center import (
     CourtCenterCustomerListView,
     MyCourtCenterListView,
     SportListView,
+    MyCourtCenterDetailsView,
 )
 from .email_verification import ResendVerificationEmailView, VerifyEmailView
 from .image import ImageUploadView
@@ -13,6 +14,7 @@ __all__ = [
     "CookieTokenRefreshView",
     "CourtCenterCreateView",
     "CourtCenterCustomerListView",
+    "MyCourtCenterDetailsView",
     "CreateUserView",
     "CurrentUserView",
     "EmailTokenObtainPairView",

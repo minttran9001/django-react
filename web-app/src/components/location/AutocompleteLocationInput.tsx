@@ -37,6 +37,7 @@ interface AutocompleteLocationInputProps {
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  defaultValue?: string;
   onLocationSelect: (location: LocationSelection) => void;
 }
 
@@ -45,13 +46,15 @@ export function AutocompleteLocationInput({
   label = "Location",
   placeholder = "Search for an address or place",
   disabled = false,
+  defaultValue = "",
   onLocationSelect,
 }: AutocompleteLocationInputProps) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputWrapperRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLUListElement>(null);
-  const [query, setQuery] = useState("");
+  const confirmedQueryRef = useRef(defaultValue || null);
+  const [query, setQuery] = useState(defaultValue);
   const [suggestions, setSuggestions] = useState<MapboxLocationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,11 +80,14 @@ export function AutocompleteLocationInput({
 
   const selectSuggestion = useCallback(
     (suggestion: MapboxLocationSuggestion) => {
+      confirmedQueryRef.current = suggestion.placeName;
       setQuery(suggestion.placeName);
       setSuggestions([]);
       setIsOpen(false);
       setActiveIndex(-1);
       setDropdownPosition(null);
+      setIsLoading(false);
+      setErrorMessage(null);
       onLocationSelect({
         address: suggestion.placeName,
         latitude: suggestion.latitude,
@@ -96,6 +102,15 @@ export function AutocompleteLocationInput({
       setSuggestions([]);
       setIsLoading(false);
       setErrorMessage(null);
+      setIsOpen(false);
+      return;
+    }
+
+    if (confirmedQueryRef.current === query) {
+      setSuggestions([]);
+      setIsLoading(false);
+      setErrorMessage(null);
+      setIsOpen(false);
       return;
     }
 
@@ -263,8 +278,11 @@ export function AutocompleteLocationInput({
           disabled={disabled || !mapboxConfigured}
           value={query}
           onChange={(event) => {
-            setQuery(event.target.value);
-            setIsOpen(true);
+            const nextQuery = event.target.value;
+            if (nextQuery !== confirmedQueryRef.current) {
+              confirmedQueryRef.current = null;
+            }
+            setQuery(nextQuery);
           }}
           onFocus={() => {
             if (suggestions.length > 0) {

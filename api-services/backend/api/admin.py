@@ -7,7 +7,7 @@ from .models import CourtCenter, EmailVerificationToken, Image, Sport
 class ImageInline(GenericTabularInline):
     model = Image
     extra = 1
-    fields = ("file", "kind", "caption", "sort_order")
+    fields = ("url", "kind", "caption", "sort_order")
 
 
 @admin.register(CourtCenter)
@@ -20,7 +20,7 @@ class CourtCenterAdmin(admin.ModelAdmin):
 
 @admin.register(Image)
 class ImageAdmin(admin.ModelAdmin):
-    list_display = ("id", "content_type", "object_id", "kind", "sort_order", "created_at")
+    list_display = ("id", "owner", "content_type", "object_id", "kind", "sort_order", "created_at")
     list_filter = ("kind", "content_type")
 
 

@@ -1,11 +1,11 @@
-/* eslint-disable react-hooks/refs */
 "use client";
+/* eslint-disable react-hooks/refs */
 
 import { useRef } from "react";
 import { Provider } from "react-redux";
 
-import { authApi } from "@/lib/api/authApi";
 import type { CurrentUser } from "@/lib/auth/types";
+import { applyQueryHydrations } from "@/lib/rtk-query/hydration";
 import { makeStore, type AppStore } from "@/lib/store";
 
 import { InitialUserContext } from "./InitialUserContext";
@@ -20,9 +20,15 @@ export function StoreProvider({
   const storeRef = useRef<AppStore | null>(null);
   if (!storeRef.current) {
     storeRef.current = makeStore();
-    storeRef.current.dispatch(
-      authApi.util.upsertQueryData("getMe", undefined, { user: initialUser }),
-    );
+
+    applyQueryHydrations(storeRef.current.dispatch, [
+      {
+        apiId: "authApi",
+        endpointName: "getMe",
+        arg: undefined,
+        data: initialUser,
+      },
+    ]);
   }
 
   return (

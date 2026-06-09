@@ -1,11 +1,7 @@
+from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-
-
-def image_upload_to(instance, filename):
-    model_name = instance.content_type.model if instance.content_type_id else "unknown"
-    return f"images/{model_name}/{instance.object_id}/{filename}"
 
 
 class Image(models.Model):
@@ -13,12 +9,28 @@ class Image(models.Model):
         LOGO = "logo", "Logo"
         GALLERY = "gallery", "Gallery"
 
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveBigIntegerField()
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="uploaded_images",
+    )
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    object_id = models.PositiveBigIntegerField(null=True, blank=True)
     content_object = GenericForeignKey("content_type", "object_id")
 
-    file = models.ImageField(upload_to=image_upload_to)
-    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.GALLERY)
+    url = models.URLField(max_length=500)
+    public_id = models.CharField(max_length=255, blank=True)
+    kind = models.CharField(
+        max_length=20,
+        choices=Kind.choices,
+        null=True,
+        blank=True,
+    )
     caption = models.CharField(max_length=255, blank=True)
     sort_order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -27,14 +39,20 @@ class Image(models.Model):
         ordering = ["sort_order", "id"]
         indexes = [
             models.Index(fields=["content_type", "object_id"]),
+            models.Index(fields=["owner", "content_type"]),
         ]
         constraints = [
             models.UniqueConstraint(
                 fields=["content_type", "object_id"],
-                condition=models.Q(kind="logo"),
+                condition=models.Q(kind="logo") & models.Q(content_type__isnull=False),
                 name="unique_logo_per_object",
             ),
         ]
 
+    @property
+    def is_pending(self) -> bool:
+        return self.content_type_id is None
+
     def __str__(self):
-        return f"{self.content_type} #{self.object_id} — {self.kind} ({self.pk})"
+        target = f"{self.content_type} #{self.object_id}" if self.content_type_id else "pending"
+        return f"{target} — {self.kind} ({self.pk})"

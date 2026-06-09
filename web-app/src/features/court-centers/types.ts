@@ -1,3 +1,9 @@
+export interface ImageResource {
+  id: number;
+  url: string;
+  public_id: string;
+}
+
 export interface Sport {
   id: number;
   name: string;
@@ -7,20 +13,12 @@ export interface Sport {
   updated_at: string;
 }
 
-export interface CourtCenterImage {
-  id: number;
-  file: string;
-  kind: "logo" | "gallery";
-  caption: string;
-  sort_order: number;
-  created_at: string;
-}
-
 export interface CourtSummary {
   id: number;
   sport: Sport;
   title: string;
   description: string;
+  images: ImageResource[];
   created_at: string;
   updated_at: string;
 }
@@ -33,17 +31,19 @@ export interface CourtCenter {
   address: string | null;
   latitude: string | null;
   longitude: string | null;
-  logo: CourtCenterImage | null;
-  gallery: CourtCenterImage[];
+  logo: ImageResource | null;
+  images: ImageResource[];
   courts?: CourtSummary[];
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateCourtInput {
+  id?: number;
   sport_id: number;
   title: string;
   description?: string;
+  image_ids?: number[];
 }
 
 export interface CreateCourtCenterRequest {
@@ -51,6 +51,14 @@ export interface CreateCourtCenterRequest {
   description?: string;
   latitude?: string;
   longitude?: string;
-  courts: CreateCourtInput[];
   address?: string;
+  logo_id?: number;
+  image_ids?: number[];
+  courts: CreateCourtInput[];
+}
+
+export type UpdateCourtCenterRequest = CreateCourtCenterRequest;
+
+export interface UploadImagesResponse {
+  images: ImageResource[];
 }
