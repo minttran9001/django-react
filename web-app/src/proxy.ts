@@ -9,6 +9,11 @@ import { AUTH_USER_HEADER, prefetchUser } from "@/lib/auth/fetch-user";
 import { CurrentUser } from "./lib/auth/types";
 
 const AUTH_ROUTES = new Set(["/login", "/register", "/verify-email"]);
+const PUBLIC_ROUTES = new Set(["/", "/listings"]);
+
+function isProtectedRoute(pathname: string) {
+  return !AUTH_ROUTES.has(pathname) && !PUBLIC_ROUTES.has(pathname);
+}
 
 function clearTokens(response: NextResponse) {
   response.cookies.delete(ACCESS_TOKEN_COOKIE);
@@ -21,9 +26,9 @@ function forwardCookies(response: NextResponse, setCookies: string[]) {
 
 const shouldRedirectToLogin = (
   user: CurrentUser | null,
-  isAuthRoute: boolean,
+  pathname: string,
 ) => {
-  return !user && !isAuthRoute;
+  return !user && isProtectedRoute(pathname);
 };
 
 const shouldRedirectToHome = (
@@ -47,7 +52,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Unauthenticated user on a protected route → send to login and delete the access and refresh tokens
-  if (shouldRedirectToLogin(user, isAuthRoute)) {
+  if (shouldRedirectToLogin(user, pathname)) {
     const response = NextResponse.redirect(new URL("/login", request.url));
     clearTokens(response);
     return response;
@@ -71,5 +76,13 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/register", "/verify-email", "/listings/create"],
+  matcher: [
+    "/",
+    "/login",
+    "/register",
+    "/verify-email",
+    "/listings",
+    "/listings/create",
+    "/listings/mine",
+  ],
 };

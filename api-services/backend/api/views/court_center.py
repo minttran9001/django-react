@@ -1,8 +1,8 @@
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from api.models import Sport
+from api.models import CourtCenter, Sport
 
 from ..serializers import (
     CourtCenterCreateSerializer,
@@ -11,10 +11,33 @@ from ..serializers import (
 )
 
 
+def get_court_center_queryset():
+    return CourtCenter.objects.prefetch_related(
+        "courts__sport",
+        "images",
+    ).order_by("-created_at")
+
+
 class SportListView(generics.ListAPIView):
     queryset = Sport.objects.all()
     serializer_class = SportSerializer
     permission_classes = [IsAuthenticated]
+
+
+class CourtCenterCustomerListView(generics.ListAPIView):
+    serializer_class = CourtCenterDetailSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return get_court_center_queryset()
+
+
+class MyCourtCenterListView(generics.ListAPIView):
+    serializer_class = CourtCenterDetailSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return get_court_center_queryset().filter(owner=self.request.user)
 
 
 class CourtCenterCreateView(generics.CreateAPIView):

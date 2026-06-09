@@ -51,6 +51,12 @@ export function UserMenu() {
           >
             <Menu.LinkItem
               className={menuItemClassName}
+              render={<Link href="/listings/mine" />}
+            >
+              My listings
+            </Menu.LinkItem>
+            <Menu.LinkItem
+              className={menuItemClassName}
               render={<Link href="/listings/create" />}
             >
               Create listing

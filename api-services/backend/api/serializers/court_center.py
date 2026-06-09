@@ -8,10 +8,19 @@ from .sport import SportSerializer
 
 class CourtSummarySerializer(serializers.ModelSerializer):
     sport = SportSerializer(read_only=True)
+    gallery = ImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Court
-        fields = ["id", "sport", "title", "description", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "sport",
+            "title",
+            "description",
+            "gallery",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = fields
 
 
@@ -60,7 +69,7 @@ class CourtCenterCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CourtCenter
-        fields = ["title", "description", "latitude", "longitude", "courts"]
+        fields = ["title", "description", "latitude", "longitude", "address", "courts"]
 
     def validate_courts(self, value):
         if not value:

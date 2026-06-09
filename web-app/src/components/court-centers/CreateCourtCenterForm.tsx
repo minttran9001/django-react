@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ImageFileInput } from "@/components/ui/ImageFileInput";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AutocompleteLocationInput } from "@/components/location/AutocompleteLocationInput";
@@ -21,9 +22,11 @@ import {
   createCourtCenterSchema,
   type CreateCourtCenterFormValues,
 } from "@/features/court-centers/schemas/createCourtCenterSchema";
+import type { CourtCenter } from "@/features/court-centers/types";
 import {
   useCreateCourtCenterMutation,
   useGetSportsQuery,
+  useUploadImageMutation,
 } from "@/lib/api/courtCenterApi";
 import { cn } from "@/lib/utils";
 
@@ -50,11 +53,61 @@ function getCreateCourtCenterErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+async function uploadListingImages(
+  center: CourtCenter,
+  centerLogo: File[],
+  centerGallery: File[],
+  courtGalleryFiles: Record<number, File[]>,
+  uploadImage: ReturnType<typeof useUploadImageMutation>[0],
+) {
+  if (centerLogo[0]) {
+    await uploadImage({
+      file: centerLogo[0],
+      contentType: "courtcenter",
+      objectId: center.id,
+      kind: "logo",
+    }).unwrap();
+  }
+
+  for (const [index, file] of centerGallery.entries()) {
+    await uploadImage({
+      file,
+      contentType: "courtcenter",
+      objectId: center.id,
+      kind: "gallery",
+      sortOrder: index,
+    }).unwrap();
+  }
+
+  for (const [courtIndex, files] of Object.entries(courtGalleryFiles)) {
+    const court = center.courts?.[Number(courtIndex)];
+    if (!court) continue;
+
+    for (const [index, file] of files.entries()) {
+      await uploadImage({
+        file,
+        contentType: "court",
+        objectId: court.id,
+        kind: "gallery",
+        sortOrder: index,
+      }).unwrap();
+    }
+  }
+}
+
 export function CreateCourtCenterForm() {
   const router = useRouter();
   const { data: sports = [], isLoading: isLoadingSports } = useGetSportsQuery();
-  const [createCourtCenter, { isLoading, error: createError }] =
+  const [createCourtCenter, { isLoading: isCreating, error: createError }] =
     useCreateCourtCenterMutation();
+  const [uploadImage, { isLoading: isUploading }] = useUploadImageMutation();
+  const [centerLogo, setCenterLogo] = useState<File[]>([]);
+  const [centerGallery, setCenterGallery] = useState<File[]>([]);
+  const [courtGalleryFiles, setCourtGalleryFiles] = useState<
+    Record<number, File[]>
+  >({});
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const isLoading = isCreating || isUploading;
 
   const {
     register,
@@ -89,8 +142,10 @@ export function CreateCourtCenterForm() {
   }, [sports, fields, setValue]);
 
   const onSubmit = async (values: CreateCourtCenterFormValues) => {
+    setUploadError(null);
+
     try {
-      await createCourtCenter({
+      const center = await createCourtCenter({
         title: values.title,
         description: values.description || undefined,
         latitude: values.latitude || undefined,
@@ -103,7 +158,23 @@ export function CreateCourtCenterForm() {
         address: values.address || undefined,
       }).unwrap();
 
-      router.push("/");
+      try {
+        await uploadListingImages(
+          center,
+          centerLogo,
+          centerGallery,
+          courtGalleryFiles,
+          uploadImage,
+        );
+      } catch {
+        setUploadError(
+          "Listing created, but some photos failed to upload. You can add them later.",
+        );
+        router.push("/listings/mine");
+        return;
+      }
+
+      router.push("/listings/mine");
     } catch {
       // Error state is handled via createError below.
     }
@@ -157,6 +228,23 @@ export function CreateCourtCenterForm() {
               });
               setValue("address", location.address, { shouldValidate: true });
             }}
+          />
+
+          <ImageFileInput
+            label="Logo"
+            description="One main photo for your court center."
+            value={centerLogo}
+            onChange={setCenterLogo}
+            disabled={isLoading}
+          />
+
+          <ImageFileInput
+            label="Center gallery"
+            description="Additional photos of the venue."
+            multiple
+            value={centerGallery}
+            onChange={setCenterGallery}
+            disabled={isLoading}
           />
         </CardContent>
       </Card>
@@ -244,6 +332,20 @@ export function CreateCourtCenterForm() {
                   {...register(`courts.${index}.description`)}
                 />
               </div>
+
+              <ImageFileInput
+                label="Court photos"
+                description="Photos of this specific court."
+                multiple
+                value={courtGalleryFiles[index] ?? []}
+                onChange={(files) =>
+                  setCourtGalleryFiles((current) => ({
+                    ...current,
+                    [index]: files,
+                  }))
+                }
+                disabled={isLoading}
+              />
             </div>
           ))}
 
@@ -277,6 +379,12 @@ export function CreateCourtCenterForm() {
       <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
         {isLoading ? "Creating listing..." : "Create listing"}
       </Button>
+
+      {uploadError && (
+        <p className="rounded-md border border-amber-500/20 bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-300">
+          {uploadError}
+        </p>
+      )}
 
       {createError && (
         <p className="rounded-md border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">

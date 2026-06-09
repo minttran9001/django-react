@@ -8,7 +8,7 @@ from .court_center import (
 )
 from .court_schedule import CourtScheduleExceptionSerializer, CourtScheduleSerializer
 from .email_verification import ResendVerificationEmailSerializer, VerifyEmailSerializer
-from .image import ImageSerializer
+from .image import ImageSerializer, ImageUploadSerializer
 from .sport import SportSerializer
 from .user import CurrentUserSerializer, UserSerializer
 
@@ -23,6 +23,7 @@ __all__ = [
     "CurrentUserSerializer",
     "EmailTokenObtainPairSerializer",
     "ImageSerializer",
+    "ImageUploadSerializer",
     "ResendVerificationEmailSerializer",
     "SportSerializer",
     "UserSerializer",

@@ -17,5 +17,5 @@ class Court(models.Model):
         return self.title
 
     @property
-    def images(self):
+    def gallery(self):
         return self.images.filter(kind=Image.Kind.GALLERY)

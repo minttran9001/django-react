@@ -7,6 +7,15 @@ export interface Sport {
   updated_at: string;
 }
 
+export interface CourtCenterImage {
+  id: number;
+  file: string;
+  kind: "logo" | "gallery";
+  caption: string;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface CourtSummary {
   id: number;
   sport: Sport;
@@ -21,10 +30,11 @@ export interface CourtCenter {
   owner: number;
   title: string;
   description: string;
+  address: string | null;
   latitude: string | null;
   longitude: string | null;
-  logo: unknown | null;
-  gallery: unknown[];
+  logo: CourtCenterImage | null;
+  gallery: CourtCenterImage[];
   courts?: CourtSummary[];
   created_at: string;
   updated_at: string;

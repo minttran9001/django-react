@@ -9,6 +9,9 @@ from .views import (
     ResendVerificationEmailView,
     SportListView,
     CourtCenterCreateView,
+    CourtCenterCustomerListView,
+    MyCourtCenterListView,
+    ImageUploadView,
 )
 
 urlpatterns = [
@@ -21,5 +24,8 @@ urlpatterns = [
     path('api-auth', include('rest_framework.urls')),
     path('resend-verification-email', ResendVerificationEmailView.as_view(), name='resend_verification_email'),
     path('sports', SportListView.as_view(), name='sport_list'),
-    path('court-centers', CourtCenterCreateView.as_view(), name='court_center_create'),
+    path('court-centers', CourtCenterCustomerListView.as_view(), name='court_center_customer_list'),
+    path('court-centers/mine', MyCourtCenterListView.as_view(), name='court_center_owner_list'),
+    path('court-centers/create', CourtCenterCreateView.as_view(), name='court_center_create'),
+    path('images', ImageUploadView.as_view(), name='image_upload'),
 ]
