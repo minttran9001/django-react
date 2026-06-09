@@ -59,8 +59,9 @@ source venv/bin/activate        # Windows: venv\Scripts\activate
 
 pip install -r requirements.txt
 
-# Optional: create api-services/backend/.env
-# FRONTEND_URL=http://localhost:3000
+# Copy env and add your Neon connection string (same format as court-booking)
+cp .env.example .env
+# DATABASE_URL=postgresql://...@ep-xxx-pooler.us-east-2.aws.neon.tech/mint-db?sslmode=require
 
 python manage.py migrate
 python manage.py runserver
@@ -87,6 +88,7 @@ App runs at [http://localhost:3000](http://localhost:3000).
 
 | Variable | Location | Default | Description |
 |----------|----------|---------|-------------|
+| `DATABASE_URL` | `api-services/backend/.env` | _(SQLite fallback)_ | Neon PostgreSQL connection string (pooled) |
 | `FRONTEND_URL` | `api-services/backend/.env` | `http://localhost:3000` | Allowed CORS origin |
 | `NEXT_PUBLIC_API_URL` | `web-app/.env.local` | `http://localhost:8000` | Django API base URL |
 
@@ -140,7 +142,7 @@ Login uses **email**, not username. On the backend, `username` is set equal to `
 - Set `DEBUG = False` and configure `SECRET_KEY` via environment variables.
 - Set `JWT_COOKIE_SECURE = True` (requires HTTPS).
 - Update `CORS_ALLOWED_ORIGINS` and `FRONTEND_URL` to your deployed frontend URL.
-- Replace SQLite with PostgreSQL for production (`psycopg2-binary` is already in requirements).
+- Use Neon PostgreSQL in production via `DATABASE_URL` (same pooled connection format as court-booking).
 
 ## License
 
