@@ -34,14 +34,7 @@ export const authApi = createApi({
         method: "POST",
         body,
       }),
-      async onQueryStarted(_arg, { queryFulfilled, dispatch }) {
-        try {
-          const { data } = await queryFulfilled;
-          dispatch(authApi.util.upsertQueryData("getMe", undefined, data.user));
-        } catch {
-          dispatch(authApi.util.upsertQueryData("getMe", undefined, null));
-        }
-      },
+      invalidatesTags: ["Me"],
     }),
     register: builder.mutation<CurrentUser | null, RegisterRequest>({
       query: (body) => ({

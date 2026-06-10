@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { EditCourtCenterView } from "@/components/court-centers/EditCourtCenterView";
 import { prefetchCourtCenter } from "@/lib/courtCenter";
 import {
@@ -5,6 +7,7 @@ import {
   createQueryHydrationEntry,
 } from "@/lib/rtk-query/hydration";
 import { RtkQueryHydrator } from "@/providers/RtkQueryHydrator";
+import { redirect } from "next/navigation";
 
 export default async function EditListingPage({
   params,
@@ -13,6 +16,14 @@ export default async function EditListingPage({
 }) {
   const { id } = await params;
   const courtCenter = await prefetchCourtCenter(id);
+
+  if (!courtCenter) {
+    redirect("/listings/mine");
+  }
+
+  if (courtCenter.status === "published") {
+    redirect(`/listings/${id}`);
+  }
 
   return (
     <RtkQueryHydrator
@@ -25,7 +36,9 @@ export default async function EditListingPage({
         ),
       )}
     >
-      <EditCourtCenterView id={id} />
+      <Suspense fallback={<p className="text-muted-foreground">Loading...</p>}>
+        <EditCourtCenterView id={id} initialCenter={courtCenter} />
+      </Suspense>
     </RtkQueryHydrator>
   );
 }

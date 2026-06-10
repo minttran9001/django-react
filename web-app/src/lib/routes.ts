@@ -12,15 +12,17 @@ export function isAuthRoute(pathname: string) {
   return AUTH_ROUTE_SET.has(pathname);
 }
 
-export const ROUTE_WITH_NO_LAYOUT_SET = new Set<string>([
+export const ROUTE_WITH_NO_LAYOUT_SET = [
   "/login",
   "/register",
   "/verify-email",
   "/",
   "/listings/mine",
-  "listings",
-]);
+  "/listings",
+  "/listings/",
+  "",
+];
 
 export function routeWithNoLayout(pathname: string) {
-  return ROUTE_WITH_NO_LAYOUT_SET.has(pathname);
+  return ROUTE_WITH_NO_LAYOUT_SET.find((route) => route.startsWith(pathname));
 }

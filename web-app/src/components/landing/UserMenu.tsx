@@ -24,6 +24,7 @@ export function UserMenu() {
   return (
     <Menu.Root modal={false}>
       <Menu.Trigger
+        nativeButton={false}
         aria-label="Open account menu"
         className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >

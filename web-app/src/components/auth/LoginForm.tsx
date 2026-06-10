@@ -97,7 +97,7 @@ export function LoginForm() {
       </div>
 
       <p className="text-sm text-destructive">
-        {isNotVerifiedError(loginError) ? "Email not verified. Please check your inbox for a verification link." : "Invalid email or password."}
+        {isNotVerifiedError(loginError) ? "Email not verified. Please check your inbox for a verification link." : ""}
       </p>
       {
         isNotVerifiedError(loginError) ? (

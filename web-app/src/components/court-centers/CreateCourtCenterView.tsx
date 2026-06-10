@@ -1,20 +1,19 @@
 "use client";
 
-
-import { CreateCourtCenterForm } from "./CreateCourtCenterForm";
+import { ListingWizard } from "@/components/court-centers/wizard/ListingWizard";
 
 export function CreateCourtCenterView() {
   return (
-    <div>
+    <div className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">
           Create a listing
         </h1>
         <p className="text-muted-foreground">
-          Set up your court center and add the courts players can book.
+          Start with the basics. You can save progress as you complete each step.
         </p>
       </div>
-      <CreateCourtCenterForm />
+      <ListingWizard mode="create" />
     </div>
   );
 }

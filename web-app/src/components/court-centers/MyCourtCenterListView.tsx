@@ -65,7 +65,7 @@ export function MyCourtCenterListView() {
         {!isLoading && !isError && courtCenters.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {courtCenters.map((center) => (
-              <CourtCenterCard key={center.id} center={center} />
+              <CourtCenterCard key={center.id} center={center} variant="owner" />
             ))}
           </div>
         ) : null}

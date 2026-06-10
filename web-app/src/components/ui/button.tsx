@@ -48,12 +48,16 @@ function Button({
   variant = "default",
   size = "default",
   isLoading = false,
+  render,
+  nativeButton,
   ...props
 }: ExtendedButtonProps) {
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      nativeButton={render != null ? false : nativeButton}
+      render={render}
       {...props}
     >
       {isLoading ? <Loader2 className="size-4 animate-spin" /> : props.children}

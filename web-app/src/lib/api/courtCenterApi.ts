@@ -2,9 +2,12 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 import type {
   CourtCenter,
-  CreateCourtCenterRequest,
+  CourtsUpdateRequest,
+  DraftCreateRequest,
+  DraftUpdateRequest,
+  LocationUpdateRequest,
+  SchedulesUpdateRequest,
   Sport,
-  UpdateCourtCenterRequest,
   UploadImagesResponse,
 } from "@/features/court-centers/types";
 import { env } from "@/lib/env";
@@ -62,20 +65,17 @@ export const courtCenterApi = createApi({
         };
       },
     }),
-    createCourtCenter: builder.mutation<CourtCenter, CreateCourtCenterRequest>({
+    createDraft: builder.mutation<CourtCenter, DraftCreateRequest>({
       query: (body) => ({
-        url: "/court-centers/create",
+        url: "/court-centers/create-draft",
         method: "POST",
         body,
       }),
-      invalidatesTags: [
-        { type: "CourtCenters", id: "LIST" },
-        { type: "MyCourtCenters", id: "LIST" },
-      ],
+      invalidatesTags: [{ type: "MyCourtCenters", id: "LIST" }],
     }),
-    updateCourtCenter: builder.mutation<
+    updateDraft: builder.mutation<
       CourtCenter,
-      { id: string; body: UpdateCourtCenterRequest }
+      { id: string; body: DraftUpdateRequest }
     >({
       query: ({ id, body }) => ({
         url: `/court-centers/mine/${id}`,
@@ -83,6 +83,30 @@ export const courtCenterApi = createApi({
         body,
       }),
       invalidatesTags: (_result, _error, { id }) => [
+        { type: "MyCourtCenters", id },
+        { type: "MyCourtCenters", id: "LIST" },
+      ],
+    }),
+    updateDraftSchedules: builder.mutation<
+      CourtCenter,
+      { id: string; body: SchedulesUpdateRequest }
+    >({
+      query: ({ id, body }) => ({
+        url: `/court-centers/mine/${id}/schedules`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: "MyCourtCenters", id },
+        { type: "MyCourtCenters", id: "LIST" },
+      ],
+    }),
+    publishListing: builder.mutation<CourtCenter, string>({
+      query: (id) => ({
+        url: `/court-centers/mine/${id}/publish`,
+        method: "POST",
+      }),
+      invalidatesTags: (_result, _error, id) => [
         { type: "MyCourtCenters", id },
         { type: "MyCourtCenters", id: "LIST" },
         { type: "CourtCenters", id: "LIST" },
@@ -97,6 +121,15 @@ export const {
   useGetMyCourtCenterQuery,
   useGetSportsQuery,
   useUploadImagesMutation,
-  useCreateCourtCenterMutation,
-  useUpdateCourtCenterMutation,
+  useCreateDraftMutation,
+  useUpdateDraftMutation,
+  useUpdateDraftSchedulesMutation,
+  usePublishListingMutation,
 } = courtCenterApi;
+
+export type {
+  CourtsUpdateRequest,
+  DraftCreateRequest,
+  LocationUpdateRequest,
+  SchedulesUpdateRequest,
+};

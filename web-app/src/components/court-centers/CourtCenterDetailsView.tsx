@@ -160,14 +160,20 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
 
   return (
     <div className="space-y-8">
-      {isOwnListing ? (
-        <div className="flex justify-between items-center w-full shadow-md p-4">
+      {isOwnListing && courtCenter.status === "draft" ? (
+        <div className="flex w-full items-center justify-between p-4 shadow-md">
           <p className="text-sm text-muted-foreground">
-            You are the owner of this listing
+            This listing is a draft. Continue editing to publish it.
           </p>
-          <Button variant="ghost" className="w-fit px-0 hover:bg-transparent" render={<Link prefetch href={`/listings/${id}/edit`} />}>
+          <Button
+            variant="ghost"
+            className="w-fit px-0 hover:bg-transparent"
+            render={
+              <Link prefetch href={`/listings/${id}/edit?step=1`} />
+            }
+          >
             <Pencil className="size-4" />
-            Edit listing
+            Continue editing
           </Button>
         </div>
       ) : null}

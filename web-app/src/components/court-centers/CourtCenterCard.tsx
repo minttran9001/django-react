@@ -15,6 +15,7 @@ import Link from "next/link";
 type CourtCenterCardProps = {
   center: CourtCenter;
   className?: string;
+  variant?: "public" | "owner";
 };
 
 function getCoverImage(center: CourtCenter): string | null {
@@ -26,13 +27,26 @@ function getSportNames(center: CourtCenter): string[] {
   return [...new Set(sports)];
 }
 
-export function CourtCenterCard({ center, className }: CourtCenterCardProps) {
+function getHref(center: CourtCenter, variant: "public" | "owner"): string {
+  if (variant === "owner" && center.status === "draft") {
+    return `/listings/${center.id}/edit?step=1`;
+  }
+
+  return `/listings/${center.id}`;
+}
+
+export function CourtCenterCard({
+  center,
+  className,
+  variant = "public",
+}: CourtCenterCardProps) {
   const coverImage = getCoverImage(center);
   const sportNames = getSportNames(center);
   const courtCount = center.courts?.length ?? 0;
+  const href = getHref(center, variant);
 
   return (
-    <Link prefetch href={`/listings/${center.id}`}>
+    <Link prefetch href={href}>
       <Card
         className={cn(
           "overflow-hidden py-0 transition-shadow hover:shadow-lg",
@@ -53,6 +67,19 @@ export function CourtCenterCard({ center, className }: CourtCenterCardProps) {
               No photo yet
             </div>
           )}
+
+          {variant === "owner" ? (
+            <span
+              className={cn(
+                "absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium",
+                center.status === "draft"
+                  ? "bg-amber-500 text-white"
+                  : "bg-emerald-600 text-white",
+              )}
+            >
+              {center.status === "draft" ? "Draft" : "Published"}
+            </span>
+          ) : null}
         </div>
 
         <CardHeader className="gap-2 pb-2">
