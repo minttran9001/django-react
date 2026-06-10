@@ -7,6 +7,9 @@ export const CALENDAR_START_HOUR = 5;
 export const CALENDAR_END_HOUR = 23;
 export const HOUR_HEIGHT_PX = 56;
 export const DEFAULT_SLOT_DURATION_MINUTES = 60;
+export const MIN_SLOT_DURATION_MINUTES = 30;
+export const GRID_START_MINUTES = CALENDAR_START_HOUR * 60;
+export const GRID_END_MINUTES = CALENDAR_END_HOUR * 60;
 
 export type ScheduleSlotValue = {
   id?: number;
@@ -29,6 +32,90 @@ export function minutesToTime(minutes: number): string {
 
 export function snapMinutes(minutes: number, interval = 30): number {
   return Math.floor(minutes / interval) * interval;
+}
+
+export function offsetYToMinutes(offsetY: number): number {
+  const clickedMinutes = GRID_START_MINUTES + (offsetY / HOUR_HEIGHT_PX) * 60;
+  return snapMinutes(
+    Math.max(GRID_START_MINUTES, Math.min(clickedMinutes, GRID_END_MINUTES)),
+  );
+}
+
+export function clientYToMinutes(clientY: number, columnTop: number): number {
+  return offsetYToMinutes(clientY - columnTop);
+}
+
+export function slotWouldOverlap(
+  schedules: ScheduleSlotValue[],
+  candidate: ScheduleSlotValue,
+  excludeIndex?: number,
+): boolean {
+  const candidateStart = timeToMinutes(candidate.start_time);
+  const candidateEnd = timeToMinutes(candidate.end_time);
+
+  return schedules.some((schedule, index) => {
+    if (excludeIndex !== undefined && index === excludeIndex) {
+      return false;
+    }
+    if (schedule.day_of_week !== candidate.day_of_week) {
+      return false;
+    }
+    const start = timeToMinutes(schedule.start_time);
+    const end = timeToMinutes(schedule.end_time);
+    return candidateStart < end && candidateEnd > start;
+  });
+}
+
+export function getSlotResizeLimits(
+  schedules: ScheduleSlotValue[],
+  slotIndex: number,
+): { minStartMinutes: number; maxEndMinutes: number } {
+  const slot = schedules[slotIndex];
+  const slotStart = timeToMinutes(slot.start_time);
+  const slotEnd = timeToMinutes(slot.end_time);
+
+  let minStartMinutes = GRID_START_MINUTES;
+  let maxEndMinutes = GRID_END_MINUTES;
+
+  schedules.forEach((other, index) => {
+    if (index === slotIndex || other.day_of_week !== slot.day_of_week) {
+      return;
+    }
+    const otherStart = timeToMinutes(other.start_time);
+    const otherEnd = timeToMinutes(other.end_time);
+    if (otherEnd <= slotStart) {
+      minStartMinutes = Math.max(minStartMinutes, otherEnd);
+    }
+    if (otherStart >= slotEnd) {
+      maxEndMinutes = Math.min(maxEndMinutes, otherStart);
+    }
+  });
+
+  return { minStartMinutes, maxEndMinutes };
+}
+
+export function buildSlotFromMinuteRange(
+  dayOfWeek: number,
+  startMinutes: number,
+  endMinutes: number,
+): ScheduleSlotValue {
+  const snappedStart = snapMinutes(startMinutes);
+  const snappedEnd = snapMinutes(endMinutes);
+  const normalizedStart = Math.min(snappedStart, snappedEnd);
+  const normalizedEnd = Math.max(
+    Math.max(snappedStart, snappedEnd),
+    normalizedStart + MIN_SLOT_DURATION_MINUTES,
+  );
+
+  return {
+    day_of_week: dayOfWeek,
+    start_time: minutesToTime(
+      Math.max(GRID_START_MINUTES, normalizedStart),
+    ),
+    end_time: minutesToTime(
+      Math.min(GRID_END_MINUTES, normalizedEnd),
+    ),
+  };
 }
 
 export function getDayLabel(dayOfWeek: number, short = false): string {
@@ -77,20 +164,13 @@ export function createSlotFromClick(
   dayOfWeek: number,
   offsetY: number,
 ): ScheduleSlotValue {
-  const gridStartMinutes = CALENDAR_START_HOUR * 60;
-  const clickedMinutes = gridStartMinutes + (offsetY / HOUR_HEIGHT_PX) * 60;
-  const startMinutes = snapMinutes(Math.max(gridStartMinutes, clickedMinutes));
-  const maxEndMinutes = CALENDAR_END_HOUR * 60;
+  const startMinutes = offsetYToMinutes(offsetY);
   const endMinutes = Math.min(
     startMinutes + DEFAULT_SLOT_DURATION_MINUTES,
-    maxEndMinutes,
+    GRID_END_MINUTES,
   );
 
-  return {
-    day_of_week: dayOfWeek,
-    start_time: minutesToTime(startMinutes),
-    end_time: minutesToTime(Math.max(endMinutes, startMinutes + 30)),
-  };
+  return buildSlotFromMinuteRange(dayOfWeek, startMinutes, endMinutes);
 }
 
 export function combineAdjacentSchedules(
