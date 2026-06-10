@@ -21,6 +21,12 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class OwnerIdSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id"]
+
+
 class CurrentUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

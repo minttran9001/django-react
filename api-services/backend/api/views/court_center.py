@@ -20,7 +20,7 @@ from ..utils.court_center_sync import validate_publish
 
 
 def get_court_center_queryset():
-    return CourtCenter.objects.prefetch_related(
+    return CourtCenter.objects.select_related("owner").prefetch_related(
         "images",
         Prefetch(
             "courts",
@@ -52,6 +52,11 @@ class CourtCenterCustomerListView(generics.ListAPIView):
 
     def get_queryset(self):
         return get_court_center_queryset().filter(status=CourtCenter.Status.PUBLISHED)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["expand_owner"] = True
+        return context
 
 
 class MyCourtCenterListView(generics.ListAPIView):

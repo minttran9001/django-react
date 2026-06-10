@@ -37,9 +37,17 @@ export interface CourtSummary {
 
 export type CourtCenterStatus = "draft" | "published";
 
+export interface OwnerId {
+  id: number;
+}
+
+export interface Owner extends OwnerId {
+  email: string;
+}
+
 export interface CourtCenter {
   id: number;
-  owner: number;
+  owner: OwnerId | Owner;
   title: string;
   description: string;
   address: string | null;

@@ -5,6 +5,7 @@ from api.models import Court, CourtCenter, Sport
 from .court_schedule import CourtScheduleSerializer
 from .image import ImageResourceSerializer
 from .sport import SportSerializer
+from .user import CurrentUserSerializer, OwnerIdSerializer
 from ..utils.attach_images import (
     attach_center_images,
     attach_court_images,
@@ -53,6 +54,7 @@ class CourtUpdateInputSerializer(CourtCreateInputSerializer):
 
 
 class CourtCenterSerializer(serializers.ModelSerializer):
+    owner = serializers.SerializerMethodField()
     logo = ImageResourceSerializer(read_only=True)
     images = ImageResourceSerializer(source="gallery", many=True, read_only=True)
 
@@ -72,7 +74,12 @@ class CourtCenterSerializer(serializers.ModelSerializer):
             "updated_at",
             "address",
         ]
-        read_only_fields = ["id", "owner", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "status", "created_at", "updated_at"]
+
+    def get_owner(self, obj):
+        if self.context.get("expand_owner"):
+            return CurrentUserSerializer(obj.owner).data
+        return OwnerIdSerializer(obj.owner).data
 
 
 class CourtCenterDetailSerializer(CourtCenterSerializer):

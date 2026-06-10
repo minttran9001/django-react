@@ -121,7 +121,7 @@ function CourtCard({ court }: { court: CourtSummary }) {
 export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
   const { data: courtCenter, isLoading, isError } = useGetMyCourtCenterQuery(id);
   const { data: user } = useGetMeQuery();
-  const isOwnListing = user?.id === courtCenter?.owner;
+  const isOwnListing = user?.id === courtCenter?.owner.id;
   const galleryImages = useMemo(
     () => (courtCenter ? getGalleryImages(courtCenter) : []),
     [courtCenter],
