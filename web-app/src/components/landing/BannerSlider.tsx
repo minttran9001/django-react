@@ -53,9 +53,13 @@ export function BannerSlider({
             priority={index === 0}
             className="object-cover"
           />
-          <div className="relative z-10 flex h-full flex-col justify-center gap-3 bg-black/60 px-[10%] pt-[30%]">
-            <h2 className="text-6xl font-bold text-white">{slide.title}</h2>
-            <p className="text-md font-bold text-white">{slide.description}</p>
+          <div className="relative z-10 flex h-full flex-col justify-center gap-4 bg-black/50 px-6 py-24 sm:px-12 lg:px-16">
+            <h2 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              {slide.title}
+            </h2>
+            <p className="max-w-xl text-base text-white/90 sm:text-lg">
+              {slide.description}
+            </p>
             <div className="flex gap-2">
               <Button variant="outline" render={<Link href={slide.primaryHref} />}>
                 {slide.primaryLabel}

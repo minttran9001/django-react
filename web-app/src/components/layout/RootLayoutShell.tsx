@@ -1,29 +1,49 @@
-import { LandingHeader } from "@/components/landing/LandingHeader";
-import { routeWithNoLayout } from "@/lib/routes";
-import { getPathname } from "@/lib/routes/server";
+'use client';
+import { SiteHeader } from "@/components/layout/SiteHeader";
+import {
+  CONTAINED_MAIN_CLASS,
+  getLayoutShellConfig,
+  HORIZONTAL_PADDING_CLASS,
+} from "@/lib/layoutConfig";
+import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
-function BodyLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-muted/30">
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pb-16 pt-36">
-        {children}
-      </main>
-    </div>
-  );
-}
-
-export async function RootLayoutShell({
+export function RootLayoutShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = await getPathname();
-  const isAuthPage = routeWithNoLayout(pathname);
+  const pathname = usePathname();
+  const { variant, contentWidth } = getLayoutShellConfig(pathname);
+
+  if (variant === "auth") {
+    return (
+      <div className={cn("min-h-screen bg-muted/40", HORIZONTAL_PADDING_CLASS)}>
+        {children}
+      </div>
+    );
+  }
+
+  if (variant === "marketing") {
+    return (
+      <div className="min-h-screen">
+        <SiteHeader variant="overlay" />
+        {children}
+      </div>
+    );
+  }
 
   return (
-    <>
-      <LandingHeader />
-      {isAuthPage ? children : <BodyLayout>{children}</BodyLayout>}
-    </>
+    <div className="min-h-screen bg-muted/30">
+      <SiteHeader />
+      <main
+        className={cn(
+          "w-full py-8 sm:py-10",
+          contentWidth === "contained" && CONTAINED_MAIN_CLASS,
+        )}
+      >
+        {children}
+      </main>
+    </div>
   );
 }
