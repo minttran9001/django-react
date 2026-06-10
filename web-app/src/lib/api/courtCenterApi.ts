@@ -82,10 +82,17 @@ export const courtCenterApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (_result, _error, { id }) => [
-        { type: "MyCourtCenters", id },
-        { type: "MyCourtCenters", id: "LIST" },
-      ],
+      async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            courtCenterApi.util.upsertQueryData("getMyCourtCenter", id, data),
+          );
+        } catch {
+          // Leave cache unchanged when the mutation fails.
+        }
+      },
+      invalidatesTags: [{ type: "MyCourtCenters", id: "LIST" }],
     }),
     updateDraftSchedules: builder.mutation<
       CourtCenter,
@@ -96,10 +103,17 @@ export const courtCenterApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (_result, _error, { id }) => [
-        { type: "MyCourtCenters", id },
-        { type: "MyCourtCenters", id: "LIST" },
-      ],
+      async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            courtCenterApi.util.upsertQueryData("getMyCourtCenter", id, data),
+          );
+        } catch {
+          // Leave cache unchanged when the mutation fails.
+        }
+      },
+      invalidatesTags: [{ type: "MyCourtCenters", id: "LIST" }],
     }),
     publishListing: builder.mutation<CourtCenter, string>({
       query: (id) => ({

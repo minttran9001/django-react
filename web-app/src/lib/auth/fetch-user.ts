@@ -10,6 +10,57 @@ export const AUTH_USER_HEADER = "x-current-user";
 
 const API_URL = `${env.NEXT_PUBLIC_API_URL}/api`;
 
+type AccessTokenPayload = {
+  exp?: number;
+  user_id?: number;
+};
+
+const currentUserNormalizer = (user: CurrentUser) => {
+  return {
+    id: Number(user.id),
+    email: user.email,
+  };
+};
+
+export function decodeAccessToken(token: string): AccessTokenPayload | null {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) {
+      return null;
+    }
+
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(
+      base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "="),
+    );
+    return JSON.parse(json) as AccessTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function isAccessTokenValid(token: string): boolean {
+  const payload = decodeAccessToken(token);
+  if (!payload?.exp) {
+    return false;
+  }
+
+  return payload.exp * 1000 > Date.now();
+}
+
+export function userFromAccessToken(token: string): CurrentUser | null {
+  if (!isAccessTokenValid(token)) {
+    return null;
+  }
+
+  const payload = decodeAccessToken(token);
+  if (!payload?.user_id) {
+    return null;
+  }
+
+  return currentUserNormalizer({ id: payload.user_id, email: "" });
+}
+
 async function getMe(accessToken: string): Promise<CurrentUser | null> {
   try {
     const { data } = await axios.get<{ user: CurrentUser }>(`${API_URL}/me`, {
@@ -53,7 +104,9 @@ export interface PrefetchResult {
   setCookies: string[];
 }
 
-export async function prefetchUser(request: NextRequest): Promise<PrefetchResult> {
+export async function prefetchUser(
+  request: NextRequest,
+): Promise<PrefetchResult> {
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   if (!accessToken) return { user: null, setCookies: [] };
 

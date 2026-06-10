@@ -97,12 +97,6 @@ class MyCourtCenterDetailsView(APIView):
     def patch(self, request, pk, *args, **kwargs):
         center = self.get_object(request, pk)
 
-        if center.status != CourtCenter.Status.DRAFT:
-            return Response(
-                {"detail": "Only draft listings can be edited."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         if "courts" in request.data:
             serializer = CourtCenterCourtsSerializer(
                 center,
@@ -147,7 +141,7 @@ class MyCourtCenterSchedulesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk, *args, **kwargs):
-        center = get_owned_draft(request, pk)
+        center = get_court_center_queryset().get(pk=pk, owner=request.user)
         serializer = CourtCenterSchedulesSerializer(
             center,
             data=request.data,

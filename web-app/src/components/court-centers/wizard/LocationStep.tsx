@@ -15,6 +15,7 @@ import {
   locationStepSchema,
   type LocationStepValues,
 } from "@/features/court-centers/schemas/locationStepSchema";
+import { LocationMap } from "@/components/location/LocationMap";
 
 type LocationStepProps = {
   defaultValues: LocationStepValues;
@@ -32,11 +33,14 @@ export function LocationStep({
   const {
     setValue,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<LocationStepValues>({
     resolver: zodResolver(locationStepSchema),
     defaultValues,
   });
+
+  const values = getValues();
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -64,6 +68,13 @@ export function LocationStep({
               {errors.address.message}
             </p>
           )}
+          <div className="mt-4">
+            {values.latitude && values.longitude && <LocationMap
+              latitude={values.latitude ?? null}
+              longitude={values.longitude ?? null}
+              label={values.address ?? undefined}
+            />}
+          </div>
         </CardContent>
       </Card>
     </form>

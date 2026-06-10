@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AvailabilityStep } from "@/components/court-centers/wizard/AvailabilityStep";
 import { BasicStep } from "@/components/court-centers/wizard/BasicStep";
@@ -56,12 +56,30 @@ export function ListingWizard(props: ListingWizardProps) {
   const listingId = isCreateMode ? null : props.listingId;
 
   const stepFromUrl = parseStep(searchParams.get("step"));
-  const currentStep = isCreateMode ? 1 : stepFromUrl;
+  const [currentStep, setCurrentStep] = useState(() =>
+    isCreateMode ? 1 : stepFromUrl,
+  );
 
   const { data: liveCenter } = useGetMyCourtCenterQuery(listingId ?? "", {
     skip: !listingId,
+    refetchOnMountOrArgChange: false,
   });
   const center = liveCenter ?? (isCreateMode ? null : props.initialCenter);
+  const isPublished = center?.status === "published";
+
+  useEffect(() => {
+    if (isCreateMode || !listingId) {
+      return;
+    }
+
+    const syncStepFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      setCurrentStep(parseStep(params.get("step")));
+    };
+
+    window.addEventListener("popstate", syncStepFromUrl);
+    return () => window.removeEventListener("popstate", syncStepFromUrl);
+  }, [isCreateMode, listingId]);
 
   const { data: sports = [], isLoading: isLoadingSports } = useGetSportsQuery();
   const [uploadImages, { isLoading: isUploadingImages }] =
@@ -116,9 +134,15 @@ export function ListingWizard(props: ListingWizardProps) {
       if (!id) {
         return;
       }
-      router.replace(`/listings/${id}/edit?step=${step}`);
+
+      setCurrentStep(step);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `/listings/${id}/edit?step=${step}`,
+      );
     },
-    [listingId, router],
+    [listingId],
   );
 
   const handleBasicSubmit = async (values: BasicStepValues) => {
@@ -244,6 +268,10 @@ export function ListingWizard(props: ListingWizardProps) {
 
   const handleNext = () => {
     if (currentStep === 5) {
+      if (isPublished) {
+        router.push(`/listings/${listingId}`);
+        return;
+      }
       void handlePublish();
       return;
     }
@@ -357,9 +385,11 @@ export function ListingWizard(props: ListingWizardProps) {
             onClick={handleNext}
           >
             {currentStep === 5
-              ? isPublishing
-                ? "Publishing..."
-                : "Publish listing"
+              ? isPublished
+                ? "Done"
+                : isPublishing
+                  ? "Publishing..."
+                  : "Publish listing"
               : isSaving
                 ? "Saving..."
                 : "Next"}

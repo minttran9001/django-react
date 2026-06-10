@@ -177,6 +177,23 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
           </Button>
         </div>
       ) : null}
+      {isOwnListing && courtCenter.status === "published" ? (
+        <div className="flex w-full items-center justify-between p-4 shadow-md">
+          <p className="text-sm text-muted-foreground">
+            This listing is published. You can edit it to make changes.
+          </p>
+          <Button
+            variant="ghost"
+            className="w-fit px-0 hover:bg-transparent"
+            render={
+              <Link prefetch href={`/listings/${id}/edit?step=1`} />
+            }
+          >
+            <Pencil className="size-4" />
+            Edit
+          </Button>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Button
           variant="ghost"

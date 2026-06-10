@@ -21,10 +21,6 @@ export default async function EditListingPage({
     redirect("/listings/mine");
   }
 
-  if (courtCenter.status === "published") {
-    redirect(`/listings/${id}`);
-  }
-
   return (
     <RtkQueryHydrator
       entries={collectQueryHydrations(
