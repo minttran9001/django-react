@@ -7,6 +7,7 @@ import {
 } from "@/lib/layoutConfig";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
+import { Toaster } from "../ui/sonner";
 
 export function RootLayoutShell({
   children,
@@ -44,6 +45,7 @@ export function RootLayoutShell({
       >
         {children}
       </main>
+      <Toaster />
     </div>
   );
 }

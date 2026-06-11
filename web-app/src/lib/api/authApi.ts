@@ -1,6 +1,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-import type { CurrentUser, MeResponse } from "@/lib/auth/types";
+import type {
+  CurrentUser,
+  EditProfileRequest,
+  EditProfileResponse,
+  MeResponse,
+} from "@/lib/auth/types";
 import { env } from "@/lib/env";
 
 export type { CurrentUser, MeResponse };
@@ -21,7 +26,7 @@ export const authApi = createApi({
     baseUrl: `${env.NEXT_PUBLIC_API_URL}/api`,
     credentials: "include",
   }),
-  tagTypes: ["Me"],
+  tagTypes: ["Me", "UserProfile"],
   endpoints: (builder) => ({
     getMe: builder.query<CurrentUser | null, void>({
       query: () => "/me",
@@ -84,6 +89,13 @@ export const authApi = createApi({
         body,
       }),
     }),
+    editProfile: builder.mutation<EditProfileResponse, EditProfileRequest>({
+      query: (body) => ({
+        url: "/profile",
+        method: "PATCH",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -94,4 +106,5 @@ export const {
   useLogoutMutation,
   useVerifyEmailMutation,
   useResendVerificationEmailMutation,
+  useEditProfileMutation,
 } = authApi;

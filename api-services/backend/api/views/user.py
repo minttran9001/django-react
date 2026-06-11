@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..utils import create_verification_token, send_verification_email
-from ..serializers import CurrentUserSerializer, UserSerializer
+from ..serializers import CurrentUserSerializer, OwnerSerializer, UserSerializer
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -36,5 +36,5 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        serializer = CurrentUserSerializer(request.user)
+        serializer = OwnerSerializer(request.user)
         return Response({"user": serializer.data})

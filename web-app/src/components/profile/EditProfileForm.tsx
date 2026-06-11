@@ -15,13 +15,16 @@ type EditProfileFormProps = {
     onUpload: (files: File[]) => Promise<ImageResource[]>
     isUploadingImages: boolean
     className?: string
+    inProgress: boolean
+    submitError: string | null
 };
 
-const EditProfileForm = ({ initialValues, onSubmit, className, onUpload, isUploadingImages }: EditProfileFormProps) => {
-    const { register, handleSubmit, formState: { errors }, setValue, control } = useForm<EditProfileFormValues>({
+const EditProfileForm = ({ initialValues, onSubmit, className, onUpload, isUploadingImages, inProgress, submitError }: EditProfileFormProps) => {
+    const { register, handleSubmit, setValue, control } = useForm<EditProfileFormValues>({
         resolver: zodResolver(editProfileSchema),
         defaultValues: initialValues,
     });
+
 
     const onChange = (images: ImageResource[]) => {
         setValue("avatar", images[0] ?? undefined, { shouldDirty: true, shouldValidate: true });
@@ -72,9 +75,9 @@ const EditProfileForm = ({ initialValues, onSubmit, className, onUpload, isUploa
                         </div>
                     </div>
                 </div>
-                <Button type="submit" className="mt-4">Update Profile</Button>
+                <Button type="submit" className="mt-4" disabled={inProgress} isLoading={inProgress}>Update Profile</Button>
             </form>
-            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+            {submitError && <p className="text-sm text-destructive">{submitError}</p>}
         </div>
     );
 };

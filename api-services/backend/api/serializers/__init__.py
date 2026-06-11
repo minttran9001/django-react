@@ -15,6 +15,7 @@ from .email_verification import ResendVerificationEmailSerializer, VerifyEmailSe
 from .image import ImageResourceSerializer, ImageUploadResponseSerializer
 from .sport import SportSerializer
 from .user import CurrentUserSerializer, OwnerIdSerializer, OwnerSerializer, UserSerializer
+from .profile import EditProfileSerializer
 
 __all__ = [
     "BookingSerializer",
@@ -38,4 +39,5 @@ __all__ = [
     "SportSerializer",
     "UserSerializer",
     "VerifyEmailSerializer",
+    "EditProfileSerializer",
 ]
