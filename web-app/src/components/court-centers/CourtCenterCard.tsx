@@ -57,10 +57,10 @@ export function CourtCenterCard({
   }, [variant, center.id]);
 
   return (
-    <Link prefetch href={href}>
+    <Link prefetch href={href} className="block h-full">
       <Card
         className={cn(
-          "overflow-hidden py-0 transition-shadow hover:shadow-lg",
+          "h-full overflow-hidden py-0 transition-shadow hover:shadow-lg",
           className,
         )}
       >
@@ -99,22 +99,18 @@ export function CourtCenterCard({
 
         <CardHeader className="gap-2 pb-2">
           <CardTitle className="line-clamp-1 text-lg">{center.title}</CardTitle>
-          {center.description ? (
-            <CardDescription className="line-clamp-2">
-              {center.description}
-            </CardDescription>
-          ) : null}
+          <CardDescription className="line-clamp-2 min-h-10">
+            {center.description || "\u00A0"}
+          </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-3 pb-4">
-          {center.address ? (
-            <div className="flex items-start gap-2 text-sm text-muted-foreground">
-              <MapPin className="mt-0.5 size-4 shrink-0" />
-              <span className="line-clamp-2">{center.address}</span>
-            </div>
-          ) : null}
+        <CardContent className="flex flex-1 flex-col gap-3 pb-4">
+          <div className="flex min-h-10 items-start gap-2 text-sm text-muted-foreground">
+            <MapPin className="mt-0.5 size-4 shrink-0" />
+            <span className="line-clamp-2">{center.address || "\u00A0"}</span>
+          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="mt-auto flex min-h-7 flex-wrap items-center gap-2">
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
               {courtCount} {courtCount === 1 ? "court" : "courts"}
             </span>
