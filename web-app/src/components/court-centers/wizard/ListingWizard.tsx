@@ -213,6 +213,13 @@ export function ListingWizard(props: ListingWizardProps) {
             title: court.title,
             description: court.description || undefined,
             image_ids: (courtImages[index] ?? []).map((image) => image.id),
+            price_per_hour:
+              court.price_per_hour.amount.trim() !== ""
+                ? {
+                    amount: Number(court.price_per_hour.amount),
+                    currency: court.price_per_hour.currency || "VND",
+                  }
+                : undefined,
           })),
         },
       }).unwrap();

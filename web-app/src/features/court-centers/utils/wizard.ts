@@ -49,6 +49,10 @@ export function centerToCourtsValues(center: CourtCenter): CourtsStepValues {
         sport_id: court.sport.id,
         title: court.title,
         description: court.description ?? "",
+        price_per_hour: {
+          amount: court.price_per_hour?.amount ?? "",
+          currency: court.price_per_hour?.currency ?? "VND",
+        },
       })) ?? [],
   };
 }

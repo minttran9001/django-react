@@ -4,7 +4,7 @@ import { User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLogoutMutation } from "@/lib/api/authApi";
+import { CurrentUser, useLogoutMutation } from "@/lib/api/authApi";
 
-export function UserMenu() {
+type UserMenuProps = {
+  user: CurrentUser | null;
+};
+
+export function UserMenu({ user }: UserMenuProps) {
   const router = useRouter();
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
@@ -32,6 +36,7 @@ export function UserMenu() {
           className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Avatar className="size-9 cursor-pointer">
+            <AvatarImage src={user?.avatar?.url} />
             <AvatarFallback>
               <User className="size-4" />
             </AvatarFallback>

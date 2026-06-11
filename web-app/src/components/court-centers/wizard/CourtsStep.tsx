@@ -23,6 +23,7 @@ import {
 } from "@/features/court-centers/schemas/courtsStepSchema";
 import type { ImageResource, Sport } from "@/features/court-centers/types";
 import { cn } from "@/lib/utils";
+import CurrencyInput from "@/components/ui/currency-input";
 
 type CourtsStepProps = {
   defaultValues: CourtsStepValues;
@@ -63,7 +64,7 @@ export function CourtsStep({
     defaultValues:
       defaultValues.courts.length > 0
         ? defaultValues
-        : { courts: [{ sport_id: 0, title: "", description: "" }] },
+        : { courts: [{ sport_id: 0, title: "", description: "", price_per_hour: { amount: "", currency: "VND" } }] },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -184,6 +185,21 @@ export function CourtsStep({
                 />
               </div>
 
+              <div className="space-y-2">
+                <CurrencyInput
+                  value={watchedCourts[index]?.price_per_hour || { amount: "", currency: "VND" }}
+                  label="Price per hour"
+                  currency={watchedCourts[index]?.price_per_hour?.currency || "VND"}
+                  disabled={disabled}
+                  aria-invalid={Boolean(errors.courts?.[index]?.price_per_hour?.amount)}
+                  onChange={(value) => {
+                    setValue(`courts.${index}.price_per_hour`, value, {
+                      shouldValidate: false,
+                    });
+                  }}
+                />
+              </div>
+
               <PendingImageInput
                 label="Court photos"
                 description="Photos of this specific court."
@@ -215,6 +231,10 @@ export function CourtsStep({
                 sport_id: sports[0]?.id ?? 0,
                 title: "",
                 description: "",
+                price_per_hour: {
+                  amount: "",
+                  currency: "",
+                },
               })
             }
           >

@@ -80,7 +80,7 @@ export function SiteHeader({ variant = "default" }: SiteHeaderProps) {
 
         <div className="flex items-center gap-2 sm:gap-3">
           {user ? (
-            <UserMenu />
+            <UserMenu user={data} />
           ) : (
             <>
               <Button

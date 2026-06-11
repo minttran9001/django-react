@@ -26,6 +26,14 @@ def validate_publish(center: CourtCenter) -> None:
             errors.setdefault("schedules", []).append(
                 f'Court "{court.title}" must have at least one availability slot.'
             )
+        if court.price_per_hour <= 0:
+            errors.setdefault("price_per_hour", []).append(
+                f'Court "{court.title}" must have a price per hour greater than 0.'
+            )
+        if court.price_currency not in ["VND", "USD", "EUR"]:
+            errors.setdefault("price_currency", []).append(
+                f'Court "{court.title}" must have a valid price currency. Valid currencies are: VND, USD, EUR.'
+            )
 
     if errors:
         raise serializers.ValidationError(errors)

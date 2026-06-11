@@ -1,3 +1,5 @@
+import { Money } from "@/lib/types/money";
+
 export interface ImageResource {
   id: number;
   url: string;
@@ -31,6 +33,7 @@ export interface CourtSummary {
   description: string;
   images: ImageResource[];
   schedules: CourtSchedule[];
+  price_per_hour: Money;
   created_at: string;
   updated_at: string;
 }

@@ -13,12 +13,14 @@ from ..utils.attach_images import (
     sync_courts,
 )
 from ..utils.court_center_sync import sync_center_schedules
+from .money import MoneySerializer
 
 
 class CourtSummarySerializer(serializers.ModelSerializer):
     sport = SportSerializer(read_only=True)
     images = ImageResourceSerializer(source="gallery", many=True, read_only=True)
     schedules = CourtScheduleSerializer(many=True, read_only=True)
+    price_per_hour = serializers.SerializerMethodField()
 
     class Meta:
         model = Court
@@ -29,10 +31,17 @@ class CourtSummarySerializer(serializers.ModelSerializer):
             "description",
             "images",
             "schedules",
+            "price_per_hour",
             "created_at",
             "updated_at",
         ]
         read_only_fields = fields
+
+    def get_price_per_hour(self, court):
+        return MoneySerializer({
+            "amount": court.price_per_hour,
+            "currency": court.price_currency,
+        }).data
 
 
 class CourtCreateInputSerializer(serializers.Serializer):
@@ -47,6 +56,14 @@ class CourtCreateInputSerializer(serializers.Serializer):
         required=False,
         default=list,
     )
+    price_per_hour = MoneySerializer(required=False)
+
+    def validate(self, attrs):
+        price = attrs.pop("price_per_hour", None)
+        if price:
+            attrs["price_per_hour"] = price["amount"]
+            attrs["price_currency"] = price["currency"]
+        return attrs
 
 
 class CourtUpdateInputSerializer(CourtCreateInputSerializer):

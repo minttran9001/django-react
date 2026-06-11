@@ -20,6 +20,7 @@ from .user import (
     UserProfileUpdateSerializer,
     UserReadSerializer,
 )
+from .money import MoneySerializer
 
 __all__ = [
     "BookingSerializer",
@@ -43,4 +44,5 @@ __all__ = [
     "UserProfileUpdateSerializer",
     "UserReadSerializer",
     "VerifyEmailSerializer",
+    "MoneySerializer",
 ]
