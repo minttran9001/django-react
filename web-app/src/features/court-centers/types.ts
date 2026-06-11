@@ -41,13 +41,18 @@ export interface OwnerId {
   id: number;
 }
 
-export interface Owner extends OwnerId {
+export interface User extends OwnerId {
   email: string;
+  avatar: ImageResource | null;
+  name: string;
+  phone_number: string;
+  address: string;
+  date_of_birth: string | null;
 }
 
 export interface CourtCenter {
   id: number;
-  owner: OwnerId | Owner;
+  owner: OwnerId | User;
   title: string;
   description: string;
   address: string | null;

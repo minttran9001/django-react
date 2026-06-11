@@ -32,7 +32,7 @@ export function VerifyEmailForm({
   const {
     register,
     handleSubmit,
-    getValues,
+    watch,
     formState: { errors },
   } = useForm<VerifyEmailFormValues>({
     resolver: zodResolver(verifyEmailSchema),
@@ -42,7 +42,7 @@ export function VerifyEmailForm({
     },
   });
 
-  const email = getValues("email");
+  const email = watch("email");
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">

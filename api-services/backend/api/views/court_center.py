@@ -20,7 +20,11 @@ from ..utils.court_center_sync import validate_publish
 
 
 def get_court_center_queryset():
-    return CourtCenter.objects.select_related("owner").prefetch_related(
+    return CourtCenter.objects.select_related(
+        "owner",
+        "owner__profile",
+        "owner__profile__avatar",
+    ).prefetch_related(
         "images",
         Prefetch(
             "courts",

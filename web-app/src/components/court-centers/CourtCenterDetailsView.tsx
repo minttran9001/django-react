@@ -146,13 +146,11 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
         <p className="mt-2 text-sm text-destructive/80">
           It may not exist or you may not have access.
         </p>
-        <Button
-          className="mt-6"
-          variant="outline"
-          render={<Link href="/listings/mine" />}
-        >
-          <ArrowLeft className="size-4" />
-          Back to my listings
+        <Button className="mt-6" variant="outline" asChild>
+          <Link href="/listings/mine">
+            <ArrowLeft className="size-4" />
+            Back to my listings
+          </Link>
         </Button>
       </div>
     );
@@ -168,12 +166,12 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
           <Button
             variant="ghost"
             className="w-fit px-0 hover:bg-transparent"
-            render={
-              <Link prefetch href={`/listings/${id}/edit?step=1`} />
-            }
+            asChild
           >
-            <Pencil className="size-4" />
-            Continue editing
+            <Link prefetch href={`/listings/${id}/edit?step=1`}>
+              <Pencil className="size-4" />
+              Continue editing
+            </Link>
           </Button>
         </div>
       ) : null}
@@ -185,12 +183,12 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
           <Button
             variant="ghost"
             className="w-fit px-0 hover:bg-transparent"
-            render={
-              <Link prefetch href={`/listings/${id}/edit?step=1`} />
-            }
+            asChild
           >
-            <Pencil className="size-4" />
-            Edit
+            <Link prefetch href={`/listings/${id}/edit?step=1`}>
+              <Pencil className="size-4" />
+              Edit
+            </Link>
           </Button>
         </div>
       ) : null}
@@ -198,10 +196,12 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
         <Button
           variant="ghost"
           className="w-fit px-0 hover:bg-transparent"
-          render={<Link href="/listings/mine" />}
+          asChild
         >
-          <ArrowLeft className="size-4" />
-          Back to my listings
+          <Link href="/listings/mine">
+            <ArrowLeft className="size-4" />
+            Back to my listings
+          </Link>
         </Button>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

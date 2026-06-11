@@ -56,7 +56,7 @@ export function CourtsStep({
     control,
     handleSubmit,
     setValue,
-    getValues,
+    watch,
     formState: { errors },
   } = useForm<CourtsStepValues>({
     resolver: zodResolver(courtsStepSchema),
@@ -79,14 +79,14 @@ export function CourtsStep({
     }
 
     fields.forEach((_, index) => {
-      const sportId = getValues(`courts.${index}.sport_id`);
+      const sportId = watch(`courts.${index}.sport_id`);
       if (!sportId || sportId === 0) {
         setValue(`courts.${index}.sport_id`, sports[0].id, {
           shouldValidate: false,
         });
       }
     });
-  }, [sports, fields, setValue, getValues]);
+  }, [sports, fields, setValue, watch]);
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">

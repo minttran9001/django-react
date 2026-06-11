@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { CourtCenter } from "@/features/court-centers/types";
+import type { CourtCenter, CourtSchedule } from "@/features/court-centers/types";
 import { DAY_OPTIONS, normalizeTime } from "@/features/court-centers/utils/wizard";
 
 type ReviewStepProps = {
@@ -21,11 +21,20 @@ function getDayLabel(dayOfWeek: number): string {
   return DAY_OPTIONS.find((day) => day.value === dayOfWeek)?.label ?? "Unknown";
 }
 
+const groupAvailabilityByDay = (schedules: CourtSchedule[]) => schedules.reduce<Record<number, CourtSchedule[]>>((acc, schedule) => {
+  if (!acc[schedule.day_of_week]) {
+    acc[schedule.day_of_week] = [];
+  }
+  acc[schedule.day_of_week].push(schedule);
+  return acc;
+}, {});
+
 export function ReviewStep({ center }: ReviewStepProps) {
   const coverImage = center.logo?.url ?? center.images[0]?.url ?? null;
   const sportNames = [
     ...new Set(center.courts?.map((court) => court.sport.name) ?? []),
   ];
+
 
   return (
     <div className="space-y-6">
@@ -102,11 +111,15 @@ export function ReviewStep({ center }: ReviewStepProps) {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Weekly availability</p>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {court.schedules.map((schedule) => (
-                    <li key={schedule.id}>
-                      {getDayLabel(schedule.day_of_week)}:{" "}
-                      {normalizeTime(schedule.start_time)} –{" "}
-                      {normalizeTime(schedule.end_time)}
+                  {Object.entries(groupAvailabilityByDay(court.schedules)).map(([day, schedules]) => (
+                    <li key={day} className="flex items-center gap-2">
+                      <span className="text-muted-foreground min-w-20">{getDayLabel(Number(day))}</span>
+                      <span>-</span>
+                      <div className="flex flex-col gap-1">
+                        {schedules.map((schedule) => (
+                          <span key={schedule.id}>{normalizeTime(schedule.start_time)} – {normalizeTime(schedule.end_time)}</span>
+                        ))}
+                      </div>
                     </li>
                   ))}
                 </ul>

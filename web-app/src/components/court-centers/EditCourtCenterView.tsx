@@ -30,13 +30,11 @@ export function EditCourtCenterView({ id, initialCenter }: EditCourtCenterViewPr
         <p className="text-lg font-medium text-destructive">
           Unable to load this listing
         </p>
-        <Button
-          className="mt-6"
-          variant="outline"
-          render={<Link href="/listings/mine" />}
-        >
-          <ArrowLeft className="size-4" />
-          Back to my listings
+        <Button className="mt-6" variant="outline" asChild>
+          <Link href="/listings/mine">
+            <ArrowLeft className="size-4" />
+            Back to my listings
+          </Link>
         </Button>
       </div>
     );
@@ -48,10 +46,12 @@ export function EditCourtCenterView({ id, initialCenter }: EditCourtCenterViewPr
         <Button
           variant="ghost"
           className="w-fit px-0 hover:bg-transparent"
-          render={<Link href={isPublished ? `/listings/${id}` : "/listings/mine"} />}
+          asChild
         >
-          <ArrowLeft className="size-4" />
-          {isPublished ? "Back to listing" : "Back to my listings"}
+          <Link href={isPublished ? `/listings/${id}` : "/listings/mine"}>
+            <ArrowLeft className="size-4" />
+            {isPublished ? "Back to listing" : "Back to my listings"}
+          </Link>
         </Button>
         <h1 className="text-3xl font-semibold tracking-tight">
           {isPublished ? "Edit listing" : "Continue your listing"}

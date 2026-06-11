@@ -33,14 +33,17 @@ export function LocationStep({
   const {
     setValue,
     handleSubmit,
-    getValues,
+    watch,
     formState: { errors },
   } = useForm<LocationStepValues>({
     resolver: zodResolver(locationStepSchema),
     defaultValues,
   });
 
-  const values = getValues();
+  const values = watch();
+  const latitude = values["latitude"];
+  const longitude = values["longitude"];
+  const address = values["address"];
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -69,10 +72,10 @@ export function LocationStep({
             </p>
           )}
           <div className="mt-4">
-            {values.latitude && values.longitude && <LocationMap
-              latitude={values.latitude ?? null}
-              longitude={values.longitude ?? null}
-              label={values.address ?? undefined}
+            {latitude && longitude && <LocationMap
+              latitude={latitude ?? null}
+              longitude={longitude ?? null}
+              label={address ?? undefined}
             />}
           </div>
         </CardContent>

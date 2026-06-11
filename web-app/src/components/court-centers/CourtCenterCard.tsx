@@ -11,7 +11,8 @@ import type { CourtCenter } from "@/features/court-centers/types";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-
+import ThreeDotMenu from "../ui/ThreeDotMenu";
+import { useMemo } from "react";
 type CourtCenterCardProps = {
   center: CourtCenter;
   className?: string;
@@ -44,6 +45,16 @@ export function CourtCenterCard({
   const sportNames = getSportNames(center);
   const courtCount = center.courts?.length ?? 0;
   const href = getHref(center, variant);
+
+  const items = useMemo(() => {
+    if (variant === "owner") {
+      return [
+        { label: <Link href={`/listings/${center.id}/edit?step=1`}>Edit</Link> },
+        { label: <Link href={`/listings/${center.id}/delete`}>Delete</Link> },
+      ];
+    }
+    return [];
+  }, [variant, center.id]);
 
   return (
     <Link prefetch href={href}>
@@ -79,6 +90,10 @@ export function CourtCenterCard({
             >
               {center.status === "draft" ? "Draft" : "Published"}
             </span>
+          ) : null}
+
+          {variant === "owner" ? (
+            <ThreeDotMenu items={items} triggerClassName="absolute right-3 top-3 z-10" />
           ) : null}
         </div>
 

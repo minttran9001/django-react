@@ -14,7 +14,7 @@ from .court_schedule import CourtScheduleExceptionSerializer, CourtScheduleSeria
 from .email_verification import ResendVerificationEmailSerializer, VerifyEmailSerializer
 from .image import ImageResourceSerializer, ImageUploadResponseSerializer
 from .sport import SportSerializer
-from .user import CurrentUserSerializer, OwnerIdSerializer, UserSerializer
+from .user import CurrentUserSerializer, OwnerIdSerializer, OwnerSerializer, UserSerializer
 
 __all__ = [
     "BookingSerializer",
@@ -30,6 +30,7 @@ __all__ = [
     "CourtSerializer",
     "CurrentUserSerializer",
     "OwnerIdSerializer",
+    "OwnerSerializer",
     "EmailTokenObtainPairSerializer",
     "ImageResourceSerializer",
     "ImageUploadResponseSerializer",

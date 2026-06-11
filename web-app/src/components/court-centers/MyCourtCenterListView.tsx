@@ -24,9 +24,11 @@ export function MyCourtCenterListView() {
             Manage the court centers you have created.
           </p>
         </div>
-        <Button render={<Link href="/listings/create" />}>
-          <Plus className="size-4" />
-          Create listing
+        <Button asChild>
+          <Link href="/listings/create">
+            <Plus className="size-4" />
+            Create listing
+          </Link>
         </Button>
       </div>
 
@@ -50,9 +52,11 @@ export function MyCourtCenterListView() {
           <p className="mt-2 text-sm text-muted-foreground">
             Create your first court center and add courts for players to book.
           </p>
-          <Button className="mt-6" render={<Link href="/listings/create" />}>
-            <Plus className="size-4" />
-            Create listing
+          <Button className="mt-6" asChild>
+            <Link href="/listings/create">
+              <Plus className="size-4" />
+              Create listing
+            </Link>
           </Button>
         </div>
       ) : null}

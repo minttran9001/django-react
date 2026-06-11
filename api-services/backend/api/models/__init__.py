@@ -7,5 +7,17 @@ from .court_schedule import CourtSchedule
 from .court_schedule_exception import CourtScheduleException
 from .court_schedule_exception import CourtScheduleExceptionType
 from .booking import Booking
+from .user_profile import UserProfile
 
-__all__ = ["CourtCenter", "EmailVerificationToken", "Image", "Sport", "Court", "CourtSchedule", "CourtScheduleException", "CourtScheduleExceptionType", "Booking"]
+__all__ = [
+    "Booking",
+    "Court",
+    "CourtCenter",
+    "CourtSchedule",
+    "CourtScheduleException",
+    "CourtScheduleExceptionType",
+    "EmailVerificationToken",
+    "Image",
+    "Sport",
+    "UserProfile",
+]

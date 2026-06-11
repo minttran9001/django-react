@@ -93,17 +93,17 @@ export function SiteHeader({ variant = "default" }: SiteHeaderProps) {
                   isOverlay &&
                     "border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white",
                 )}
-                render={<Link href="/login" />}
+                asChild
               >
-                Log in
+                <Link href="/login">Log in</Link>
               </Button>
               <Button
                 className={cn(
                   isOverlay && "bg-white text-black hover:bg-white/90",
                 )}
-                render={<Link href="/register" />}
+                asChild
               >
-                Sign up
+                <Link href="/register">Sign up</Link>
               </Button>
             </>
           )}

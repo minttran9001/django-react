@@ -1,8 +1,7 @@
-export interface CurrentUser {
-  id: number;
-  email: string;
-}
+import { User } from "@/features/court-centers/types";
 
-export interface MeResponse {
+export type CurrentUser = User;
+
+export type MeResponse = {
   user: CurrentUser | null;
-}
+};

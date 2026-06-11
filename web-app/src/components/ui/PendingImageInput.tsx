@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import type { ImageResource } from "@/features/court-centers/types";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 type PendingImageInputProps = {
   id?: string;
@@ -42,12 +43,12 @@ export function PendingImageInput({
 
     const selected = multiple ? Array.from(files) : [files[0]];
     const uploaded = await onUpload(selected);
-    console.log(uploaded);
     onChange(multiple ? [...value, ...uploaded] : uploaded.slice(0, 1));
   };
 
   const removeImage = (imageId: number) => {
-    onChange(value.filter((image) => image.id !== imageId));
+    const newImages = value.filter((image) => image.id !== imageId);
+    onChange(newImages);
   };
 
   return (
@@ -77,7 +78,8 @@ export function PendingImageInput({
             key={image.id}
             className="relative size-24 overflow-hidden rounded-lg border bg-muted"
           >
-            <img
+            <Image
+              fill
               src={image.url}
               alt={`${label} preview`}
               className="h-full w-full object-cover"
