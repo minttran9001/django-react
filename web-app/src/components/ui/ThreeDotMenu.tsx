@@ -9,7 +9,7 @@ import { EllipsisIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ThreeDotMenuProps = {
-    items: { label: string | React.ReactNode; onClick?: () => void; icon?: React.ReactNode; className?: string }[];
+    items: { id: string; label: string | React.ReactNode; onClick?: () => void; icon?: React.ReactNode; className?: string }[];
     triggerClassName?: string;
 }
 
@@ -23,7 +23,7 @@ const ThreeDotMenu = ({ items, triggerClassName }: ThreeDotMenuProps) => {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
                 {items.map((item) => (
-                    <DropdownMenuItem key={typeof item.label === "string" ? item.label : item.label?.toString() ?? ""} onClick={item.onClick} className={cn("flex items-center gap-2", item.className)}>
+                    <DropdownMenuItem key={item.id} onClick={item.onClick} className={cn("flex items-center gap-2", item.className)}>
                         {item.icon}
                         {typeof item.label === "string" ? <span>{item.label}</span> : item.label}
                     </DropdownMenuItem>

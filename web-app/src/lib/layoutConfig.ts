@@ -17,7 +17,7 @@ export const FULL_WIDTH_ROUTES = ["/"] as const;
 
 export const HORIZONTAL_PADDING_CLASS = "px-4 sm:px-6 lg:px-8";
 
-export const CONTAINED_MAIN_CLASS = `mx-auto w-full max-w-6xl ${HORIZONTAL_PADDING_CLASS}`;
+export const CONTAINED_MAIN_CLASS = `mx-auto w-full max-w-6xl bg-gray-100 ${HORIZONTAL_PADDING_CLASS}`;
 
 function matchesRoute(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(`${route}/`);

@@ -221,47 +221,47 @@ export function AutocompleteLocationInput({
   const dropdown =
     isOpen && suggestions.length > 0 && dropdownPosition
       ? createPortal(
-          <ul
-            ref={dropdownRef}
-            id={listboxId}
-            role="listbox"
-            style={{
-              top: dropdownPosition.top,
-              left: dropdownPosition.left,
-              width: dropdownPosition.width,
-            }}
-            className="fixed z-50 max-h-64 overflow-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
-          >
-            {suggestions.map((suggestion, index) => (
-              <li key={suggestion.id} role="presentation">
-                <button
-                  id={`${listboxId}-option-${index}`}
-                  type="button"
-                  role="option"
-                  aria-selected={activeIndex === index}
-                  className={cn(
-                    "flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-sm outline-none",
-                    activeIndex === index
-                      ? "bg-muted text-foreground"
-                      : "hover:bg-muted/70",
-                  )}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => selectSuggestion(suggestion)}
-                  onMouseEnter={() => setActiveIndex(index)}
-                >
-                  <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  <span>{suggestion.placeName}</span>
-                </button>
-              </li>
-            ))}
-          </ul>,
-          document.body,
-        )
+        <ul
+          ref={dropdownRef}
+          id={listboxId}
+          role="listbox"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+          }}
+          className="fixed z-50 max-h-64 overflow-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+        >
+          {suggestions.map((suggestion, index) => (
+            <li key={suggestion.id} role="presentation">
+              <button
+                id={`${listboxId}-option-${index}`}
+                type="button"
+                role="option"
+                aria-selected={activeIndex === index}
+                className={cn(
+                  "flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-sm outline-none",
+                  activeIndex === index
+                    ? "bg-muted text-foreground"
+                    : "hover:bg-muted/70",
+                )}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => selectSuggestion(suggestion)}
+                onMouseEnter={() => setActiveIndex(index)}
+              >
+                <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <span>{suggestion.placeName}</span>
+              </button>
+            </li>
+          ))}
+        </ul>,
+        document.body,
+      )
       : null;
 
   return (
     <div ref={containerRef} className="space-y-2">
-      <Label htmlFor={inputId}>{label}</Label>
+      {label && <Label htmlFor={inputId}>{label}</Label>}
       <div ref={inputWrapperRef}>
         <Input
           id={inputId}

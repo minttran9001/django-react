@@ -3,6 +3,7 @@
 import { CourtCenterCard } from "@/components/court-centers/CourtCenterCard";
 import { CourtCenterCardSkeleton } from "@/components/court-centers/CourtCenterCardSkeleton";
 import { useGetCourtCentersQuery } from "@/lib/api/courtCenterApi";
+import FiltersContainer from "./FiltersContainer";
 
 export function CourtCenterListView() {
   const { data: courtCenters = [], isLoading, isError } = useGetCourtCentersQuery();
@@ -15,6 +16,8 @@ export function CourtCenterListView() {
           Browse venues and find a court to book.
         </p>
       </div>
+
+      <FiltersContainer />
 
       {isLoading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
