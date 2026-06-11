@@ -22,20 +22,6 @@ function isProtectedRoute(pathname: string) {
   return !AUTH_ROUTE_SET.has(pathname) && !PUBLIC_ROUTE_SET.has(pathname);
 }
 
-function isPublicListingDetail(pathname: string) {
-  return /^\/listings\/[^/]+$/.test(pathname);
-}
-
-function isPublicRoute(pathname: string) {
-  if (AUTH_ROUTE_SET.has(pathname)) {
-    return false;
-  }
-  if (PUBLIC_ROUTE_SET.has(pathname)) {
-    return true;
-  }
-  return isPublicListingDetail(pathname);
-}
-
 function isClientNavigation(request: NextRequest) {
   return request.headers.get("RSC") === "1";
 }
@@ -84,33 +70,27 @@ const shouldRedirectToHome = (
   return Boolean(user) && isAuthRoute;
 };
 
-function resolveUserFromRequest(request: NextRequest): CurrentUser | null {
-  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-  if (!accessToken) {
-    return null;
-  }
-
-  return userFromAccessToken(accessToken);
-}
-
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute = AUTH_ROUTE_SET.has(pathname);
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const isClientNav = isClientNavigation(request);
 
-  // Public pages never need a backend /me round-trip.
-  if (isPublicRoute(pathname)) {
-    const user = accessToken ? resolveUserFromRequest(request) : null;
-    return buildPassThrough(request, pathname, user);
-  }
-
-  // Client-side navigations: trust a valid access token locally.
-  if (isClientNav && accessToken && isAccessTokenValid(accessToken)) {
-    const user = resolveUserFromRequest(request);
+  // Client navigations: JWT check only — profile data comes from RTK getMe cache.
+  if (isClientNav) {
+    const user =
+      accessToken && isAccessTokenValid(accessToken)
+        ? userFromAccessToken(accessToken)
+        : null;
 
     if (shouldRedirectToHome(user, isAuthRoute)) {
       return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    if (!accessToken && shouldRedirectToLogin(null, pathname)) {
+      const response = NextResponse.redirect(new URL("/login", request.url));
+      clearTokens(response);
+      return response;
     }
 
     if (!shouldRedirectToLogin(user, pathname)) {
@@ -118,14 +98,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // No token on protected route during client nav — redirect immediately.
-  if (isClientNav && !accessToken && shouldRedirectToLogin(null, pathname)) {
-    const response = NextResponse.redirect(new URL("/login", request.url));
-    clearTokens(response);
-    return response;
-  }
-
-  // Full page load, expired token, or refresh needed — hit the backend once.
+  // Full page load: fetch full user from /me (with refresh fallback).
   const { user, setCookies } = await prefetchUser(request);
 
   if (shouldRedirectToHome(user, isAuthRoute)) {

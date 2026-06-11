@@ -19,6 +19,11 @@ const currentUserNormalizer = (user: CurrentUser) => {
   return {
     id: Number(user.id),
     email: user.email,
+    avatar: user.avatar,
+    name: user.name,
+    phone_number: user.phone_number,
+    address: user.address,
+    date_of_birth: user.date_of_birth,
   };
 };
 
@@ -48,6 +53,18 @@ export function isAccessTokenValid(token: string): boolean {
   return payload.exp * 1000 > Date.now();
 }
 
+async function getMe(accessToken: string): Promise<CurrentUser | null> {
+  try {
+    const { data } = await axios.get<{ user: CurrentUser }>(`${API_URL}/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return data.user ? currentUserNormalizer(data.user) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lightweight auth stub from JWT — used on client navigations to avoid /me round-trips. */
 export function userFromAccessToken(token: string): CurrentUser | null {
   if (!isAccessTokenValid(token)) {
     return null;
@@ -58,18 +75,25 @@ export function userFromAccessToken(token: string): CurrentUser | null {
     return null;
   }
 
-  return currentUserNormalizer({ id: payload.user_id, email: "" });
+  return currentUserNormalizer({
+    id: payload.user_id,
+    email: "",
+    avatar: null,
+    name: "",
+    phone_number: "",
+    address: "",
+    date_of_birth: null,
+  } as CurrentUser);
 }
 
-async function getMe(accessToken: string): Promise<CurrentUser | null> {
-  try {
-    const { data } = await axios.get<{ user: CurrentUser }>(`${API_URL}/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    return data.user ?? null;
-  } catch {
+export async function resolveUserFromAccessToken(
+  accessToken: string,
+): Promise<CurrentUser | null> {
+  if (!isAccessTokenValid(accessToken)) {
     return null;
   }
+
+  return getMe(accessToken);
 }
 
 async function refreshAccessToken(
