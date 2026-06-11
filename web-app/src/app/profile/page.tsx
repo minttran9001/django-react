@@ -40,7 +40,7 @@ const ProfilePage = () => {
                 email: values.email,
                 phone_number: values.phone_number,
                 address: values.address,
-                date_of_birth: values.date_of_birth,
+                date_of_birth: values.date_of_birth || undefined,
                 avatar_id: values.avatar?.id ?? null,
             }).unwrap();
 
@@ -57,10 +57,10 @@ const ProfilePage = () => {
     return (
         <div className="relative overflow-hidden">
             <div className="flex items-center gap-4 justify-center shadow-lg rounded-lg p-4 mb-20">
-                <div className="absolute left-[50%] top-[-135px] z-0 h-[285px] w-[640px] translate-x-[-50%] rounded-[50%] bg-gradient-to-b from-[#4A19C3] to-[#557EEA] sm:top-[-128px] sm:h-[285px] sm:w-[1067px]" />
+                <div className="absolute left-[50%] top-[-135px] z-0 h-[285px] w-[640px] translate-x-[-50%] rounded-[50%] bg-linear-to-b from-brand-primary to-brand-secondary sm:top-[-128px] sm:h-[285px] sm:w-[1067px]" />
                 <div className="flex items-center flex-col gap-4 mt-20">
                     <Avatar className="size-40">
-                        <AvatarImage src={me?.avatar?.url ?? ""} />
+                        <AvatarImage sizes="(max-width: 768px) 100vw, 768px" src={me?.avatar?.url ?? ""} />
                         <AvatarFallback>
                             {me?.name?.charAt(0) || <User />}
                         </AvatarFallback>

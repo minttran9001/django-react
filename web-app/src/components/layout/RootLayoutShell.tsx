@@ -17,35 +17,41 @@ export function RootLayoutShell({
   const pathname = usePathname();
   const { variant, contentWidth } = getLayoutShellConfig(pathname);
 
+  let content: React.ReactNode;
+
   if (variant === "auth") {
-    return (
+    content = (
       <div className={cn("min-h-screen bg-muted/40", HORIZONTAL_PADDING_CLASS)}>
         {children}
       </div>
     );
-  }
-
-  if (variant === "marketing") {
-    return (
+  } else if (variant === "marketing") {
+    content = (
       <div className="min-h-screen">
         <SiteHeader variant="overlay" />
         {children}
       </div>
     );
+  } else {
+    content = (
+      <div className="min-h-screen bg-muted/30">
+        <SiteHeader />
+        <main
+          className={cn(
+            "w-full py-8 sm:py-10",
+            contentWidth === "contained" && CONTAINED_MAIN_CLASS,
+          )}
+        >
+          {children}
+        </main>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <SiteHeader />
-      <main
-        className={cn(
-          "w-full py-8 sm:py-10",
-          contentWidth === "contained" && CONTAINED_MAIN_CLASS,
-        )}
-      >
-        {children}
-      </main>
+    <>
+      {content}
       <Toaster />
-    </div>
+    </>
   );
 }

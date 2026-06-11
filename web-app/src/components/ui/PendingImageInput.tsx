@@ -20,6 +20,7 @@ type PendingImageInputProps = {
   onUpload: (files: File[]) => Promise<ImageResource[]>;
   disabled?: boolean;
   isUploading?: boolean;
+  imageSizes?: string;
 };
 
 export function PendingImageInput({
@@ -33,6 +34,7 @@ export function PendingImageInput({
   onUpload,
   disabled = false,
   isUploading = false,
+  imageSizes = "(max-width: 768px) 100vw, 768px"
 }: PendingImageInputProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
@@ -80,6 +82,7 @@ export function PendingImageInput({
           >
             <Image
               fill
+              sizes={imageSizes}
               src={image.url}
               alt={`${label} preview`}
               className="h-full w-full object-cover"

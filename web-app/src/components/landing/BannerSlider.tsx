@@ -61,10 +61,14 @@ export function BannerSlider({
               {slide.description}
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" asChild>
+              <Button asChild>
                 <Link href={slide.primaryHref}>{slide.primaryLabel}</Link>
               </Button>
-              <Button asChild>
+              <Button
+                variant="secondary"
+                className="bg-white/90 text-secondary-foreground hover:bg-white"
+                asChild
+              >
                 <Link href={slide.secondaryHref}>{slide.secondaryLabel}</Link>
               </Button>
             </div>

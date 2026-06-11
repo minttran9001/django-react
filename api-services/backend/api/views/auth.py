@@ -11,7 +11,7 @@ from ..utils import (
     set_access_token_cookie,
     set_jwt_cookies,
 )
-from ..serializers import CurrentUserSerializer, EmailTokenObtainPairSerializer
+from ..serializers import EmailTokenObtainPairSerializer, UserReadSerializer
 
 
 class EmailTokenObtainPairView(TokenObtainPairView):
@@ -25,7 +25,7 @@ class EmailTokenObtainPairView(TokenObtainPairView):
 
         user = User.objects.get(email=request.data["email"])
         set_jwt_cookies(response, response.data["access"], response.data["refresh"])
-        response.data = {"user": CurrentUserSerializer(user).data}
+        response.data = {"user": UserReadSerializer(user).data}
         return response
 
 

@@ -22,5 +22,10 @@ class UserProfile(models.Model):
         related_name="+",
     )
 
+    @classmethod
+    def for_user(cls, user: User) -> "UserProfile":
+        profile, _ = cls.objects.get_or_create(user=user)
+        return profile
+
     def __str__(self):
         return self.name or self.user.email

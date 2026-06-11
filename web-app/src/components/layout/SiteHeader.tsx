@@ -42,8 +42,8 @@ function NavLink({
             ? "bg-white/15 text-white"
             : "text-white/85 hover:bg-white/10 hover:text-white"
           : isActive
-            ? "bg-muted text-foreground"
-            : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
       )}
     >
       {children}

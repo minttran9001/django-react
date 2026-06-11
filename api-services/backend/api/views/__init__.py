@@ -10,8 +10,7 @@ from .court_center import (
 )
 from .email_verification import ResendVerificationEmailView, VerifyEmailView
 from .image import ImageUploadView
-from .user import CreateUserView, CurrentUserView
-from .profile import ProfileView
+from .user import CreateUserView, CurrentUserView, ProfileView
 
 __all__ = [
     "CookieTokenRefreshView",

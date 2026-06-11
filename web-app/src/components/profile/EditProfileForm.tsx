@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { PendingImageInput } from "../ui/PendingImageInput";
 import { ImageResource } from "@/features/court-centers/types";
 import { Button } from "../ui/button";
+import DatePicker from "../ui/date-picker";
+import { formatApiDate, parseApiDate } from "@/lib/dates";
 
 type EditProfileFormProps = {
     initialValues: EditProfileFormValues
@@ -31,6 +33,7 @@ const EditProfileForm = ({ initialValues, onSubmit, className, onUpload, isUploa
     };
 
     const avatar = useWatch({ control, name: "avatar" });
+    const dateOfBirth = useWatch({ control, name: "date_of_birth" });
 
     return (
         <div className={cn("", className)}>
@@ -71,7 +74,18 @@ const EditProfileForm = ({ initialValues, onSubmit, className, onUpload, isUploa
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="date_of_birth">Date of Birth</Label>
-                            <Input id="date_of_birth" type="date" {...register("date_of_birth")} placeholder="Enter your date of birth" className="bg-white" />
+                            <DatePicker
+                                date={parseApiDate(dateOfBirth)}
+                                setDate={(date) =>
+                                    setValue(
+                                        "date_of_birth",
+                                        date ? formatApiDate(date) : undefined,
+                                        { shouldDirty: true, shouldValidate: true },
+                                    )
+                                }
+                                placeholder="Enter your date of birth"
+                                className="bg-white"
+                            />
                         </div>
                     </div>
                 </div>

@@ -8,7 +8,7 @@ type LogoProps = {
 
 export function Logo({ className }: LogoProps) {
   return (
-    <Link href="/" className={cn("flex items-center gap-2", className)}>
+    <Link href="/" className={cn("flex items-center gap-2 text-primary", className)}>
       <svg
         className="h-auto w-[1.60625rem]"
         width="28"

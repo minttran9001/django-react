@@ -34,6 +34,7 @@ import {
 } from "@/lib/api/courtCenterApi";
 import { cn } from "@/lib/utils";
 import { combineAdjacentSchedules } from "@/features/court-centers/utils/scheduleCalendar";
+import { toast } from "sonner";
 
 const FORM_ID = "listing-wizard-form";
 
@@ -158,6 +159,7 @@ export function ListingWizard(props: ListingWizardProps) {
       if (isCreateMode) {
         const draft = await createDraft(payload).unwrap();
         router.replace(`/listings/${draft.id}/edit?step=2`);
+        toast.success("Draft created successfully");
         return;
       }
 
@@ -166,6 +168,7 @@ export function ListingWizard(props: ListingWizardProps) {
       }
 
       await updateDraft({ id: listingId, body: payload }).unwrap();
+      toast.success("Listing updated successfully");
       goToStep(2);
     } catch (error) {
       setSubmitError(getCourtCenterErrorMessage(error));
@@ -188,6 +191,7 @@ export function ListingWizard(props: ListingWizardProps) {
         },
       }).unwrap();
       goToStep(3);
+      toast.success("Listing updated successfully");
     } catch (error) {
       setSubmitError(getCourtCenterErrorMessage(error));
     }
@@ -213,6 +217,7 @@ export function ListingWizard(props: ListingWizardProps) {
         },
       }).unwrap();
       goToStep(4);
+      toast.success("Listing updated successfully");
     } catch (error) {
       setSubmitError(getCourtCenterErrorMessage(error));
     }
@@ -240,6 +245,7 @@ export function ListingWizard(props: ListingWizardProps) {
         },
       }).unwrap();
       goToStep(5);
+      toast.success("Listing updated successfully");
     } catch (error) {
       setSubmitError(getCourtCenterErrorMessage(error));
     }
@@ -254,6 +260,7 @@ export function ListingWizard(props: ListingWizardProps) {
     try {
       await publishListing(listingId).unwrap();
       router.push(`/listings/${listingId}`);
+      toast.success("Listing published successfully");
     } catch (error) {
       setSubmitError(getCourtCenterErrorMessage(error));
     }

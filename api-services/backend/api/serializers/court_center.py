@@ -5,7 +5,7 @@ from api.models import Court, CourtCenter, Sport
 from .court_schedule import CourtScheduleSerializer
 from .image import ImageResourceSerializer
 from .sport import SportSerializer
-from .user import OwnerIdSerializer, OwnerSerializer
+from .user import UserIdSerializer, UserReadSerializer
 from ..utils.attach_images import (
     attach_center_images,
     attach_court_images,
@@ -78,8 +78,8 @@ class CourtCenterSerializer(serializers.ModelSerializer):
 
     def get_owner(self, obj):
         if self.context.get("expand_owner"):
-            return OwnerSerializer(obj.owner).data
-        return OwnerIdSerializer(obj.owner).data
+            return UserReadSerializer(obj.owner).data
+        return UserIdSerializer(obj.owner).data
 
 
 class CourtCenterDetailSerializer(CourtCenterSerializer):
