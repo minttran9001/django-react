@@ -33,6 +33,10 @@ export const courtCenterApi = createApi({
             ]
           : [{ type: "CourtCenters", id: "LIST" }],
     }),
+    getCourtCenter: builder.query<CourtCenter, string>({
+      query: (id) => `/court-centers/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "CourtCenters", id }],
+    }),
     getMyCourtCenters: builder.query<CourtCenter[], void>({
       query: () => "/court-centers/mine",
       providesTags: (result) =>
@@ -131,6 +135,7 @@ export const courtCenterApi = createApi({
 
 export const {
   useGetCourtCentersQuery,
+  useGetCourtCenterQuery,
   useGetMyCourtCentersQuery,
   useGetMyCourtCenterQuery,
   useGetSportsQuery,

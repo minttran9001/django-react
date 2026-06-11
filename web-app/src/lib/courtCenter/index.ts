@@ -1,9 +1,23 @@
 import axios from "axios";
+
+import { ACCESS_TOKEN_COOKIE } from "../auth/constants";
 import { env } from "../env";
 import { cookies } from "next/headers";
-import { ACCESS_TOKEN_COOKIE } from "../auth/constants";
 
-export const prefetchCourtCenter = async (id: string) => {
+export const prefetchPublicCourtCenter = async (id: string) => {
+  try {
+    const response = await axios.get(
+      `${env.NEXT_PUBLIC_API_URL}/api/court-centers/${id}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+/** Owner-only prefetch for edit flows. */
+export const prefetchMyCourtCenter = async (id: string) => {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;

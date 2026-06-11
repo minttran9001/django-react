@@ -41,6 +41,12 @@ export interface OwnerId {
   id: number;
 }
 
+/** Owner fields exposed on public listing search — no private contact info. */
+export interface PublicOwner extends OwnerId {
+  name: string;
+  avatar: ImageResource | null;
+}
+
 export interface User extends OwnerId {
   email: string;
   avatar: ImageResource | null;
@@ -52,7 +58,7 @@ export interface User extends OwnerId {
 
 export interface CourtCenter {
   id: number;
-  owner: OwnerId | User;
+  owner: OwnerId | PublicOwner;
   title: string;
   description: string;
   address: string | null;

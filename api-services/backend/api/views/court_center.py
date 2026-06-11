@@ -1,4 +1,5 @@
 from django.db.models import Prefetch
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -59,8 +60,24 @@ class CourtCenterCustomerListView(generics.ListAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context["expand_owner"] = True
+        context["owner_visibility"] = "public"
         return context
+
+
+class CourtCenterCustomerDetailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk, *args, **kwargs):
+        center = get_object_or_404(
+            get_court_center_queryset(),
+            pk=pk,
+            status=CourtCenter.Status.PUBLISHED,
+        )
+        serializer = CourtCenterDetailSerializer(
+            center,
+            context={"owner_visibility": "public"},
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class MyCourtCenterListView(generics.ListAPIView):
@@ -94,7 +111,11 @@ class MyCourtCenterDetailsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, request, pk):
-        return get_court_center_queryset().get(pk=pk, owner=request.user)
+        return get_object_or_404(
+            get_court_center_queryset(),
+            pk=pk,
+            owner=request.user,
+        )
 
     def get(self, request, pk, *args, **kwargs):
         center = self.get_object(request, pk)

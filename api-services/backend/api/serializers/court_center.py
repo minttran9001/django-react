@@ -5,7 +5,7 @@ from api.models import Court, CourtCenter, Sport
 from .court_schedule import CourtScheduleSerializer
 from .image import ImageResourceSerializer
 from .sport import SportSerializer
-from .user import UserIdSerializer, UserReadSerializer
+from .user import PublicOwnerSerializer, UserIdSerializer, UserReadSerializer
 from ..utils.attach_images import (
     attach_center_images,
     attach_court_images,
@@ -77,8 +77,11 @@ class CourtCenterSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "status", "created_at", "updated_at"]
 
     def get_owner(self, obj):
-        if self.context.get("expand_owner"):
+        visibility = self.context.get("owner_visibility", "id")
+        if visibility == "full":
             return UserReadSerializer(obj.owner).data
+        if visibility == "public":
+            return PublicOwnerSerializer(obj.owner).data
         return UserIdSerializer(obj.owner).data
 
 

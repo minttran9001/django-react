@@ -1,5 +1,5 @@
 import { CourtCenterDetailsView } from "@/components/court-centers/CourtCenterDetailsView";
-import { prefetchCourtCenter } from "@/lib/courtCenter";
+import { prefetchPublicCourtCenter } from "@/lib/courtCenter";
 import {
   collectQueryHydrations,
   createQueryHydrationEntry,
@@ -12,14 +12,14 @@ export default async function CourtCenterDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const courtCenter = await prefetchCourtCenter(id);
+  const courtCenter = await prefetchPublicCourtCenter(id);
 
   return (
     <RtkQueryHydrator
       entries={collectQueryHydrations(
         createQueryHydrationEntry(
           "courtCenterApi",
-          "getMyCourtCenter",
+          "getCourtCenter",
           id,
           courtCenter,
         ),

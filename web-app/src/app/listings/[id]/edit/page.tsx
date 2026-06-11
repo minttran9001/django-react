@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { EditCourtCenterView } from "@/components/court-centers/EditCourtCenterView";
-import { prefetchCourtCenter } from "@/lib/courtCenter";
+import { prefetchMyCourtCenter } from "@/lib/courtCenter";
 import {
   collectQueryHydrations,
   createQueryHydrationEntry,
@@ -15,7 +15,7 @@ export default async function EditListingPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const courtCenter = await prefetchCourtCenter(id);
+  const courtCenter = await prefetchMyCourtCenter(id);
 
   if (!courtCenter) {
     redirect("/listings/mine");

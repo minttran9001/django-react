@@ -25,6 +25,29 @@ class UserIdSerializer(serializers.ModelSerializer):
         fields = ["id"]
 
 
+class PublicOwnerSerializer(serializers.ModelSerializer):
+    """Safe owner fields for public listing search and browse."""
+
+    class Meta:
+        model = User
+        fields = ["id"]
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        try:
+            profile = instance.profile
+        except UserProfile.DoesNotExist:
+            profile = None
+
+        representation["name"] = profile.name if profile else ""
+        representation["avatar"] = (
+            ImageResourceSerializer(profile.avatar).data
+            if profile and profile.avatar
+            else None
+        )
+        return representation
+
+
 class UserReadSerializer(serializers.ModelSerializer):
     """Auth account plus flattened profile fields."""
 

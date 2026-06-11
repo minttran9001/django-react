@@ -27,7 +27,7 @@ import type {
   CourtSummary,
   ImageResource,
 } from "@/features/court-centers/types";
-import { useGetMyCourtCenterQuery } from "@/lib/api/courtCenterApi";
+import { useGetCourtCenterQuery } from "@/lib/api/courtCenterApi";
 import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
 
@@ -119,7 +119,7 @@ function CourtCard({ court }: { court: CourtSummary }) {
 }
 
 export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
-  const { data: courtCenter, isLoading, isError } = useGetMyCourtCenterQuery(id);
+  const { data: courtCenter, isLoading, isError } = useGetCourtCenterQuery(id);
   const { data: user } = useGetMeQuery();
   const isOwnListing = user?.id === courtCenter?.owner.id;
   const galleryImages = useMemo(
@@ -147,9 +147,9 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
           It may not exist or you may not have access.
         </p>
         <Button className="mt-6" variant="outline" asChild>
-          <Link href="/listings/mine">
+          <Link href="/listings">
             <ArrowLeft className="size-4" />
-            Back to my listings
+            Back to listings
           </Link>
         </Button>
       </div>
@@ -198,9 +198,9 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
           className="w-fit px-0 hover:bg-transparent"
           asChild
         >
-          <Link href="/listings/mine">
+          <Link href={isOwnListing ? "/listings/mine" : "/listings"}>
             <ArrowLeft className="size-4" />
-            Back to my listings
+            {isOwnListing ? "Back to my listings" : "Back to listings"}
           </Link>
         </Button>
 
