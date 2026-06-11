@@ -22,8 +22,39 @@ function isProtectedRoute(pathname: string) {
   return !AUTH_ROUTE_SET.has(pathname) && !PUBLIC_ROUTE_SET.has(pathname);
 }
 
-function isClientNavigation(request: NextRequest) {
-  return request.headers.get("RSC") === "1";
+/**
+ * Detect in-app (soft) navigations vs full document loads.
+ * Next.js 16 strips internal Flight headers (rsc, next-router-state-tree)
+ * from Proxy — do not use request.headers.get("RSC").
+ */
+function isSoftNavigation(request: NextRequest): boolean {
+  const { pathname, searchParams } = request.nextUrl;
+
+  if (searchParams.has("_rsc")) {
+    return true;
+  }
+
+  if (pathname.endsWith(".rsc") || pathname.includes(".segments/")) {
+    return true;
+  }
+
+  const accept = request.headers.get("accept") ?? "";
+  if (accept.includes("text/x-component")) {
+    return true;
+  }
+
+  const fetchDest = request.headers.get("sec-fetch-dest");
+  const fetchMode = request.headers.get("sec-fetch-mode");
+
+  if (fetchDest === "empty") {
+    return true;
+  }
+
+  if (fetchMode === "cors") {
+    return true;
+  }
+
+  return false;
 }
 
 function clearTokens(response: NextResponse) {
@@ -56,10 +87,7 @@ function buildPassThrough(
   return response;
 }
 
-const shouldRedirectToLogin = (
-  user: CurrentUser | null,
-  pathname: string,
-) => {
+const shouldRedirectToLogin = (user: CurrentUser | null, pathname: string) => {
   return !user && isProtectedRoute(pathname);
 };
 
@@ -74,28 +102,26 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute = AUTH_ROUTE_SET.has(pathname);
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-  const isClientNav = isClientNavigation(request);
+  const isSoftNav = isSoftNavigation(request);
 
-  // Client navigations: JWT check only — profile data comes from RTK getMe cache.
-  if (isClientNav) {
-    const user =
-      accessToken && isAccessTokenValid(accessToken)
-        ? userFromAccessToken(accessToken)
-        : null;
+  // Soft navigations with a valid access token: JWT only (profile from RTK cache).
+  if (isSoftNav && accessToken && isAccessTokenValid(accessToken)) {
+    const user = userFromAccessToken(accessToken);
 
     if (shouldRedirectToHome(user, isAuthRoute)) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    if (!accessToken && shouldRedirectToLogin(null, pathname)) {
-      const response = NextResponse.redirect(new URL("/login", request.url));
-      clearTokens(response);
-      return response;
-    }
-
     if (!shouldRedirectToLogin(user, pathname)) {
       return buildPassThrough(request, pathname, user);
     }
+  }
+
+  // Soft nav without a token on a protected route — redirect immediately.
+  if (isSoftNav && !accessToken && shouldRedirectToLogin(null, pathname)) {
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    clearTokens(response);
+    return response;
   }
 
   // Full page load: fetch full user from /me (with refresh fallback).

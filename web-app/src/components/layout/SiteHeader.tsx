@@ -25,11 +25,7 @@ function NavLink({
   overlay?: boolean;
 }) {
   const pathname = usePathname();
-  const isActive =
-    href === "/listings"
-      ? pathname === "/listings" ||
-        /^\/listings\/[^/]+$/.test(pathname)
-      : pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = pathname === href
 
   return (
     <Link
@@ -91,7 +87,7 @@ export function SiteHeader({ variant = "default" }: SiteHeaderProps) {
                 variant="outline"
                 className={cn(
                   isOverlay &&
-                    "border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white",
+                  "border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white",
                 )}
                 asChild
               >
