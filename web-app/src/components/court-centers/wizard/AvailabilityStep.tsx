@@ -2,8 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import type { FieldErrors } from "react-hook-form";
 
 import { WeeklyAvailabilityCalendar } from "@/components/court-centers/wizard/WeeklyAvailabilityCalendar";
+import { FieldHiddenInput, Form } from "@/components/form";
 import {
   Card,
   CardContent,
@@ -29,39 +31,36 @@ export function AvailabilityStep({
   onSubmit,
   formId,
 }: AvailabilityStepProps) {
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<SchedulesStepValues>({
+  const form = useForm<SchedulesStepValues>({
     resolver: zodResolver(schedulesStepSchema),
     defaultValues,
   });
 
+  const { control } = form;
   const { fields } = useFieldArray({
     control,
     name: "courts",
   });
 
+  const { errors } = form.formState;
+
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
       {fields.map((courtField, courtIndex) => (
         <CourtAvailabilityCalendar
           key={courtField.id}
           courtIndex={courtIndex}
           courtTitle={courtField.title}
           control={control}
-          register={register}
           disabled={disabled}
           errors={errors.courts?.[courtIndex]}
         />
       ))}
 
-      {typeof errors.courts?.message === "string" && (
+      {typeof errors.courts?.message === "string" ? (
         <p className="text-sm text-destructive">{errors.courts.message}</p>
-      )}
-    </form>
+      ) : null}
+    </Form>
   );
 }
 
@@ -69,23 +68,14 @@ type CourtAvailabilityCalendarProps = {
   courtIndex: number;
   courtTitle: string;
   control: ReturnType<typeof useForm<SchedulesStepValues>>["control"];
-  register: ReturnType<typeof useForm<SchedulesStepValues>>["register"];
   disabled?: boolean;
-  errors?: {
-    schedules?: Array<{
-      day_of_week?: { message?: string };
-      start_time?: { message?: string };
-      end_time?: { message?: string };
-    }>;
-    message?: string;
-  };
+  errors?: FieldErrors<SchedulesStepValues["courts"][number]>;
 };
 
 function CourtAvailabilityCalendar({
   courtIndex,
   courtTitle,
   control,
-  register,
   disabled,
   errors,
 }: CourtAvailabilityCalendarProps) {
@@ -109,11 +99,13 @@ function CourtAvailabilityCalendar({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <input
-          type="hidden"
-          {...register(`courts.${courtIndex}.id`, { valueAsNumber: true })}
+        <FieldHiddenInput<SchedulesStepValues>
+          name={`courts.${courtIndex}.id`}
+          valueAsNumber
         />
-        <input type="hidden" {...register(`courts.${courtIndex}.title`)} />
+        <FieldHiddenInput<SchedulesStepValues>
+          name={`courts.${courtIndex}.title`}
+        />
 
         <WeeklyAvailabilityCalendar
           schedules={schedules}
@@ -122,9 +114,12 @@ function CourtAvailabilityCalendar({
           idPrefix={`court-${courtIndex}`}
         />
 
-        {typeof errors?.schedules?.message === "string" && (
+        {errors?.schedules &&
+        typeof errors.schedules === "object" &&
+        "message" in errors.schedules &&
+        typeof errors.schedules.message === "string" ? (
           <p className="text-sm text-destructive">{errors.schedules.message}</p>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

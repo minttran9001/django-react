@@ -183,12 +183,18 @@ type SelectCoreProps = {
   value?: string;
   disabled?: boolean;
   className?: string;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
 }
 
-function SelectCore({ items, placeholder = "Select an option", onChange, value, disabled, className }: SelectCoreProps) {
+function SelectCore({ items, placeholder = "Select an option", onChange, value, disabled, className, "aria-invalid": ariaInvalid, "aria-describedby": ariaDescribedBy }: SelectCoreProps) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className={cn("w-full", className)}>
+      <SelectTrigger
+        className={cn("w-full", className)}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

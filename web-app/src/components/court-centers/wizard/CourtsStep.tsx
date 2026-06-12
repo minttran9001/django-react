@@ -2,10 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 
 import { fieldClassName } from "@/components/court-centers/wizard/constants";
+import {
+  FieldCurrencyInput,
+  FieldHiddenInput,
+  FieldSelect,
+  FieldTextInput,
+  FieldTextarea,
+  Form,
+} from "@/components/form";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,8 +22,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PendingImageInput } from "@/components/ui/PendingImageInput";
 import {
   courtsStepSchema,
@@ -23,7 +29,6 @@ import {
 } from "@/features/court-centers/schemas/courtsStepSchema";
 import type { ImageResource, Sport } from "@/features/court-centers/types";
 import { cn } from "@/lib/utils";
-import CurrencyInput from "@/components/ui/currency-input";
 
 type CourtsStepProps = {
   defaultValues: CourtsStepValues;
@@ -31,7 +36,9 @@ type CourtsStepProps = {
   isLoadingSports: boolean;
   courtImages: Record<number, ImageResource[]>;
   onCourtImagesChange: (
-    updater: (current: Record<number, ImageResource[]>) => Record<number, ImageResource[]>,
+    updater: (
+      current: Record<number, ImageResource[]>,
+    ) => Record<number, ImageResource[]>,
   ) => void;
   onUpload: (files: File[]) => Promise<ImageResource[]>;
   isUploading: boolean;
@@ -52,27 +59,40 @@ export function CourtsStep({
   onSubmit,
   formId,
 }: CourtsStepProps) {
-  const {
-    register,
-    control,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<CourtsStepValues>({
+  const form = useForm<CourtsStepValues>({
     resolver: zodResolver(courtsStepSchema),
     defaultValues:
       defaultValues.courts.length > 0
         ? defaultValues
-        : { courts: [{ sport_id: 0, title: "", description: "", price_per_hour: { amount: "", currency: "VND" } }] },
+        : {
+            courts: [
+              {
+                sport_id: 0,
+                title: "",
+                description: "",
+                price_per_hour: { amount: "", currency: "VND" },
+              },
+            ],
+          },
   });
 
+  const { control, setValue, watch } = form;
   const { fields, append, remove } = useFieldArray({
     control,
     name: "courts",
   });
 
   const watchedCourts = useWatch({ control, name: "courts" }) ?? [];
+  const { errors } = form.formState;
+
+  const sportItems = useMemo(
+    () =>
+      sports.map((sport) => ({
+        label: sport.name,
+        value: String(sport.id),
+      })),
+    [sports],
+  );
 
   useEffect(() => {
     if (sports.length === 0) {
@@ -90,7 +110,7 @@ export function CourtsStep({
   }, [sports, fields, setValue, watch]);
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
       <Card>
         <CardHeader>
           <CardTitle>Courts</CardTitle>
@@ -106,7 +126,7 @@ export function CourtsStep({
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium">Court {index + 1}</p>
-                {fields.length > 1 && (
+                {fields.length > 1 ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -117,88 +137,51 @@ export function CourtsStep({
                     <Trash2 className="size-4" />
                     Remove
                   </Button>
-                )}
+                ) : null}
               </div>
 
               {watchedCourts[index]?.id ? (
-                <input
-                  type="hidden"
-                  {...register(`courts.${index}.id`, { valueAsNumber: true })}
+                <FieldHiddenInput<CourtsStepValues>
+                  name={`courts.${index}.id`}
+                  valueAsNumber
                 />
               ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor={`courts.${index}.sport_id`}>Sport</Label>
-                <select
-                  id={`courts.${index}.sport_id`}
-                  className={fieldClassName}
-                  disabled={disabled || isLoadingSports || sports.length === 0}
-                  aria-invalid={Boolean(errors.courts?.[index]?.sport_id)}
-                  {...register(`courts.${index}.sport_id`, {
-                    valueAsNumber: true,
-                  })}
-                >
-                  {sports.length === 0 ? (
-                    <option value={0}>No sports available</option>
-                  ) : (
-                    sports.map((sport) => (
-                      <option key={sport.id} value={sport.id}>
-                        {sport.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-                {errors.courts?.[index]?.sport_id && (
-                  <p className="text-sm text-destructive">
-                    {errors.courts[index]?.sport_id?.message}
-                  </p>
-                )}
-              </div>
+              <FieldSelect<CourtsStepValues>
+                name={`courts.${index}.sport_id`}
+                label="Sport"
+                items={sportItems}
+                placeholder={
+                  sports.length === 0 ? "No sports available" : "Select a sport"
+                }
+                disabled={disabled || isLoadingSports || sports.length === 0}
+                valueAsNumber
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor={`courts.${index}.title`}>Court name</Label>
-                <Input
-                  id={`courts.${index}.title`}
-                  placeholder="Court 1"
-                  disabled={disabled}
-                  aria-invalid={Boolean(errors.courts?.[index]?.title)}
-                  {...register(`courts.${index}.title`)}
-                />
-                {errors.courts?.[index]?.title && (
-                  <p className="text-sm text-destructive">
-                    {errors.courts[index]?.title?.message}
-                  </p>
-                )}
-              </div>
+              <FieldTextInput<CourtsStepValues>
+                name={`courts.${index}.title`}
+                label="Court name"
+                placeholder="Court 1"
+                disabled={disabled}
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor={`courts.${index}.description`}>
-                  Description
-                </Label>
-                <textarea
-                  id={`courts.${index}.description`}
-                  rows={3}
-                  placeholder="Indoor court, air-conditioned..."
-                  disabled={disabled}
-                  className={cn(fieldClassName, "h-auto min-h-20 py-2")}
-                  {...register(`courts.${index}.description`)}
-                />
-              </div>
+              <FieldTextarea<CourtsStepValues>
+                name={`courts.${index}.description`}
+                label="Description"
+                rows={3}
+                placeholder="Indoor court, air-conditioned..."
+                disabled={disabled}
+                className={cn(fieldClassName, "h-auto min-h-20 py-2")}
+              />
 
-              <div className="space-y-2">
-                <CurrencyInput
-                  value={watchedCourts[index]?.price_per_hour || { amount: "", currency: "VND" }}
-                  label="Price per hour"
-                  currency={watchedCourts[index]?.price_per_hour?.currency || "VND"}
-                  disabled={disabled}
-                  aria-invalid={Boolean(errors.courts?.[index]?.price_per_hour?.amount)}
-                  onChange={(value) => {
-                    setValue(`courts.${index}.price_per_hour`, value, {
-                      shouldValidate: false,
-                    });
-                  }}
-                />
-              </div>
+              <FieldCurrencyInput<CourtsStepValues>
+                name={`courts.${index}.price_per_hour`}
+                label="Price per hour"
+                currency={
+                  watchedCourts[index]?.price_per_hour?.currency || "VND"
+                }
+                disabled={disabled}
+              />
 
               <PendingImageInput
                 label="Court photos"
@@ -218,9 +201,9 @@ export function CourtsStep({
             </div>
           ))}
 
-          {typeof errors.courts?.message === "string" && (
+          {typeof errors.courts?.message === "string" ? (
             <p className="text-sm text-destructive">{errors.courts.message}</p>
-          )}
+          ) : null}
 
           <Button
             type="button"
@@ -243,6 +226,6 @@ export function CourtsStep({
           </Button>
         </CardContent>
       </Card>
-    </form>
+    </Form>
   );
 }

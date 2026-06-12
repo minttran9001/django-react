@@ -3,7 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { AutocompleteLocationInput } from "@/components/location/AutocompleteLocationInput";
+import { FieldLocationInput, Form } from "@/components/form";
+import { LocationMap } from "@/components/location/LocationMap";
 import {
   Card,
   CardContent,
@@ -15,7 +16,6 @@ import {
   locationStepSchema,
   type LocationStepValues,
 } from "@/features/court-centers/schemas/locationStepSchema";
-import { LocationMap } from "@/components/location/LocationMap";
 
 type LocationStepProps = {
   defaultValues: LocationStepValues;
@@ -30,23 +30,17 @@ export function LocationStep({
   onSubmit,
   formId,
 }: LocationStepProps) {
-  const {
-    setValue,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<LocationStepValues>({
+  const form = useForm<LocationStepValues>({
     resolver: zodResolver(locationStepSchema),
     defaultValues,
   });
 
-  const values = watch();
-  const latitude = values["latitude"];
-  const longitude = values["longitude"];
-  const address = values["address"];
+  const latitude = form.watch("latitude");
+  const longitude = form.watch("longitude");
+  const address = form.watch("address");
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
       <Card>
         <CardHeader>
           <CardTitle>Location</CardTitle>
@@ -55,31 +49,25 @@ export function LocationStep({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <AutocompleteLocationInput
+          <FieldLocationInput<LocationStepValues>
+            name="address"
+            latitudeName="latitude"
+            longitudeName="longitude"
             defaultValue={defaultValues.address ?? ""}
             disabled={disabled}
-            onLocationSelect={(location) => {
-              setValue("latitude", location.latitude, { shouldValidate: true });
-              setValue("longitude", location.longitude, {
-                shouldValidate: true,
-              });
-              setValue("address", location.address, { shouldValidate: true });
-            }}
           />
-          {errors.address && (
-            <p className="mt-2 text-sm text-destructive">
-              {errors.address.message}
-            </p>
-          )}
+
           <div className="mt-4">
-            {latitude && longitude && <LocationMap
-              latitude={latitude ?? null}
-              longitude={longitude ?? null}
-              label={address ?? undefined}
-            />}
+            {latitude && longitude ? (
+              <LocationMap
+                latitude={latitude ?? null}
+                longitude={longitude ?? null}
+                label={address ?? undefined}
+              />
+            ) : null}
           </div>
         </CardContent>
       </Card>
-    </form>
+    </Form>
   );
 }

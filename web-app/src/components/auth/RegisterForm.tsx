@@ -4,9 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
+import { FieldTextInput, Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   registerSchema,
   type RegisterFormValues,
@@ -36,11 +35,7 @@ export function RegisterForm() {
   const [registerUser, { isLoading, error: registerError }] =
     useRegisterMutation();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterFormValues>({
+  const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       email: "",
@@ -56,72 +51,47 @@ export function RegisterForm() {
         password: values.password,
       }).unwrap();
 
-      router.push(
-        `/verify-email?email=${encodeURIComponent(values.email)}`,
-      );
+      router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
     } catch {
       // Error state is handled via registerError below.
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="Email"
-          aria-invalid={Boolean(errors.email)}
-          {...register("email")}
-        />
-        {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
-        )}
-      </div>
+    <Form form={form} onSubmit={onSubmit} className="space-y-5">
+      <FieldTextInput<RegisterFormValues>
+        name="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="Email"
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="********"
-          aria-invalid={Boolean(errors.password)}
-          {...register("password")}
-        />
-        {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
-        )}
-      </div>
+      <FieldTextInput<RegisterFormValues>
+        name="password"
+        label="Password"
+        type="password"
+        autoComplete="new-password"
+        placeholder="********"
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm password</Label>
-        <Input
-          id="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          placeholder="********"
-          aria-invalid={Boolean(errors.confirmPassword)}
-          {...register("confirmPassword")}
-        />
-        {errors.confirmPassword && (
-          <p className="text-sm text-destructive">
-            {errors.confirmPassword.message}
-          </p>
-        )}
-      </div>
+      <FieldTextInput<RegisterFormValues>
+        name="confirmPassword"
+        label="Confirm password"
+        type="password"
+        autoComplete="new-password"
+        placeholder="********"
+      />
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className="w-full" disabled={isLoading} isLoading={isLoading}>
         {isLoading ? "Creating account..." : "Sign up"}
       </Button>
 
-      {registerError && (
+      {registerError ? (
         <p className="rounded-md border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">
           {getRegisterErrorMessage(registerError)}
         </p>
-      )}
-    </form>
+      ) : null}
+    </Form>
   );
 }

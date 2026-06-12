@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { fieldClassName } from "@/components/court-centers/wizard/constants";
+import { FieldTextInput, FieldTextarea, Form } from "@/components/form";
 import {
   Card,
   CardContent,
@@ -11,14 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PendingImageInput } from "@/components/ui/PendingImageInput";
 import {
   basicStepSchema,
   type BasicStepValues,
 } from "@/features/court-centers/schemas/basicStepSchema";
 import type { ImageResource } from "@/features/court-centers/types";
+import { fieldClassName } from "@/components/court-centers/wizard/constants";
 import { cn } from "@/lib/utils";
 
 type BasicStepProps = {
@@ -46,17 +45,13 @@ export function BasicStep({
   onSubmit,
   formId,
 }: BasicStepProps) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<BasicStepValues>({
+  const form = useForm<BasicStepValues>({
     resolver: zodResolver(basicStepSchema),
     defaultValues,
   });
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
       <Card>
         <CardHeader>
           <CardTitle>Basic details</CardTitle>
@@ -65,37 +60,21 @@ export function BasicStep({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Center name</Label>
-            <Input
-              id="title"
-              placeholder="Sunrise Sports Complex"
-              aria-invalid={Boolean(errors.title)}
-              disabled={disabled}
-              {...register("title")}
-            />
-            {errors.title && (
-              <p className="text-sm text-destructive">{errors.title.message}</p>
-            )}
-          </div>
+          <FieldTextInput<BasicStepValues>
+            name="title"
+            label="Center name"
+            placeholder="Sunrise Sports Complex"
+            disabled={disabled}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <textarea
-              id="description"
-              rows={4}
-              placeholder="Tell players what makes this center special..."
-              className={cn(fieldClassName, "h-auto min-h-24 py-2")}
-              aria-invalid={Boolean(errors.description)}
-              disabled={disabled}
-              {...register("description")}
-            />
-            {errors.description && (
-              <p className="text-sm text-destructive">
-                {errors.description.message}
-              </p>
-            )}
-          </div>
+          <FieldTextarea<BasicStepValues>
+            name="description"
+            label="Description"
+            rows={4}
+            placeholder="Tell players what makes this center special..."
+            className={cn(fieldClassName, "h-auto min-h-24 py-2")}
+            disabled={disabled}
+          />
 
           <PendingImageInput
             label="Logo"
@@ -119,6 +98,6 @@ export function BasicStep({
           />
         </CardContent>
       </Card>
-    </form>
+    </Form>
   );
 }

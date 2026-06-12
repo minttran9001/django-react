@@ -74,12 +74,29 @@ export function AutocompleteLocationInput({
   const [dropdownPosition, setDropdownPosition] =
     useState<DropdownPosition | null>(null);
 
+  const syncedLocationAddressRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
-    if (location?.address) {
-      confirmedQueryRef.current = location.address;
-      setQuery(location.address);
+    const address = location?.address;
+
+    if (!address) {
+      syncedLocationAddressRef.current = undefined;
+      return;
     }
-  }, [location]);
+
+    // Only sync when location.address changes externally (selection, reset, initial load).
+    // Do not overwrite query while the user is typing a new search.
+    if (syncedLocationAddressRef.current === address) {
+      return;
+    }
+
+    syncedLocationAddressRef.current = address;
+    confirmedQueryRef.current = address;
+
+    if (query !== address) {
+      setQuery(address);
+    }
+  }, [location?.address, location?.latitude, location?.longitude, query, setQuery]);
 
   const mapboxConfigured = isMapboxConfigured();
   const inputId = id ?? "location-search";
