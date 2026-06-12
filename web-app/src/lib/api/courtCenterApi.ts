@@ -20,8 +20,24 @@ export const courtCenterApi = createApi({
   }),
   tagTypes: ["Sports", "CourtCenters", "MyCourtCenters"],
   endpoints: (builder) => ({
-    getCourtCenters: builder.query<CourtCenter[], void>({
-      query: () => "/court-centers",
+    getCourtCenters: builder.query<
+      CourtCenter[],
+      {
+        lat?: number;
+        lng?: number;
+        radius_km?: number;
+        q?: string;
+        sport_ids?: string[];
+        date?: string;
+      }
+    >({
+      query: (params) =>
+        `/court-centers?${new URLSearchParams({
+          ...(params.lat && { lat: params.lat.toString() }),
+          ...(params.lng && { lng: params.lng.toString() }),
+          ...(params.radius_km && { radius_km: params.radius_km.toString() }),
+          ...(params.sport_ids && { sport_ids: params.sport_ids.join(",") }),
+        }).toString()}`,
       providesTags: (result) =>
         result
           ? [

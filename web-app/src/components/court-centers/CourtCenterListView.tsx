@@ -4,9 +4,31 @@ import { CourtCenterCard } from "@/components/court-centers/CourtCenterCard";
 import { CourtCenterCardSkeleton } from "@/components/court-centers/CourtCenterCardSkeleton";
 import { useGetCourtCentersQuery } from "@/lib/api/courtCenterApi";
 import FiltersContainer from "./FiltersContainer";
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { env } from "@/lib/env";
 
 export function CourtCenterListView() {
-  const { data: courtCenters = [], isLoading, isError } = useGetCourtCentersQuery();
+  const searchParams = useSearchParams();
+  const filters = useMemo(() => {
+    return {
+      address: {
+        lat: searchParams.get("lat") ? Number(searchParams.get("lat")) : undefined,
+        lng: searchParams.get("lng") ? Number(searchParams.get("lng")) : undefined,
+      },
+      sport_ids: searchParams.get("sport_ids") ? searchParams.get("sport_ids")?.split(",") : undefined,
+    };
+  }, [searchParams]);
+  const { data: courtCenters = [], isLoading, isError, isFetching } = useGetCourtCentersQuery({
+    ...(filters.address && {
+      lat: filters.address.lat,
+      lng: filters.address.lng,
+      radius_km: env.NEXT_PUBLIC_DEFAULT_RADIUS_KM,
+    }),
+    ...(filters.sport_ids && {
+      sport_ids: filters.sport_ids,
+    }),
+  });
 
   return (
     <div className="space-y-8">
@@ -19,7 +41,7 @@ export function CourtCenterListView() {
 
       <FiltersContainer />
 
-      {isLoading ? (
+      {(isLoading || isFetching) ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 9 }).map((_, index) => (
             <CourtCenterCardSkeleton key={index} />

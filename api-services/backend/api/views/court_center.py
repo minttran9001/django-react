@@ -18,6 +18,8 @@ from ..serializers import (
     SportSerializer,
 )
 from ..utils.court_center_sync import validate_publish
+from ..utils.court_center_search import apply_search_filters, parse_search_params
+
 
 
 def get_court_center_queryset():
@@ -48,7 +50,7 @@ def get_owned_draft(request, pk):
 class SportListView(generics.ListAPIView):
     queryset = Sport.objects.all()
     serializer_class = SportSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
 
 class CourtCenterCustomerListView(generics.ListAPIView):
@@ -56,7 +58,16 @@ class CourtCenterCustomerListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        return get_court_center_queryset().filter(status=CourtCenter.Status.PUBLISHED)
+        qs = get_court_center_queryset().filter(
+            status=CourtCenter.Status.PUBLISHED
+        )
+        search_params = parse_search_params(self.request.query_params)
+        qs = apply_search_filters(qs, search_params)
+        # only sort by newest when NOT doing location search
+        if "lat" not in search_params:
+            qs = qs.order_by("-created_at")
+        return qs
+
 
     def get_serializer_context(self):
         context = super().get_serializer_context()

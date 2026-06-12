@@ -30,6 +30,7 @@ import type {
 import { useGetCourtCenterQuery } from "@/lib/api/courtCenterApi";
 import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
+import BookingPanel from "../booking/BookingPanel";
 
 type CourtCenterDetailsViewProps = {
   id: string;
@@ -212,94 +213,104 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
 
       <ImageGallerySlider images={galleryImages} alt={courtCenter.title} />
 
-      <section className="space-y-4">
-        <div className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {courtCenter.title}
-          </h1>
+      <div className="flex flex-row gap-4">
+        <div className="basis-3/5 space-y-4">
+          <section className="space-y-4">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-semibold tracking-tight">
+                {courtCenter.title}
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                <Trophy className="size-3.5" />
+                {courtCount} {courtCount === 1 ? "court" : "courts"}
+              </span>
+              {sportNames.map((sport) => (
+                <span
+                  key={sport}
+                  className="rounded-full border px-3 py-1 text-xs text-muted-foreground"
+                >
+                  {sport}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          {courtCenter.description ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>About this venue</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="whitespace-pre-wrap text-muted-foreground">
+                  {courtCenter.description}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {hasMapCoordinates(courtCenter.latitude, courtCenter.longitude) ? (
+            <Card>
+              <CardHeader className="gap-2">
+                <CardTitle>Location</CardTitle>
+                {courtCenter.address ? (
+                  <CardDescription>{courtCenter.address}</CardDescription>
+                ) : null}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <LocationMap
+                  latitude={courtCenter.latitude}
+                  longitude={courtCenter.longitude}
+                  label={courtCenter.title}
+                />
+                {mapsUrl ? (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                  >
+                    Open in Google Maps
+                    <ExternalLink className="size-3.5" />
+                  </a>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold tracking-tight">Courts</h2>
+              <p className="text-sm text-muted-foreground">
+                Courts available for booking at this venue.
+              </p>
+            </div>
+
+            {courtCount > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {courtCenter.courts?.map((court) => (
+                  <CourtCard key={court.id} court={court} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border bg-card p-8 text-center ring-1 ring-foreground/10">
+                <p className="font-medium">No courts added yet</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Edit this listing to add courts for players to book.
+                </p>
+              </div>
+            )}
+          </section>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium">
-            <Trophy className="size-3.5" />
-            {courtCount} {courtCount === 1 ? "court" : "courts"}
-          </span>
-          {sportNames.map((sport) => (
-            <span
-              key={sport}
-              className="rounded-full border px-3 py-1 text-xs text-muted-foreground"
-            >
-              {sport}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      {courtCenter.description ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>About this venue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-muted-foreground">
-              {courtCenter.description}
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {hasMapCoordinates(courtCenter.latitude, courtCenter.longitude) ? (
-        <Card>
-          <CardHeader className="gap-2">
-            <CardTitle>Location</CardTitle>
-            {courtCenter.address ? (
-              <CardDescription>{courtCenter.address}</CardDescription>
-            ) : null}
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <LocationMap
-              latitude={courtCenter.latitude}
-              longitude={courtCenter.longitude}
-              label={courtCenter.title}
-            />
-            {mapsUrl ? (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-              >
-                Open in Google Maps
-                <ExternalLink className="size-3.5" />
-              </a>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <section className="space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-xl font-semibold tracking-tight">Courts</h2>
-          <p className="text-sm text-muted-foreground">
-            Courts available for booking at this venue.
-          </p>
-        </div>
-
-        {courtCount > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {courtCenter.courts?.map((court) => (
-              <CourtCard key={court.id} court={court} />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border bg-card p-8 text-center ring-1 ring-foreground/10">
-            <p className="font-medium">No courts added yet</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Edit this listing to add courts for players to book.
-            </p>
-          </div>
-        )}
-      </section>
+        <BookingPanel
+          courtCenterStatus={courtCenter.status}
+          isOwnListing={isOwnListing}
+          className="basis-2/5"
+          courts={courtCenter.courts ?? []}
+        />
+      </div>
     </div>
   );
 }

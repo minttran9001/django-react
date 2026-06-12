@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { MapPin } from "lucide-react";
@@ -38,7 +39,11 @@ interface AutocompleteLocationInputProps {
   placeholder?: string;
   disabled?: boolean;
   defaultValue?: string;
-  onLocationSelect: (location: LocationSelection) => void;
+  onLocationSelect: (location: LocationSelection | undefined) => void;
+  location?: LocationSelection;
+  clearValueOnQueryEmpty?: boolean;
+  query?: string;
+  setQuery?: (query: string) => void;
 }
 
 export function AutocompleteLocationInput({
@@ -48,13 +53,19 @@ export function AutocompleteLocationInput({
   disabled = false,
   defaultValue = "",
   onLocationSelect,
+  location,
+  clearValueOnQueryEmpty = false,
+  query: queryFromProps,
+  setQuery: setQueryFromProps,
 }: AutocompleteLocationInputProps) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const inputWrapperRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLUListElement>(null);
   const confirmedQueryRef = useRef(defaultValue || null);
-  const [query, setQuery] = useState(defaultValue);
+  const [queryFromState, setQueryFromState] = useState(defaultValue);
+  const query = queryFromProps ?? queryFromState;
+  const setQuery = setQueryFromProps ?? setQueryFromState;
   const [suggestions, setSuggestions] = useState<MapboxLocationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,6 +73,13 @@ export function AutocompleteLocationInput({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [dropdownPosition, setDropdownPosition] =
     useState<DropdownPosition | null>(null);
+
+  useEffect(() => {
+    if (location?.address) {
+      confirmedQueryRef.current = location.address;
+      setQuery(location.address);
+    }
+  }, [location]);
 
   const mapboxConfigured = isMapboxConfigured();
   const inputId = id ?? "location-search";
@@ -279,9 +297,15 @@ export function AutocompleteLocationInput({
           value={query}
           onChange={(event) => {
             const nextQuery = event.target.value;
+
             if (nextQuery !== confirmedQueryRef.current) {
               confirmedQueryRef.current = null;
             }
+
+            if (!nextQuery.trim().length && clearValueOnQueryEmpty) {
+              onLocationSelect({ address: "", latitude: "", longitude: "" });
+            }
+
             setQuery(nextQuery);
           }}
           onFocus={() => {
