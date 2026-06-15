@@ -4,6 +4,7 @@ import type { Matcher } from "react-day-picker";
 import type { FieldValues } from "react-hook-form";
 
 import { Calendar } from "@/components/ui/calendar";
+import type { DayLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 import { FieldShell, getFieldErrorId } from "./FieldShell";
@@ -20,6 +21,8 @@ export type FieldDateInputComponentProps = {
   value?: Date;
   onChange?: (date: Date | undefined) => void;
   disabledDays?: Matcher | Matcher[];
+  /** Labels keyed by calendar day. `date` accepts Date, ISO strings, timestamps, etc. */
+  dayLabels?: DayLabel[];
   className?: string;
 };
 
@@ -33,6 +36,7 @@ export function FieldDateInputComponent({
   value,
   onChange,
   disabledDays,
+  dayLabels,
   className,
 }: FieldDateInputComponentProps) {
   const errorId = getFieldErrorId(id, error);
@@ -50,6 +54,7 @@ export function FieldDateInputComponent({
         selected={value}
         onSelect={onChange}
         disabled={disabledDays}
+        dayLabels={dayLabels}
         aria-invalid={invalid}
         aria-describedby={errorId}
         className={cn(

@@ -19,6 +19,7 @@ from ..serializers import (
 )
 from ..utils.court_center_sync import validate_publish
 from ..utils.court_center_search import apply_search_filters, parse_search_params
+from ..utils.exceptions import validation_error_response
 
 
 
@@ -108,7 +109,7 @@ class CourtCenterDraftCreateView(APIView):
             context={"request": request},
         )
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return validation_error_response(serializer.errors)
 
         center = serializer.save()
         center = get_court_center_queryset().get(pk=center.pk)
@@ -163,7 +164,7 @@ class MyCourtCenterDetailsView(APIView):
             )
 
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return validation_error_response(serializer.errors)
 
         center = serializer.save()
         center = get_court_center_queryset().get(pk=center.pk)
@@ -190,7 +191,7 @@ class MyCourtCenterSchedulesView(APIView):
         )
 
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return validation_error_response(serializer.errors)
 
         center = serializer.save()
         center = get_court_center_queryset().get(pk=center.pk)
@@ -209,7 +210,7 @@ class MyCourtCenterPublishView(APIView):
         try:
             validate_publish(center)
         except ValidationError as exc:
-            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
+            return validation_error_response(exc.detail)
 
         center.status = CourtCenter.Status.PUBLISHED
         center.save(update_fields=["status", "updated_at"])

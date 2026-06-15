@@ -13,6 +13,7 @@ import {
   useLoginMutation,
   useResendVerificationEmailMutation,
 } from "@/lib/api/authApi";
+import { hasApiErrorCode, getApiErrorMessage } from "@/lib/api/errors";
 import { DefaultValues } from "react-hook-form";
 
 export function LoginForm() {
@@ -46,19 +47,7 @@ export function LoginForm() {
     }
   };
 
-  const isNotVerifiedError = (error: unknown): boolean => {
-    if (
-      error &&
-      typeof error === "object" &&
-      "data" in error &&
-      error.data &&
-      typeof error.data === "object"
-    ) {
-      const data = error.data as { code?: string };
-      return data.code === "email_not_verified";
-    }
-    return false;
-  };
+  const isNotVerifiedError = hasApiErrorCode(loginError, "email_not_verified");
 
   const onResendVerificationEmail = (email: string) => async () => {
     try {
@@ -90,12 +79,12 @@ export function LoginForm() {
           />
 
           <p className="text-sm text-destructive">
-            {isNotVerifiedError(loginError)
+            {isNotVerifiedError
               ? "Email not verified. Please check your inbox for a verification link."
               : ""}
           </p>
 
-          {isNotVerifiedError(loginError) ? (
+          {isNotVerifiedError ? (
             <Button
               onClick={onResendVerificationEmail(form.getValues("email"))}
               isLoading={isResendingVerificationEmail}
@@ -113,9 +102,12 @@ export function LoginForm() {
             </Button>
           )}
 
-          {isError && !isNotVerifiedError(loginError) ? (
+          {isError && !isNotVerifiedError ? (
             <p className="rounded-md border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">
-              Invalid email or password. Please try again.
+              {getApiErrorMessage(
+                loginError,
+                "Invalid email or password. Please try again.",
+              )}
             </p>
           ) : null}
         </>

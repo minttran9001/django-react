@@ -50,7 +50,9 @@ export function centerToCourtsValues(center: CourtCenter): CourtsStepValues {
         title: court.title,
         description: court.description ?? "",
         price_per_hour: {
-          amount: court.price_per_hour?.amount ?? "",
+          amount: court.price_per_hour?.amount != null
+            ? String(court.price_per_hour.amount)
+            : "",
           currency: court.price_per_hour?.currency ?? "VND",
         },
       })) ?? [],

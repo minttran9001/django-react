@@ -6,11 +6,12 @@ from .court import Court
 from .court_schedule import CourtSchedule
 from .court_schedule_exception import CourtScheduleException
 from .court_schedule_exception import CourtScheduleExceptionType
-from .booking import Booking
+from .booking import Booking, BookingStatus
 from .user_profile import UserProfile
 
 __all__ = [
     "Booking",
+    "BookingStatus",
     "Court",
     "CourtCenter",
     "CourtSchedule",

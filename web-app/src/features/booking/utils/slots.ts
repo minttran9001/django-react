@@ -4,8 +4,10 @@ import {
   minutesToTime,
   timeToMinutes,
 } from "@/features/court-centers/utils/scheduleCalendar";
+import { normalizeToDay } from "@/lib/dates";
 
 export type TimeSlot = {
+  date: Date;
   start: string;
   end: string;
 };
@@ -38,15 +40,14 @@ export function getAvailableSlots(
       cursor += slotDurationMinutes
     ) {
       slots.push({
+        date: normalizeToDay(date),
         start: minutesToTime(cursor),
         end: minutesToTime(cursor + slotDurationMinutes),
       });
     }
   }
 
-  return slots.sort(
-    (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start),
-  );
+  return slots.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 }
 
 export function isSlotInPast(date: Date, slotStart: string): boolean {

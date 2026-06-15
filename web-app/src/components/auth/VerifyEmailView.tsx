@@ -8,6 +8,7 @@ import { FcOk } from "react-icons/fc";
 import { VerifyEmailForm } from "@/components/auth/VerifyEmailForm";
 import { Card } from "@/components/ui/card";
 import { useResendVerificationEmailMutation, useVerifyEmailMutation } from "@/lib/api/authApi";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import { VerifyEmailFormValues } from "@/features/auth/schemas/verifyEmailSchema";
 
 export function VerifyEmailView() {
@@ -74,7 +75,7 @@ export function VerifyEmailView() {
                 token: token ?? undefined,
               }}
               inProgress={isLoading}
-              error={(error as any)?.data?.message}
+              error={error ? getApiErrorMessage(error) : undefined}
               onSubmit={onVerifyEmail}
               onResendVerificationEmail={onResendVerificationEmail}
               isResendingVerificationEmail={isResendingVerificationEmail}

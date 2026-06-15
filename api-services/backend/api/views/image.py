@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models import Image
-from api.utils.cloudinary import build_pending_upload_folder, upload_image_file
+from api.utils.exceptions import error_response, validation_error_response
 
 from ..serializers import ImageResourceSerializer
 
@@ -23,9 +23,8 @@ class ImageUploadView(APIView):
                 files = [file]
 
         if not files:
-            return Response(
+            return validation_error_response(
                 {"images": ["Upload at least one image file."]},
-                status=status.HTTP_400_BAD_REQUEST,
             )
 
         folder = build_pending_upload_folder(request.user.id)
@@ -42,11 +41,14 @@ class ImageUploadView(APIView):
                     )
                 )
         except ValueError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except Exception as exc:
-            return Response(
-                {"images": "Failed to upload one or more images."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return error_response(
+                str(exc),
+                code="service_unavailable",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception:
+            return validation_error_response(
+                {"images": ["Failed to upload one or more images."]},
             )
 
         return Response(

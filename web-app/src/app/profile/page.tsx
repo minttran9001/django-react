@@ -12,6 +12,7 @@ import { User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api/errors";
 
 const ProfilePage = () => {
     const router = useRouter();
@@ -72,7 +73,7 @@ const ProfilePage = () => {
             </div>
 
 
-            <EditProfileForm initialValues={initialValues} onSubmit={onSubmit} onUpload={onUpload} isUploadingImages={isUploadingImages} inProgress={isEditingProfile} submitError={submitError} />
+            <EditProfileForm initialValues={initialValues} onSubmit={onSubmit} onUpload={onUpload} isUploadingImages={isUploadingImages} inProgress={isEditingProfile} submitError={submitError ? getApiErrorMessage(submitError) : null} />
         </div >
     );
 };

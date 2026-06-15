@@ -1,14 +1,27 @@
-export function getCourtCenterErrorMessage(error: unknown): string {
-  if (
-    error &&
-    typeof error === "object" &&
-    "data" in error &&
-    error.data &&
-    typeof error.data === "object"
-  ) {
-    const data = error.data as Record<string, unknown>;
+import {
+  getApiErrorMessage,
+  getFirstApiFieldError,
+} from "@/lib/api/errors";
 
-    for (const key of [
+export type { ApiErrorBody, ApiErrorLike } from "@/lib/api/errors";
+export {
+  DEFAULT_API_ERROR_MESSAGE,
+  getApiErrorBody,
+  getApiErrorCode,
+  getApiErrorMessage,
+  getApiFieldError,
+  getApiFieldErrors,
+  getFirstApiFieldError,
+  hasApiErrorCode,
+  isApiErrorBody,
+  isFetchBaseQueryError,
+} from "@/lib/api/errors";
+
+/** @deprecated Use getApiErrorMessage or getFirstApiFieldError from `@/lib/api/errors` instead. */
+export function getCourtCenterErrorMessage(error: unknown): string {
+  return getFirstApiFieldError(
+    error,
+    [
       "title",
       "description",
       "latitude",
@@ -16,15 +29,9 @@ export function getCourtCenterErrorMessage(error: unknown): string {
       "address",
       "courts",
       "schedules",
-      "detail",
       "logo_id",
       "image_ids",
-    ]) {
-      const value = data[key];
-      if (typeof value === "string") return value;
-      if (Array.isArray(value) && typeof value[0] === "string") return value[0];
-    }
-  }
-
-  return "Something went wrong. Please try again.";
+    ],
+    getApiErrorMessage(error),
+  );
 }

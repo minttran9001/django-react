@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from ..utils.exceptions import error_response
 from ..utils import (
     REFRESH_TOKEN_COOKIE,
     clear_jwt_cookies,
@@ -35,9 +36,10 @@ class CookieTokenRefreshView(TokenRefreshView):
             REFRESH_TOKEN_COOKIE
         )
         if not refresh:
-            return Response(
-                {"detail": "Refresh token required."},
-                status=status.HTTP_401_UNAUTHORIZED,
+            return error_response(
+                "Refresh token required.",
+                code="refresh_token_required",
+                status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
         serializer = self.get_serializer(data={"refresh": refresh})

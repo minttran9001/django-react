@@ -21,21 +21,12 @@ import {
   type TimeSlot,
 } from "@/features/booking/utils/slots";
 import type { CourtSummary } from "@/features/court-centers/types";
+import { getDayKey, normalizeToDay, type DayLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-
-function formatPrice(amount: string, currency: string): string {
-  const value = Number(amount);
-  if (Number.isNaN(value)) {
-    return "";
-  }
-
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+import OrderBreakdownLineItems from "./OrderBreakdownLineItems";
+import { useSpeculatedLineItemsQuery, serializeLineItemSlots } from "@/lib/api/lineItem";
+import { getApiErrorMessage } from "@/lib/api/errors";
+import { Loader2Icon } from "lucide-react";
 
 function formatSlotLabel(slot: TimeSlot): string {
   const toDisplayTime = (time: string) => {
@@ -49,8 +40,33 @@ function formatSlotLabel(slot: TimeSlot): string {
 }
 
 function slotKey(slot: TimeSlot): string {
-  return `${slot.start}-${slot.end}`;
+  return `${getDayKey(normalizeToDay(slot.date))}-${slot.start}-${slot.end}`;
 }
+
+function getDayLabels(
+  slots: Array<{ date: Date | string }>,
+): DayLabel[] {
+  const counts = new Map<string, { date: Date; count: number }>();
+
+  for (const slot of slots) {
+    const day = normalizeToDay(slot.date);
+    const dayKey = getDayKey(day);
+    const existing = counts.get(dayKey);
+
+    if (existing) {
+      existing.count += 1;
+      continue;
+    }
+
+    counts.set(dayKey, { date: day, count: 1 });
+  }
+
+  return [...counts.values()].map(({ date, count }) => ({
+    date,
+    label: `${count} ${count === 1 ? "slot" : "slots"}`,
+  }));
+}
+
 
 type BookingFormProps = {
   className?: string;
@@ -65,6 +81,7 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
     return value;
   }, []);
 
+
   const courtItems = useMemo(
     () =>
       courts.map((court) => ({
@@ -75,15 +92,31 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
   );
   const { isSubmitting } = form.formState;
 
-  const date = form.watch("date");
+  const date = form.watch("selected_date");
   const courtId = form.watch("court_id");
-  const selectedSlot = form.watch("slot");
+  const selectedSlots = form.watch("slots");
+
+  const lineItemQueryArgs = useMemo(
+    () => ({
+      courtId,
+      slots: serializeLineItemSlots(selectedSlots),
+    }),
+    [courtId, selectedSlots],
+  );
+
+  const {
+    data: speculatedLineItemsData,
+    isLoading: isSpeculatedLineItemsLoading,
+    error: speculatedLineItemsError,
+    isFetching: isSpeculatedLineItemsFetching,
+  } = useSpeculatedLineItemsQuery(lineItemQueryArgs, {
+    skip: !date || !courtId || selectedSlots.length === 0,
+  });
 
   const selectedCourt = useMemo(
     () => courts.find((court) => String(court.id) === courtId),
     [courts, courtId],
   );
-
   const availableSlots = useMemo(() => {
     if (!date || !selectedCourt) {
       return [];
@@ -94,20 +127,18 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
     );
   }, [date, selectedCourt]);
 
-  const canBook = date && selectedCourt && selectedSlot && courts.length > 0;
-
-
-
-  const clearSlot = () => {
-    form.setValue("slot", null, { shouldValidate: true });
-  };
+  const canBook = date && selectedCourt && selectedSlots.length > 0 && courts.length > 0;
+  const dayLabels = useMemo(
+    () => getDayLabels(selectedSlots),
+    [selectedSlots],
+  );
 
   return (<>
     <FieldDateInput<BookingFormValues>
-      name="date"
+      name="selected_date"
       label="Date"
       disabledDays={{ before: today }}
-      onValueChange={clearSlot}
+      dayLabels={dayLabels}
     />
 
     <FieldSelect<BookingFormValues>
@@ -115,11 +146,14 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
       label="Court"
       items={courtItems}
       placeholder="Select a court"
-      onValueChange={clearSlot}
+      onValueChange={() => {
+        form.setValue("slots", []);
+        form.setValue("selected_date", new Date());
+      }}
     />
 
     <FieldButtonGroup<BookingFormValues, TimeSlot>
-      name="slot"
+      name="slots"
       label="Time"
       options={availableSlots}
       getOptionKey={slotKey}
@@ -132,21 +166,7 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
     />
 
     {canBook && selectedCourt ? (
-      <div className="rounded-lg bg-muted/60 px-3 py-3 text-sm">
-        <p className="font-medium">{selectedCourt.title}</p>
-        <p className="text-muted-foreground">
-          {format(date, "EEEE, MMMM d")} · {formatSlotLabel(selectedSlot!)}
-        </p>
-        {selectedCourt.price_per_hour.amount ? (
-          <p className="mt-1 font-medium">
-            {formatPrice(
-              selectedCourt.price_per_hour.amount,
-              selectedCourt.price_per_hour.currency,
-            )}
-            <span className="font-normal text-muted-foreground"> / hour</span>
-          </p>
-        ) : null}
-      </div>
+      (isSpeculatedLineItemsLoading || isSpeculatedLineItemsFetching) ? <Loader2Icon className="w-4 h-4 animate-spin" /> : speculatedLineItemsError ? <p className="text-sm text-destructive">{getApiErrorMessage(speculatedLineItemsError)}</p> : <OrderBreakdownLineItems speculatedLineItemsData={speculatedLineItemsData ?? { line_items: [], pay_in_total: { amount: 0, currency: "VND" } }} includeFor={["customer"]} />
     ) : null}
 
     <Button
@@ -161,9 +181,9 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
 
 const BookingForm = ({ className, courts, onSubmit }: BookingFormProps) => {
   const defaultValues: DefaultValues<BookingFormValues> = {
-    date: new Date(),
+    selected_date: new Date(),
     court_id: courts[0] ? String(courts[0].id) : "",
-    slot: null,
+    slots: [],
   };
 
   return (

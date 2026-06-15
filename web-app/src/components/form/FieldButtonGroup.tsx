@@ -17,16 +17,20 @@ export type FieldButtonGroupComponentProps<TOption> = {
   invalid?: boolean;
   containerClassName?: string;
   options: TOption[];
-  value?: TOption | null;
-  onChange?: (value: TOption) => void;
+  value?: TOption[] | null;
+  onChange?: (value: TOption[]) => void;
   getOptionKey: (option: TOption) => string;
   getOptionLabel: (option: TOption) => string;
-  isOptionEqual?: (a: TOption, b: TOption) => boolean;
+  isOptionSelected?: (value: TOption[], option: TOption, getOptionKey: (option: TOption) => string) => boolean;
   emptyMessage?: string;
   columns?: 1 | 2 | 3;
   disabled?: boolean;
   className?: string;
 };
+
+function defaultIsOptionEqual<T>(value: T[], option: T, getOptionKey: (option: T) => string): boolean {
+  return value.some(item => getOptionKey(item) === getOptionKey(option));
+}
 
 export function FieldButtonGroupComponent<TOption>({
   id,
@@ -39,7 +43,7 @@ export function FieldButtonGroupComponent<TOption>({
   onChange,
   getOptionKey,
   getOptionLabel,
-  isOptionEqual = (a, b) => getOptionKey(a) === getOptionKey(b),
+  isOptionSelected = (value, option, getOptionKey) => defaultIsOptionEqual(value, option, getOptionKey),
   emptyMessage = "No options available.",
   columns = 2,
   disabled,
@@ -53,6 +57,15 @@ export function FieldButtonGroupComponent<TOption>({
       : columns === 3
         ? "grid-cols-3"
         : "grid-cols-2";
+
+  const handleChange = (option: TOption) => {
+    const isSelected = isOptionSelected(value as TOption[] || [], option, getOptionKey);
+    if (isSelected) {
+      onChange?.((value as TOption[] || []).filter(item => getOptionKey(item) !== getOptionKey(option)));
+    } else {
+      onChange?.([...(value as TOption[] || []), option]);
+    }
+  };
 
   return (
     <FieldShell
@@ -77,7 +90,7 @@ export function FieldButtonGroupComponent<TOption>({
             const isSelected =
               value !== null &&
               value !== undefined &&
-              isOptionEqual(value, option);
+              isOptionSelected(value, option, getOptionKey);
 
             return (
               <Button
@@ -87,7 +100,7 @@ export function FieldButtonGroupComponent<TOption>({
                 size="sm"
                 className="h-auto py-2 text-xs"
                 disabled={disabled}
-                onClick={() => onChange?.(option)}
+                onClick={() => handleChange(option)}
               >
                 {getOptionLabel(option)}
               </Button>
@@ -117,7 +130,7 @@ type FieldButtonGroupProps<
     | "description"
     | "containerClassName"
   > & {
-    onValueChange?: (value: TOption) => void;
+    onValueChange?: (value: TOption[]) => void;
   };
 
 export function FieldButtonGroup<

@@ -12,6 +12,7 @@ from .court_center import (
 from .email_verification import ResendVerificationEmailView, VerifyEmailView
 from .image import ImageUploadView
 from .user import CreateUserView, CurrentUserView, ProfileView
+from .line_items import SpeculateLineItemListViewForCustomer
 
 __all__ = [
     "CookieTokenRefreshView",
@@ -31,4 +32,5 @@ __all__ = [
     "SportListView",
     "VerifyEmailView",
     "ProfileView",
+    "SpeculateLineItemListViewForCustomer",
 ]

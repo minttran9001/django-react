@@ -10,24 +10,10 @@ import {
   type RegisterFormValues,
 } from "@/features/auth/schemas/registerSchema";
 import { useRegisterMutation } from "@/lib/api/authApi";
-
-function getRegisterErrorMessage(error: unknown): string {
-  if (
-    error &&
-    typeof error === "object" &&
-    "data" in error &&
-    error.data &&
-    typeof error.data === "object"
-  ) {
-    const data = error.data as Record<string, string[] | string>;
-    if (Array.isArray(data.email)) return data.email[0];
-    if (typeof data.email === "string") return data.email;
-    if (Array.isArray(data.password)) return data.password[0];
-    if (typeof data.password === "string") return data.password;
-  }
-
-  return "Something went wrong. Please try again.";
-}
+import {
+  getApiErrorMessage,
+  getFirstApiFieldError,
+} from "@/lib/api/errors";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -85,7 +71,7 @@ export function RegisterForm() {
 
       {registerError ? (
         <p className="rounded-md border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">
-          {getRegisterErrorMessage(registerError)}
+          {getFirstApiFieldError(registerError, ["email", "password"], getApiErrorMessage(registerError))}
         </p>
       ) : null}
     </Form>

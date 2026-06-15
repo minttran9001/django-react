@@ -13,7 +13,17 @@ import {
 } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
+import {
+  buildDayLabelMap,
+  dayLabelsToDates,
+  getDayKey,
+  type DayLabel,
+} from "@/lib/dates"
 import { Button, buttonVariants } from "@/components/ui/button"
+
+const CalendarDayLabelsContext = React.createContext<
+  Record<string, string>
+>({})
 
 function Calendar({
   className,
@@ -23,14 +33,31 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  dayLabels,
+  modifiers,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+  /** Labels keyed by calendar day. `date` accepts Date, ISO strings, timestamps, etc. */
+  dayLabels?: DayLabel[]
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const dayLabelMap = React.useMemo(
+    () => buildDayLabelMap(dayLabels),
+    [dayLabels],
+  )
+  const highlightedDays = React.useMemo(
+    () => dayLabelsToDates(dayLabels),
+    [dayLabels],
+  )
 
   return (
+    <CalendarDayLabelsContext.Provider value={dayLabelMap}>
     <DayPicker
+      modifiers={{
+        ...modifiers,
+        hasSlots: highlightedDays,
+      }}
       showOutsideDays={showOutsideDays}
       className={cn(
         "group/calendar bg-background p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
@@ -176,6 +203,7 @@ function Calendar({
       }}
       {...props}
     />
+    </CalendarDayLabelsContext.Provider>
   )
 }
 
@@ -183,9 +211,17 @@ function CalendarDayButton({
   className,
   day,
   modifiers,
+  children,
   ...props
 }: React.ComponentProps<typeof DayButton>) {
   const defaultClassNames = getDefaultClassNames()
+  const dayLabels = React.useContext(CalendarDayLabelsContext)
+  const dayLabel = dayLabels[getDayKey(day.date)]
+  const isSelectedSingle =
+    modifiers.selected &&
+    !modifiers.range_start &&
+    !modifiers.range_end &&
+    !modifiers.range_middle
 
   const ref = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
@@ -198,22 +234,32 @@ function CalendarDayButton({
       variant="ghost"
       size="icon"
       data-day={day.date.toLocaleDateString()}
-      data-selected-single={
-        modifiers.selected &&
-        !modifiers.range_start &&
-        !modifiers.range_end &&
-        !modifiers.range_middle
-      }
+      data-selected-single={isSelectedSingle}
       data-range-start={modifiers.range_start}
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
+      data-has-slots={modifiers.hasSlots}
       className={cn(
-        "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-accent-foreground [&>span]:text-xs [&>span]:opacity-70",
+        "flex aspect-square size-auto h-auto min-h-(--cell-size) w-full min-w-(--cell-size) flex-col gap-0.5 py-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[has-slots=true]:bg-primary/15 data-[has-slots=true]:font-medium data-[has-slots=true]:text-primary data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-accent-foreground",
         defaultClassNames.day,
         className
       )}
       {...props}
-    />
+    >
+      <span className="text-sm leading-none">{children}</span>
+      {dayLabel ? (
+        <span
+          className={cn(
+            "text-[0.625rem] leading-none font-normal",
+            isSelectedSingle
+              ? "text-primary-foreground/85"
+              : "text-primary/80",
+          )}
+        >
+          {dayLabel}
+        </span>
+      ) : null}
+    </Button>
   )
 }
 

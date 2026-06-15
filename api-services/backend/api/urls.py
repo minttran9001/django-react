@@ -17,6 +17,7 @@ from .views import (
     MyCourtCenterSchedulesView,
     MyCourtCenterPublishView,
     ProfileView,
+    SpeculateLineItemListViewForCustomer
 )
 
 urlpatterns = [
@@ -41,4 +42,7 @@ urlpatterns = [
 
     #profile
     path('profile', ProfileView.as_view(), name='profile'),
+
+    #booking
+    path('line-items/customer', SpeculateLineItemListViewForCustomer.as_view(), name='speculate_line_item_list_for_customer'),
 ]

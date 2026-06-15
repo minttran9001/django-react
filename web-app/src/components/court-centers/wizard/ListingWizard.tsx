@@ -13,7 +13,7 @@ import type { BasicStepValues } from "@/features/court-centers/schemas/basicStep
 import type { CourtsStepValues } from "@/features/court-centers/schemas/courtsStepSchema";
 import type { LocationStepValues } from "@/features/court-centers/schemas/locationStepSchema";
 import type { SchedulesStepValues } from "@/features/court-centers/schemas/schedulesStepSchema";
-import { getCourtCenterErrorMessage } from "@/features/court-centers/utils/apiErrors";
+import { getApiErrorMessage } from "@/lib/api/errors";
 import {
   centerToBasicValues,
   centerToCourtsValues,
@@ -171,7 +171,7 @@ export function ListingWizard(props: ListingWizardProps) {
       toast.success("Listing updated successfully");
       goToStep(2);
     } catch (error) {
-      setSubmitError(getCourtCenterErrorMessage(error));
+      setSubmitError(getApiErrorMessage(error));
     }
   };
 
@@ -193,7 +193,7 @@ export function ListingWizard(props: ListingWizardProps) {
       goToStep(3);
       toast.success("Listing updated successfully");
     } catch (error) {
-      setSubmitError(getCourtCenterErrorMessage(error));
+      setSubmitError(getApiErrorMessage(error));
     }
   };
 
@@ -214,7 +214,7 @@ export function ListingWizard(props: ListingWizardProps) {
             description: court.description || undefined,
             image_ids: (courtImages[index] ?? []).map((image) => image.id),
             price_per_hour:
-              court.price_per_hour.amount.trim() !== ""
+              String(court.price_per_hour.amount).trim() !== ""
                 ? {
                     amount: Number(court.price_per_hour.amount),
                     currency: court.price_per_hour.currency || "VND",
@@ -226,7 +226,7 @@ export function ListingWizard(props: ListingWizardProps) {
       goToStep(4);
       toast.success("Listing updated successfully");
     } catch (error) {
-      setSubmitError(getCourtCenterErrorMessage(error));
+      setSubmitError(getApiErrorMessage(error));
     }
   };
 
@@ -254,7 +254,7 @@ export function ListingWizard(props: ListingWizardProps) {
       goToStep(5);
       toast.success("Listing updated successfully");
     } catch (error) {
-      setSubmitError(getCourtCenterErrorMessage(error));
+      setSubmitError(getApiErrorMessage(error));
     }
   };
 
@@ -269,7 +269,7 @@ export function ListingWizard(props: ListingWizardProps) {
       router.push(`/listings/${listingId}`);
       toast.success("Listing published successfully");
     } catch (error) {
-      setSubmitError(getCourtCenterErrorMessage(error));
+      setSubmitError(getApiErrorMessage(error));
     }
   };
 
