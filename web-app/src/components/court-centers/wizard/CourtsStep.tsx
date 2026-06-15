@@ -1,9 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useFieldArray, UseFormReturn, useWatch } from "react-hook-form";
 
 import { fieldClassName } from "@/components/court-centers/wizard/constants";
 import {
@@ -47,43 +46,25 @@ type CourtsStepProps = {
   formId: string;
 };
 
-export function CourtsStep({
-  defaultValues,
-  sports,
-  isLoadingSports,
-  courtImages,
-  onCourtImagesChange,
-  onUpload,
-  isUploading,
-  disabled,
-  onSubmit,
-  formId,
-}: CourtsStepProps) {
-  const form = useForm<CourtsStepValues>({
-    resolver: zodResolver(courtsStepSchema),
-    defaultValues:
-      defaultValues.courts.length > 0
-        ? defaultValues
-        : {
-            courts: [
-              {
-                sport_id: 0,
-                title: "",
-                description: "",
-                price_per_hour: { amount: "", currency: "VND" },
-              },
-            ],
-          },
-  });
+type CourtsStepFormProps = {
+  form: UseFormReturn<CourtsStepValues>;
+  sports: Sport[];
+  isLoadingSports: boolean;
+  courtImages: Record<number, ImageResource[]>;
+  onCourtImagesChange: (
+    updater: (
+      current: Record<number, ImageResource[]>,
+    ) => Record<number, ImageResource[]>,
+  ) => void;
+  onUpload: (files: File[]) => Promise<ImageResource[]>;
+  isUploading: boolean;
+  disabled?: boolean;
+};
 
-  const { control, setValue, watch } = form;
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "courts",
-  });
-
+const CourtsStepForm = ({ form, sports, isLoadingSports, courtImages, onCourtImagesChange, onUpload, isUploading, disabled }: CourtsStepFormProps) => {
+  const { control, setValue, watch, formState: { errors } } = form;
+  const { fields, append, remove } = useFieldArray({ control, name: "courts" });
   const watchedCourts = useWatch({ control, name: "courts" }) ?? [];
-  const { errors } = form.formState;
 
   const sportItems = useMemo(
     () =>
@@ -108,124 +89,136 @@ export function CourtsStep({
       }
     });
   }, [sports, fields, setValue, watch]);
-
   return (
-    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Courts</CardTitle>
-          <CardDescription>
-            Add one or more courts available at this center.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {fields.map((field, index) => (
-            <div
-              key={field.id}
-              className="space-y-4 rounded-xl border border-border/60 p-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium">Court {index + 1}</p>
-                {fields.length > 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={disabled}
-                    onClick={() => remove(index)}
-                  >
-                    <Trash2 className="size-4" />
-                    Remove
-                  </Button>
-                ) : null}
-              </div>
-
-              {watchedCourts[index]?.id ? (
-                <FieldHiddenInput<CourtsStepValues>
-                  name={`courts.${index}.id`}
-                  valueAsNumber
-                />
+    <Card>
+      <CardHeader>
+        <CardTitle>Courts</CardTitle>
+        <CardDescription>
+          Add one or more courts available at this center.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {fields.map((field, index) => (
+          <div
+            key={field.id}
+            className="space-y-4 rounded-xl border border-border/60 p-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium">Court {index + 1}</p>
+              {fields.length > 1 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={disabled}
+                  onClick={() => remove(index)}
+                >
+                  <Trash2 className="size-4" />
+                  Remove
+                </Button>
               ) : null}
+            </div>
 
-              <FieldSelect<CourtsStepValues>
-                name={`courts.${index}.sport_id`}
-                label="Sport"
-                items={sportItems}
-                placeholder={
-                  sports.length === 0 ? "No sports available" : "Select a sport"
-                }
-                disabled={disabled || isLoadingSports || sports.length === 0}
+            {watchedCourts[index]?.id ? (
+              <FieldHiddenInput<CourtsStepValues>
+                name={`courts.${index}.id`}
                 valueAsNumber
               />
+            ) : null}
 
-              <FieldTextInput<CourtsStepValues>
-                name={`courts.${index}.title`}
-                label="Court name"
-                placeholder="Court 1"
-                disabled={disabled}
-              />
+            <FieldSelect<CourtsStepValues>
+              name={`courts.${index}.sport_id`}
+              label="Sport"
+              items={sportItems}
+              placeholder={
+                sports.length === 0 ? "No sports available" : "Select a sport"
+              }
+              disabled={disabled || isLoadingSports || sports.length === 0}
+              valueAsNumber
+            />
 
-              <FieldTextarea<CourtsStepValues>
-                name={`courts.${index}.description`}
-                label="Description"
-                rows={3}
-                placeholder="Indoor court, air-conditioned..."
-                disabled={disabled}
-                className={cn(fieldClassName, "h-auto min-h-20 py-2")}
-              />
+            <FieldTextInput<CourtsStepValues>
+              name={`courts.${index}.title`}
+              label="Court name"
+              placeholder="Court 1"
+              disabled={disabled}
+            />
 
-              <FieldCurrencyInput<CourtsStepValues>
-                name={`courts.${index}.price_per_hour`}
-                label="Price per hour"
-                currency={
-                  watchedCourts[index]?.price_per_hour?.currency || "VND"
-                }
-                disabled={disabled}
-              />
+            <FieldTextarea<CourtsStepValues>
+              name={`courts.${index}.description`}
+              label="Description"
+              rows={3}
+              placeholder="Indoor court, air-conditioned..."
+              disabled={disabled}
+              className={cn(fieldClassName, "h-auto min-h-20 py-2")}
+            />
 
-              <PendingImageInput
-                label="Court photos"
-                description="Photos of this specific court."
-                multiple
-                value={courtImages[index] ?? []}
-                onChange={(images) =>
-                  onCourtImagesChange((current) => ({
-                    ...current,
-                    [index]: images,
-                  }))
-                }
-                onUpload={onUpload}
-                disabled={disabled}
-                isUploading={isUploading}
-              />
-            </div>
-          ))}
+            <FieldCurrencyInput<CourtsStepValues>
+              name={`courts.${index}.price_per_hour`}
+              label="Price per hour"
+              currency={
+                watchedCourts[index]?.price_per_hour?.currency || "VND"
+              }
+              disabled={disabled}
+            />
 
-          {typeof errors.courts?.message === "string" ? (
-            <p className="text-sm text-destructive">{errors.courts.message}</p>
-          ) : null}
+            <PendingImageInput
+              label="Court photos"
+              description="Photos of this specific court."
+              multiple
+              value={courtImages[index] ?? []}
+              onChange={(images) =>
+                onCourtImagesChange((current) => ({
+                  ...current,
+                  [index]: images,
+                }))
+              }
+              onUpload={onUpload}
+              disabled={disabled}
+              isUploading={isUploading}
+            />
+          </div>
+        ))}
 
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled || sports.length === 0}
-            onClick={() =>
-              append({
-                sport_id: sports[0]?.id ?? 0,
-                title: "",
-                description: "",
-                price_per_hour: {
-                  amount: "",
-                  currency: "",
-                },
-              })
-            }
-          >
-            <Plus className="size-4" />
-            Add another court
-          </Button>
-        </CardContent>
-      </Card>
+        {typeof errors.courts?.message === "string" ? (
+          <p className="text-sm text-destructive">{errors.courts.message}</p>
+        ) : null}
+
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled || sports.length === 0}
+          onClick={() =>
+            append({
+              sport_id: sports[0]?.id ?? 0,
+              title: "",
+              description: "",
+              price_per_hour: {
+                amount: "",
+                currency: "",
+              },
+            })
+          }
+        >
+          <Plus className="size-4" />
+          Add another court
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
+
+export function CourtsStep({
+  defaultValues,
+  onSubmit,
+  formId,
+  ...restProps
+}: CourtsStepProps) {
+  return (
+    <Form schema={courtsStepSchema} defaultValues={defaultValues} onSubmit={onSubmit} id={formId} className="space-y-8">
+      {(form) => (
+        <CourtsStepForm form={form} {...restProps} />
+      )}
     </Form>
   );
 }

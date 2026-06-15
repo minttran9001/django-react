@@ -1,9 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { DefaultValues, UseFormReturn } from "react-hook-form";
 
 import {
   FieldButtonGroup,
@@ -59,21 +58,22 @@ type BookingFormProps = {
   onSubmit: (data: BookingFormValues) => void;
 };
 
-const BookingForm = ({ className, courts, onSubmit }: BookingFormProps) => {
+const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormValues>, courts: CourtSummary[] }) => {
   const today = useMemo(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
     return value;
   }, []);
 
-  const form = useForm<BookingFormValues>({
-    resolver: zodResolver(bookingSchema),
-    defaultValues: {
-      date: new Date(),
-      court_id: courts[0] ? String(courts[0].id) : "",
-      slot: null,
-    },
-  });
+  const courtItems = useMemo(
+    () =>
+      courts.map((court) => ({
+        value: String(court.id),
+        label: `${court.title} (${court.sport.name})`,
+      })),
+    [courts],
+  );
+  const { isSubmitting } = form.formState;
 
   const date = form.watch("date");
   const courtId = form.watch("court_id");
@@ -94,78 +94,83 @@ const BookingForm = ({ className, courts, onSubmit }: BookingFormProps) => {
     );
   }, [date, selectedCourt]);
 
-  const courtItems = useMemo(
-    () =>
-      courts.map((court) => ({
-        value: String(court.id),
-        label: `${court.title} (${court.sport.name})`,
-      })),
-    [courts],
-  );
-
   const canBook = date && selectedCourt && selectedSlot && courts.length > 0;
-  const { isSubmitting } = form.formState;
+
+
 
   const clearSlot = () => {
     form.setValue("slot", null, { shouldValidate: true });
   };
 
-  return (
-    <Form form={form} onSubmit={onSubmit} className={cn("space-y-4", className)}>
-      <FieldDateInput<BookingFormValues>
-        name="date"
-        label="Date"
-        disabledDays={{ before: today }}
-        onValueChange={clearSlot}
-      />
+  return (<>
+    <FieldDateInput<BookingFormValues>
+      name="date"
+      label="Date"
+      disabledDays={{ before: today }}
+      onValueChange={clearSlot}
+    />
 
-      <FieldSelect<BookingFormValues>
-        name="court_id"
-        label="Court"
-        items={courtItems}
-        placeholder="Select a court"
-        onValueChange={clearSlot}
-      />
+    <FieldSelect<BookingFormValues>
+      name="court_id"
+      label="Court"
+      items={courtItems}
+      placeholder="Select a court"
+      onValueChange={clearSlot}
+    />
 
-      <FieldButtonGroup<BookingFormValues, TimeSlot>
-        name="slot"
-        label="Time"
-        options={availableSlots}
-        getOptionKey={slotKey}
-        getOptionLabel={formatSlotLabel}
-        emptyMessage={
-          date
-            ? "No available times on this day."
-            : "Select a date to see available times."
-        }
-      />
+    <FieldButtonGroup<BookingFormValues, TimeSlot>
+      name="slot"
+      label="Time"
+      options={availableSlots}
+      getOptionKey={slotKey}
+      getOptionLabel={formatSlotLabel}
+      emptyMessage={
+        date
+          ? "No available times on this day."
+          : "Select a date to see available times."
+      }
+    />
 
-      {canBook && selectedCourt ? (
-        <div className="rounded-lg bg-muted/60 px-3 py-3 text-sm">
-          <p className="font-medium">{selectedCourt.title}</p>
-          <p className="text-muted-foreground">
-            {format(date, "EEEE, MMMM d")} · {formatSlotLabel(selectedSlot!)}
+    {canBook && selectedCourt ? (
+      <div className="rounded-lg bg-muted/60 px-3 py-3 text-sm">
+        <p className="font-medium">{selectedCourt.title}</p>
+        <p className="text-muted-foreground">
+          {format(date, "EEEE, MMMM d")} · {formatSlotLabel(selectedSlot!)}
+        </p>
+        {selectedCourt.price_per_hour.amount ? (
+          <p className="mt-1 font-medium">
+            {formatPrice(
+              selectedCourt.price_per_hour.amount,
+              selectedCourt.price_per_hour.currency,
+            )}
+            <span className="font-normal text-muted-foreground"> / hour</span>
           </p>
-          {selectedCourt.price_per_hour.amount ? (
-            <p className="mt-1 font-medium">
-              {formatPrice(
-                selectedCourt.price_per_hour.amount,
-                selectedCourt.price_per_hour.currency,
-              )}
-              <span className="font-normal text-muted-foreground"> / hour</span>
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+      </div>
+    ) : null}
 
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={isSubmitting}
-        isLoading={isSubmitting}
-      >
-        Book Court
-      </Button>
+    <Button
+      type="submit"
+      className="w-full"
+      disabled={isSubmitting}
+      isLoading={isSubmitting}
+    >
+      Book Court
+    </Button></>)
+};
+
+const BookingForm = ({ className, courts, onSubmit }: BookingFormProps) => {
+  const defaultValues: DefaultValues<BookingFormValues> = {
+    date: new Date(),
+    court_id: courts[0] ? String(courts[0].id) : "",
+    slot: null,
+  };
+
+  return (
+    <Form schema={bookingSchema} defaultValues={defaultValues} onSubmit={onSubmit} className={cn("space-y-4", className)}>
+      {(form) => (
+        <BookingFormContent form={form} courts={courts} />
+      )}
     </Form>
   );
 };

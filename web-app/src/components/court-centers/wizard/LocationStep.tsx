@@ -1,8 +1,5 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-
 import { FieldLocationInput, Form } from "@/components/form";
 import { LocationMap } from "@/components/location/LocationMap";
 import {
@@ -30,44 +27,43 @@ export function LocationStep({
   onSubmit,
   formId,
 }: LocationStepProps) {
-  const form = useForm<LocationStepValues>({
-    resolver: zodResolver(locationStepSchema),
-    defaultValues,
-  });
-
-  const latitude = form.watch("latitude");
-  const longitude = form.watch("longitude");
-  const address = form.watch("address");
 
   return (
-    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Location</CardTitle>
-          <CardDescription>
-            Help players find your court center on the map.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FieldLocationInput<LocationStepValues>
-            name="address"
-            latitudeName="latitude"
-            longitudeName="longitude"
-            defaultValue={defaultValues.address ?? ""}
-            disabled={disabled}
-          />
+    <Form schema={locationStepSchema} defaultValues={defaultValues} onSubmit={onSubmit} id={formId} className="space-y-8">
+      {(form) => {
+        const latitude = form.watch("latitude");
+        const longitude = form.watch("longitude");
+        const address = form.watch("address");
 
-          <div className="mt-4">
-            {latitude && longitude ? (
-              <LocationMap
-                latitude={latitude ?? null}
-                longitude={longitude ?? null}
-                label={address ?? undefined}
-              />
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
+        return <Card>
+          <CardHeader>
+            <CardTitle>Location</CardTitle>
+            <CardDescription>
+              Help players find your court center on the map.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldLocationInput
+              name="address"
+              latitudeName="latitude"
+              longitudeName="longitude"
+              defaultValue={defaultValues.address ?? ""}
+              disabled={disabled}
+            />
+
+            <div className="mt-4">
+              {latitude && longitude ? (
+                <LocationMap
+                  latitude={latitude ?? null}
+                  longitude={longitude ?? null}
+                  label={address ?? undefined}
+                />
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      }}
+
     </Form>
   );
 }

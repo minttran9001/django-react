@@ -1,8 +1,7 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { DefaultValues } from "react-hook-form";
 
 import { FieldTextInput, Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
@@ -35,14 +34,11 @@ export function RegisterForm() {
   const [registerUser, { isLoading, error: registerError }] =
     useRegisterMutation();
 
-  const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
-  });
+  const defaultValues: DefaultValues<RegisterFormValues> = {
+    email: "",
+    password: "",
+    confirmPassword: "",
+  };
 
   const onSubmit = async (values: RegisterFormValues) => {
     try {
@@ -58,7 +54,7 @@ export function RegisterForm() {
   };
 
   return (
-    <Form form={form} onSubmit={onSubmit} className="space-y-5">
+    <Form schema={registerSchema} defaultValues={defaultValues} onSubmit={onSubmit} className="space-y-5">
       <FieldTextInput<RegisterFormValues>
         name="email"
         label="Email"

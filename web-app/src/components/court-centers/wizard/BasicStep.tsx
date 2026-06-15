@@ -1,7 +1,5 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 
 import { FieldTextInput, FieldTextarea, Form } from "@/components/form";
 import {
@@ -45,13 +43,8 @@ export function BasicStep({
   onSubmit,
   formId,
 }: BasicStepProps) {
-  const form = useForm<BasicStepValues>({
-    resolver: zodResolver(basicStepSchema),
-    defaultValues,
-  });
-
   return (
-    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
+    <Form schema={basicStepSchema} defaultValues={defaultValues} onSubmit={onSubmit} id={formId} className="space-y-8">
       <Card>
         <CardHeader>
           <CardTitle>Basic details</CardTitle>

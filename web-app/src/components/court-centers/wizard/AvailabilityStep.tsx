@@ -1,8 +1,7 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
-import type { FieldErrors } from "react-hook-form";
+import type { FieldErrors, UseFormReturn } from "react-hook-form";
 
 import { WeeklyAvailabilityCalendar } from "@/components/court-centers/wizard/WeeklyAvailabilityCalendar";
 import { FieldHiddenInput, Form } from "@/components/form";
@@ -25,41 +24,46 @@ type AvailabilityStepProps = {
   formId: string;
 };
 
+const AvailabilityStepContent = ({ form, disabled }: { form: UseFormReturn<SchedulesStepValues>, disabled?: boolean }) => {
+  const { control } = form;
+
+
+  const { errors } = form.formState;
+
+  const { fields } = useFieldArray({
+    control,
+    name: "courts",
+  });
+  return <>
+    {fields.map((courtField, courtIndex) => (
+      <CourtAvailabilityCalendar
+        key={courtField.id}
+        courtIndex={courtIndex}
+        courtTitle={courtField.title}
+        control={control}
+        disabled={disabled}
+        errors={errors.courts?.[courtIndex]}
+      />
+    ))}
+
+    {typeof errors.courts?.message === "string" ? (
+      <p className="text-sm text-destructive">{errors.courts.message}</p>
+    ) : null}
+  </>
+}
+
 export function AvailabilityStep({
   defaultValues,
   disabled,
   onSubmit,
   formId,
 }: AvailabilityStepProps) {
-  const form = useForm<SchedulesStepValues>({
-    resolver: zodResolver(schedulesStepSchema),
-    defaultValues,
-  });
-
-  const { control } = form;
-  const { fields } = useFieldArray({
-    control,
-    name: "courts",
-  });
-
-  const { errors } = form.formState;
 
   return (
-    <Form form={form} onSubmit={onSubmit} id={formId} className="space-y-8">
-      {fields.map((courtField, courtIndex) => (
-        <CourtAvailabilityCalendar
-          key={courtField.id}
-          courtIndex={courtIndex}
-          courtTitle={courtField.title}
-          control={control}
-          disabled={disabled}
-          errors={errors.courts?.[courtIndex]}
-        />
-      ))}
-
-      {typeof errors.courts?.message === "string" ? (
-        <p className="text-sm text-destructive">{errors.courts.message}</p>
-      ) : null}
+    <Form schema={schedulesStepSchema} defaultValues={defaultValues} onSubmit={onSubmit} id={formId} className="space-y-8">
+      {(form) => (
+        <AvailabilityStepContent form={form} disabled={disabled} />
+      )}
     </Form>
   );
 }
@@ -115,9 +119,9 @@ function CourtAvailabilityCalendar({
         />
 
         {errors?.schedules &&
-        typeof errors.schedules === "object" &&
-        "message" in errors.schedules &&
-        typeof errors.schedules.message === "string" ? (
+          typeof errors.schedules === "object" &&
+          "message" in errors.schedules &&
+          typeof errors.schedules.message === "string" ? (
           <p className="text-sm text-destructive">{errors.schedules.message}</p>
         ) : null}
       </CardContent>

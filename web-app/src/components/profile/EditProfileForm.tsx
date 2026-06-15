@@ -1,8 +1,5 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-
 import {
   FieldDatePicker,
   FieldPendingImageInput,
@@ -36,21 +33,17 @@ const EditProfileForm = ({
   inProgress,
   submitError,
 }: EditProfileFormProps) => {
-  const form = useForm<EditProfileFormValues>({
-    resolver: zodResolver(editProfileSchema),
-    defaultValues: initialValues,
-  });
-
   return (
     <div className={cn("", className)}>
       <Form
-        form={form}
+        schema={editProfileSchema}
+        defaultValues={initialValues}
         onSubmit={onSubmit}
         className="flex w-full flex-col items-end gap-4 space-y-3"
       >
         <div className="flex w-full gap-4">
           <div className="flex-1 space-y-4 rounded-lg bg-white p-4 shadow-md">
-            <FieldPendingImageInput<EditProfileFormValues>
+            <FieldPendingImageInput
               name="avatar"
               label="Edit Avatar"
               onUpload={onUpload}
@@ -61,14 +54,14 @@ const EditProfileForm = ({
             <div className="space-y-4">
               <h3 className="text-sm font-medium uppercase">Contact</h3>
 
-              <FieldTextInput<EditProfileFormValues>
+              <FieldTextInput
                 name="email"
                 label="Email"
                 className="bg-white"
                 description="We will be sending your booking confirmation to this email."
               />
 
-              <FieldTextInput<EditProfileFormValues>
+              <FieldTextInput
                 name="phone_number"
                 label="Phone Number"
                 placeholder="Enter your mobile number"
@@ -83,14 +76,14 @@ const EditProfileForm = ({
               Personal Information
             </h3>
 
-            <FieldTextInput<EditProfileFormValues>
+            <FieldTextInput
               name="name"
               label="Name"
               placeholder="Enter your name"
               className="bg-white"
             />
 
-            <FieldDatePicker<EditProfileFormValues>
+            <FieldDatePicker
               name="date_of_birth"
               label="Date of Birth"
               placeholder="Enter your date of birth"
