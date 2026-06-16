@@ -4,10 +4,17 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
-from api.transaction_process import COURT_BOOKING_PROCESS, TRANSACTION_STATES, TRANSACTION_TRANSITIONS
+from api.transaction_process.court_booking import (
+    COURT_BOOKING_PROCESS,
+    TRANSACTION_STATES,
+    TRANSACTION_TRANSITIONS,
+)
 
 
 class Transaction(models.Model):
+
+    States = TRANSACTION_STATES
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     current_state = models.IntegerField(

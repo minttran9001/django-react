@@ -1,11 +1,8 @@
 from rest_framework import serializers
 
-from api.models.booking import Booking
-from api.models.transaction import Transaction
-from api.serializers.line_items import LineItemSerializer, SlotInputSerializer
-from api.serializers.money import MoneySerializer
-from api.serializers.user import PublicOwnerSerializer
-
+from api.models import Booking, Transaction
+from api.transaction_process.court_booking import TRANSACTION_STATES
+from api.serializers import LineItemSerializer, MoneySerializer, PublicOwnerSerializer, SlotInputSerializer
 
 class InitiateTransactionSerializer(serializers.Serializer):
     court_id = serializers.IntegerField()
@@ -75,3 +72,25 @@ class TransactionSerializer(serializers.ModelSerializer):
                 "currency": obj.pay_in_total_currency,
             }
         ).data
+
+class MyTransactionsInputSerializer(serializers.Serializer):
+    state = serializers.ChoiceField(choices=TRANSACTION_STATES.choices, required=False)
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+
+    def validate(self, attrs):
+        if attrs.get("date_from") and attrs.get("date_to"):
+            if attrs["date_from"] > attrs["date_to"]:
+                raise serializers.ValidationError({"date_from": "Date from must be before date to."})
+        return attrs
+
+
+class MyTransactionListSerializer(serializers.Serializer):
+    transactions = TransactionSerializer(many=True)
+
+    class Meta:
+        model = Transaction
+        fields = [
+            *TransactionSerializer.Meta.fields,
+        ]
+        read_only_fields = fields

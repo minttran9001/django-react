@@ -15,7 +15,7 @@ import {
 import { CurrentUser, useLogoutMutation } from "@/lib/api/authApi";
 
 type UserMenuProps = {
-  user: CurrentUser | null;
+  user?: CurrentUser | null;
 };
 
 export function UserMenu({ user }: UserMenuProps) {
@@ -47,6 +47,11 @@ export function UserMenu({ user }: UserMenuProps) {
       <DropdownMenuContent align="end" sideOffset={8}>
         <DropdownMenuItem asChild>
           <Link href="/profile">My profile</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/bookings">
+            My bookings
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

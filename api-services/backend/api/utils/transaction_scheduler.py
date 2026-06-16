@@ -15,12 +15,11 @@ from django.utils import timezone
 
 from api.models.booking import Booking
 from api.models.transaction import Transaction
-from api.transaction_process import (
+from api.transaction_process.base import TransactionEngine, TransitionError
+from api.transaction_process.court_booking import (
     COURT_BOOKING_PROCESS,
     TRANSACTION_STATES,
     TRANSACTION_TRANSITIONS,
-    TransactionEngine,
-    TransitionError,
 )
 
 

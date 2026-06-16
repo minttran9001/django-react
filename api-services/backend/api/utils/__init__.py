@@ -8,6 +8,11 @@ from .cookies import (
 )
 from .email_verification import create_verification_token
 from .emails import send_verification_email
+from .transaction_search import (
+    annotate_latest_end_at,
+    apply_transaction_search_filters,
+    parse_transaction_search_params,
+)
 
 __all__ = [
     "ACCESS_TOKEN_COOKIE",
@@ -18,4 +23,7 @@ __all__ = [
     "send_verification_email",
     "set_access_token_cookie",
     "set_jwt_cookies",
+    "annotate_latest_end_at",
+    "parse_transaction_search_params",
+    "apply_transaction_search_filters",
 ]

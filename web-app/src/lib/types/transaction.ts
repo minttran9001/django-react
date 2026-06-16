@@ -29,7 +29,10 @@ export type Transaction = {
 
 export const TRANSACTION_STATE = {
   PENDING_PAYMENT: 1,
+  PAYMENT_EXPIRED: 2,
   CONFIRMED: 3,
+  COMPLETED: 4,
+  CANCELLED: 5,
 } as const;
 
 export function toLineItemsResponse(

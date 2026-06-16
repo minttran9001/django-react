@@ -3,21 +3,27 @@ from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models import Court, CourtCenter, Transaction
 from api.serializers.transaction import InitiateTransactionSerializer, TransactionSerializer
-from api.transaction_process import (
+from api.transaction_process.actions import ActionError
+from api.transaction_process.base import TransactionEngine, TransitionError
+from api.transaction_process.court_booking import (
     TRANSACTION_ACTORS,
     TRANSACTION_STATES,
     TRANSACTION_TRANSITIONS,
-    ActionError,
-    TransactionEngine,
-    TransitionError,
 )
 from api.utils.exceptions import validation_error_response
+from api.utils import (
+    annotate_latest_end_at,
+    apply_transaction_search_filters,
+    parse_transaction_search_params,
+)
+from api.utils.transaction_search import LATEST_END_AT_ANNOTATION
 
 
 def _load_transaction_for_response(transaction_id: int) -> Transaction:
@@ -123,3 +129,19 @@ class ConfirmPaymentView(APIView):
 
         transaction = _load_transaction_for_response(transaction.pk)
         return Response(TransactionSerializer(transaction).data)
+
+class MyTransactionListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TransactionSerializer
+
+    def get_queryset(self):
+        qs = Transaction.objects.filter(customer=self.request.user)
+        qs = qs.select_related(
+            "customer__profile__avatar",
+            "provider__profile__avatar",
+            "court",
+        ).prefetch_related("bookings")
+        search_params = parse_transaction_search_params(self.request.query_params)
+        qs = annotate_latest_end_at(qs)
+        qs = apply_transaction_search_filters(qs, search_params)
+        return qs.order_by(f"-{LATEST_END_AT_ANNOTATION}")
