@@ -1,13 +1,23 @@
-from django.db import models
-from .court import Court
 from django.contrib.auth.models import User
+from django.db import models
+
+from .court import Court
+
 
 class BookingStatus(models.IntegerChoices):
     PENDING = 0, "Pending"
     CONFIRMED = 1, "Confirmed"
     CANCELLED = 2, "Cancelled"
 
+
 class Booking(models.Model):
+    transaction = models.ForeignKey(
+        "Transaction",
+        on_delete=models.CASCADE,
+        related_name="bookings",
+        null=True,
+        blank=True,
+    )
     court = models.ForeignKey(Court, on_delete=models.CASCADE, related_name="bookings")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bookings")
     status = models.IntegerField(choices=BookingStatus.choices, default=BookingStatus.PENDING)

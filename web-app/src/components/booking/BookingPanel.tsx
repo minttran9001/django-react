@@ -1,4 +1,5 @@
 "use client";
+
 import {
     Card,
     CardContent,
@@ -7,7 +8,15 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import type { CourtSummary } from "@/features/court-centers/types";
+import { BookingFormValues } from "@/features/booking/schemas/bookingSchema";
+import { serializeLineItemSlots } from "@/lib/api/lineItem";
+import {
+    CHECKOUT_PATH,
+    saveCheckoutDraft,
+} from "@/lib/checkout/draft";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+
 import BookingForm from "./BookingForm";
 
 type BookingPanelProps = {
@@ -18,6 +27,7 @@ type BookingPanelProps = {
 };
 
 const BookingPanel = ({ courts, className, courtCenterStatus, isOwnListing }: BookingPanelProps) => {
+    const router = useRouter();
 
     if (courtCenterStatus !== "published") {
         return (
@@ -45,11 +55,9 @@ const BookingPanel = ({ courts, className, courtCenterStatus, isOwnListing }: Bo
                         You cannot book your own venue.
                     </p>
                 </CardContent>
-            </Card >
+            </Card>
         );
     }
-
-
 
     if (courts.length === 0) {
         return (
@@ -64,8 +72,15 @@ const BookingPanel = ({ courts, className, courtCenterStatus, isOwnListing }: Bo
         );
     }
 
-    return (
+    const onSubmit = (data: BookingFormValues) => {
+        saveCheckoutDraft({
+            court_id: Number(data.court_id),
+            slots: serializeLineItemSlots(data.slots),
+        });
+        router.push(CHECKOUT_PATH);
+    };
 
+    return (
         <Card className={cn("h-fit lg:sticky lg:top-6", className)}>
             <CardHeader>
                 <CardTitle>Book a court</CardTitle>
@@ -75,7 +90,7 @@ const BookingPanel = ({ courts, className, courtCenterStatus, isOwnListing }: Bo
             </CardHeader>
 
             <CardContent className="space-y-5">
-                <BookingForm courts={courts} onSubmit={() => { }} />
+                <BookingForm courts={courts} onSubmit={onSubmit} />
             </CardContent>
         </Card>
     );

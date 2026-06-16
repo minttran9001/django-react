@@ -8,6 +8,7 @@ from .court_schedule_exception import CourtScheduleException
 from .court_schedule_exception import CourtScheduleExceptionType
 from .booking import Booking, BookingStatus
 from .user_profile import UserProfile
+from .transaction import Transaction
 
 __all__ = [
     "Booking",
@@ -21,4 +22,5 @@ __all__ = [
     "Image",
     "Sport",
     "UserProfile",
+    "Transaction",
 ]

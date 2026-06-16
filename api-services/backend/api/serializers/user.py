@@ -1,5 +1,3 @@
-from datetime import date, datetime
-
 from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework import serializers
@@ -7,6 +5,8 @@ from rest_framework import serializers
 from api.models import UserProfile
 from api.utils.attach_images import resolve_owner_image
 from api.utils.user_account import change_user_email, user_email_taken
+
+from api.serializers.fields import ApiDateField
 
 from .image import ImageResourceSerializer
 
@@ -96,26 +96,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save(update_fields=["is_active"])
         UserProfile.for_user(user)
         return user
-
-
-class ApiDateField(serializers.DateField):
-    """Accepts YYYY-MM-DD and ISO datetime strings from clients."""
-
-    def to_internal_value(self, value):
-        if value in (None, ""):
-            return None
-
-        if isinstance(value, str) and "T" in value:
-            normalized = value.replace("Z", "+00:00")
-            try:
-                value = datetime.fromisoformat(normalized).date().isoformat()
-            except ValueError as exc:
-                raise serializers.ValidationError(
-                    "Date has wrong format. Use YYYY-MM-DD."
-                ) from exc
-
-        parsed = super().to_internal_value(value)
-        return parsed if isinstance(parsed, date) else parsed
 
 
 class UserProfileUpdateSerializer(serializers.Serializer):

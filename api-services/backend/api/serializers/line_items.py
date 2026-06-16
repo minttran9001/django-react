@@ -1,12 +1,13 @@
 from rest_framework import serializers
 
+from api.serializers.fields import ApiDateField
 from api.serializers.money import MoneySerializer
 
 
 class SlotInputSerializer(serializers.Serializer):
     start = serializers.TimeField()
     end = serializers.TimeField()
-    date = serializers.DateField()
+    date = ApiDateField()
 
     def validate(self, attrs):
         if attrs["end"] <= attrs["start"]:

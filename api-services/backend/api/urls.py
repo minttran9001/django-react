@@ -17,7 +17,10 @@ from .views import (
     MyCourtCenterSchedulesView,
     MyCourtCenterPublishView,
     ProfileView,
-    SpeculateLineItemListViewForCustomer
+    SpeculateLineItemListViewForCustomer,
+    ConfirmPaymentView,
+    InitiateTransactionView,
+    TransactionDetailView,
 )
 
 urlpatterns = [
@@ -45,4 +48,7 @@ urlpatterns = [
 
     #booking
     path('line-items/customer', SpeculateLineItemListViewForCustomer.as_view(), name='speculate_line_item_list_for_customer'),
+    path('transactions/initiate', InitiateTransactionView.as_view(), name='initiate_transaction'),
+    path('transactions/<int:pk>', TransactionDetailView.as_view(), name='transaction_detail'),
+    path('transactions/<int:pk>/confirm-payment', ConfirmPaymentView.as_view(), name='confirm_payment'),
 ]

@@ -13,6 +13,7 @@ from .email_verification import ResendVerificationEmailView, VerifyEmailView
 from .image import ImageUploadView
 from .user import CreateUserView, CurrentUserView, ProfileView
 from .line_items import SpeculateLineItemListViewForCustomer
+from .transaction import ConfirmPaymentView, InitiateTransactionView, TransactionDetailView
 
 __all__ = [
     "CookieTokenRefreshView",
@@ -33,4 +34,7 @@ __all__ = [
     "VerifyEmailView",
     "ProfileView",
     "SpeculateLineItemListViewForCustomer",
+    "ConfirmPaymentView",
+    "InitiateTransactionView",
+    "TransactionDetailView",
 ]

@@ -8,6 +8,6 @@ export const baseApi = createApi({
     baseUrl: `${env.NEXT_PUBLIC_API_URL}/api`,
     credentials: "include",
   }),
-  tagTypes: ["Notes"],
+  tagTypes: ["Notes", "SpeculatedLineItems", "Transaction"],
   endpoints: () => ({}),
 });

@@ -25,8 +25,9 @@ import { getDayKey, normalizeToDay, type DayLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import OrderBreakdownLineItems from "./OrderBreakdownLineItems";
 import { useSpeculatedLineItemsQuery, serializeLineItemSlots } from "@/lib/api/lineItem";
-import { getApiErrorMessage } from "@/lib/api/errors";
+import { ApiErrorLike, getApiErrorMessage } from "@/lib/api/errors";
 import { Loader2Icon } from "lucide-react";
+import useDebounce from "@/hooks/useDebounce";
 
 function formatSlotLabel(slot: TimeSlot): string {
   const toDisplayTime = (time: string) => {
@@ -70,11 +71,17 @@ function getDayLabels(
 
 type BookingFormProps = {
   className?: string;
-  courts: CourtSummary[];
   onSubmit: (data: BookingFormValues) => void;
+} & Omit<BookingFormContentProps, "form">;
+
+type BookingFormContentProps = {
+  form: UseFormReturn<BookingFormValues>;
+  courts: CourtSummary[];
+  isLoading?: boolean;
+  error?: ApiErrorLike;
 };
 
-const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormValues>, courts: CourtSummary[] }) => {
+const BookingFormContent = ({ form, courts, isLoading, error }: BookingFormContentProps) => {
   const today = useMemo(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
@@ -104,13 +111,15 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
     [courtId, selectedSlots],
   );
 
+  const debouncedQueryArgs = useDebounce(lineItemQueryArgs, 500);
+
   const {
     data: speculatedLineItemsData,
     isLoading: isSpeculatedLineItemsLoading,
     error: speculatedLineItemsError,
     isFetching: isSpeculatedLineItemsFetching,
-  } = useSpeculatedLineItemsQuery(lineItemQueryArgs, {
-    skip: !date || !courtId || selectedSlots.length === 0,
+  } = useSpeculatedLineItemsQuery(debouncedQueryArgs, {
+    skip: !date || !debouncedQueryArgs.courtId || debouncedQueryArgs.slots.length === 0,
   });
 
   const selectedCourt = useMemo(
@@ -165,21 +174,30 @@ const BookingFormContent = ({ form, courts }: { form: UseFormReturn<BookingFormV
       }
     />
 
+    <Button variant="outline" className="w-full" onClick={() => {
+      form.setValue("slots", []);
+      form.setValue("selected_date", new Date());
+    }}>
+      Clear
+    </Button>
+
     {canBook && selectedCourt ? (
       (isSpeculatedLineItemsLoading || isSpeculatedLineItemsFetching) ? <Loader2Icon className="w-4 h-4 animate-spin" /> : speculatedLineItemsError ? <p className="text-sm text-destructive">{getApiErrorMessage(speculatedLineItemsError)}</p> : <OrderBreakdownLineItems speculatedLineItemsData={speculatedLineItemsData ?? { line_items: [], pay_in_total: { amount: 0, currency: "VND" } }} includeFor={["customer"]} />
     ) : null}
 
+
+    {error ? <p className="text-sm text-destructive">{getApiErrorMessage(error)}</p> : null}
     <Button
       type="submit"
       className="w-full"
-      disabled={isSubmitting}
+      disabled={isSubmitting || isLoading}
       isLoading={isSubmitting}
     >
       Book Court
     </Button></>)
 };
 
-const BookingForm = ({ className, courts, onSubmit }: BookingFormProps) => {
+const BookingForm = ({ className, onSubmit, courts, ...props }: BookingFormProps) => {
   const defaultValues: DefaultValues<BookingFormValues> = {
     selected_date: new Date(),
     court_id: courts[0] ? String(courts[0].id) : "",
@@ -189,7 +207,7 @@ const BookingForm = ({ className, courts, onSubmit }: BookingFormProps) => {
   return (
     <Form schema={bookingSchema} defaultValues={defaultValues} onSubmit={onSubmit} className={cn("space-y-4", className)}>
       {(form) => (
-        <BookingFormContent form={form} courts={courts} />
+        <BookingFormContent form={form} courts={courts} {...props} />
       )}
     </Form>
   );
