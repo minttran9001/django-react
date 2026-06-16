@@ -14,6 +14,7 @@ from ..utils.attach_images import (
 )
 from ..utils.court_center_sync import sync_center_schedules
 from .money import MoneySerializer
+from ..serializers.line_items import SlotInputSerializer
 
 
 class CourtSummarySerializer(serializers.ModelSerializer):
@@ -36,6 +37,39 @@ class CourtSummarySerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = fields
+
+    def get_price_per_hour(self, court):
+        return MoneySerializer({
+            "amount": court.price_per_hour,
+            "currency": court.price_currency,
+        }).data
+
+
+class CourtPublicSummarySerializer(serializers.ModelSerializer):
+    sport = SportSerializer(read_only=True)
+    images = ImageResourceSerializer(source="gallery", many=True, read_only=True)
+    available_slots = serializers.SerializerMethodField()
+    price_per_hour = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Court
+        fields = [
+            "id",
+            "sport",
+            "title",
+            "description",
+            "images",
+            "available_slots",
+            "price_per_hour",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_available_slots(self, court):
+        slots_by_court = self.context.get("available_slots_by_court", {})
+        slots = slots_by_court.get(court.id, [])
+        return SlotInputSerializer(slots, many=True).data
 
     def get_price_per_hour(self, court):
         return MoneySerializer({
@@ -104,6 +138,13 @@ class CourtCenterSerializer(serializers.ModelSerializer):
 
 class CourtCenterDetailSerializer(CourtCenterSerializer):
     courts = CourtSummarySerializer(many=True, read_only=True)
+
+    class Meta(CourtCenterSerializer.Meta):
+        fields = [*CourtCenterSerializer.Meta.fields, "courts"]
+
+
+class CourtCenterPublicDetailSerializer(CourtCenterSerializer):
+    courts = CourtPublicSummarySerializer(many=True, read_only=True)
 
     class Meta(CourtCenterSerializer.Meta):
         fields = [*CourtCenterSerializer.Meta.fields, "courts"]

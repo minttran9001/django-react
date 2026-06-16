@@ -107,11 +107,11 @@ export function ReviewStep({ center }: ReviewStepProps) {
               <p className="text-sm text-muted-foreground">{court.description}</p>
             ) : null}
 
-            {court.schedules.length > 0 ? (
+            {(court.schedules?.length ?? 0) > 0 ? (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Weekly availability</p>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {Object.entries(groupAvailabilityByDay(court.schedules)).map(([day, schedules]) => (
+                  {Object.entries(groupAvailabilityByDay(court.schedules ?? [])).map(([day, schedules]) => (
                     <li key={day} className="flex items-center gap-2">
                       <span className="text-muted-foreground min-w-20">{getDayLabel(Number(day))}</span>
                       <span>-</span>

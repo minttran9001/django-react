@@ -3,33 +3,31 @@
 import { CourtCenterCard } from "@/components/court-centers/CourtCenterCard";
 import { CourtCenterCardSkeleton } from "@/components/court-centers/CourtCenterCardSkeleton";
 import { useGetCourtCentersQuery } from "@/lib/api/courtCenterApi";
-import FiltersContainer from "./FiltersContainer";
+import { formatApiDate } from "@/lib/dates";
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { env } from "@/lib/env";
+
+import FiltersContainer from "./FiltersContainer";
 
 export function CourtCenterListView() {
   const searchParams = useSearchParams();
   const lat = searchParams.get("lat") ? Number(searchParams.get("lat")) : undefined;
   const lng = searchParams.get("lng") ? Number(searchParams.get("lng")) : undefined;
-  const sport_ids = searchParams.get("sport_ids") ? searchParams.get("sport_ids")?.split(",") : undefined;
+  const sport_ids = searchParams.get("sport_ids")
+    ? searchParams.get("sport_ids")?.split(",")
+    : undefined;
+  const date = searchParams.get("date") ?? formatApiDate(new Date());
 
   const filters = useMemo(() => {
     return {
-      ...(lat && lng && {
-        address: {
-          lat: lat,
-          lng: lng,
-        },
-      }),
-      ...(sport_ids && {
-        sport_ids: sport_ids,
-      }),
+      ...(lat && lng && { lat, lng }),
+      ...(sport_ids && { sport_ids }),
+      date,
     };
-  }, [lat, lng, sport_ids]);
+  }, [date, lat, lng, sport_ids]);
 
-
-  const { data: courtCenters = [], isLoading, isError, isFetching } = useGetCourtCentersQuery(filters);
+  const { data: courtCenters = [], isLoading, isError, isFetching } =
+    useGetCourtCentersQuery(filters);
 
   return (
     <div className="space-y-8">

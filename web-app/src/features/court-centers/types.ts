@@ -26,13 +26,20 @@ export interface CourtSchedule {
   updated_at: string;
 }
 
+export interface AvailableSlot {
+  date: string;
+  start: string;
+  end: string;
+}
+
 export interface CourtSummary {
   id: number;
   sport: Sport;
   title: string;
   description: string;
   images: ImageResource[];
-  schedules: CourtSchedule[];
+  schedules?: CourtSchedule[];
+  available_slots?: AvailableSlot[];
   price_per_hour: Money;
   created_at: string;
   updated_at: string;

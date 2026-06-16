@@ -28,6 +28,7 @@ import type {
   ImageResource,
 } from "@/features/court-centers/types";
 import { useGetCourtCenterQuery } from "@/lib/api/courtCenterApi";
+import { formatApiDate } from "@/lib/dates";
 import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
 import BookingPanel from "../booking/BookingPanel";
@@ -120,7 +121,10 @@ function CourtCard({ court }: { court: CourtSummary }) {
 }
 
 export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
-  const { data: courtCenter, isLoading, isError } = useGetCourtCenterQuery(id);
+  const { data: courtCenter, isLoading, isError } = useGetCourtCenterQuery({
+    id,
+    date: formatApiDate(new Date()),
+  });
   const { data: user } = useGetMeQuery();
   const isOwnListing = user?.id === courtCenter?.owner.id;
   const galleryImages = useMemo(
@@ -305,6 +309,7 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
           </section>
         </div>
         <BookingPanel
+          courtCenterId={id}
           courtCenterStatus={courtCenter.status}
           isOwnListing={isOwnListing}
           className="basis-2/5"

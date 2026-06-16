@@ -20,13 +20,14 @@ import { useRouter } from "next/navigation";
 import BookingForm from "./BookingForm";
 
 type BookingPanelProps = {
+    courtCenterId: string;
     courts: CourtSummary[];
     className?: string;
     courtCenterStatus?: string;
     isOwnListing?: boolean;
 };
 
-const BookingPanel = ({ courts, className, courtCenterStatus, isOwnListing }: BookingPanelProps) => {
+const BookingPanel = ({ courtCenterId, courts, className, courtCenterStatus, isOwnListing }: BookingPanelProps) => {
     const router = useRouter();
 
     if (courtCenterStatus !== "published") {
@@ -90,7 +91,7 @@ const BookingPanel = ({ courts, className, courtCenterStatus, isOwnListing }: Bo
             </CardHeader>
 
             <CardContent className="space-y-5">
-                <BookingForm courts={courts} onSubmit={onSubmit} />
+                <BookingForm courtCenterId={courtCenterId} onSubmit={onSubmit} />
             </CardContent>
         </Card>
     );

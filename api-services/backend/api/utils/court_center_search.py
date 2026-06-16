@@ -1,10 +1,12 @@
 import math
-from django.db.models import ExpressionWrapper, F, FloatField, QuerySet
-from django.db.models.functions import ACos, Cos, Radians, Sin
-from api.models import CourtCenter
-from django.db.models import Q
 from datetime import date
+
+from django.db.models import ExpressionWrapper, F, FloatField, Q, QuerySet
+from django.db.models.functions import ACos, Cos, Radians, Sin
 from rest_framework.exceptions import ValidationError
+
+from api.models import Court, CourtCenter
+from api.utils.booking_slots import get_court_ids_with_available_slots
 
 
 def apply_location_filter(
@@ -83,9 +85,14 @@ def apply_keyword_filter(qs: QuerySet[CourtCenter], q: str) -> QuerySet[CourtCen
         Q(courts__title__icontains=q)
     ).distinct()
 
-def apply_date_filter(qs, date):
-    day = date.weekday()
-    return qs.filter(courts__schedules__day_of_week=day).distinct()
+def apply_date_filter(qs: QuerySet[CourtCenter], search_date: date):
+    court_ids = get_court_ids_with_available_slots(
+        search_date,
+        court_queryset=Court.objects.filter(center__in=qs),
+    )
+    if not court_ids:
+        return qs.none()
+    return qs.filter(courts__id__in=court_ids).distinct()
 
 def apply_search_filters(qs, search_params: dict):
     if "lat" in search_params:

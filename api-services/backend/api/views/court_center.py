@@ -1,5 +1,8 @@
+from datetime import date
+
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,12 +10,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models import Court, CourtCenter, Sport
+from api.utils.booking_slots import build_available_slots_by_court
 
 from ..serializers import (
     CourtCenterCourtsSerializer,
     CourtCenterDetailSerializer,
     CourtCenterDraftCreateSerializer,
     CourtCenterLocationSerializer,
+    CourtCenterPublicDetailSerializer,
     CourtCenterSchedulesSerializer,
     CourtCenterWriteSerializer,
     SportSerializer,
@@ -20,6 +25,27 @@ from ..serializers import (
 from ..utils.court_center_sync import validate_publish
 from ..utils.court_center_search import apply_search_filters, parse_search_params
 from ..utils.exceptions import validation_error_response
+
+
+
+def resolve_slot_date(query_params) -> date:
+    date_str = query_params.get("date")
+    if date_str:
+        try:
+            return date.fromisoformat(date_str)
+        except ValueError as exc:
+            raise ValidationError({"date": "Use YYYY-MM-DD format."}) from exc
+    return timezone.localdate()
+
+
+def build_public_serializer_context(request, center: CourtCenter) -> dict:
+    slot_date = resolve_slot_date(request.query_params)
+    courts = list(center.courts.all())
+    return {
+        "owner_visibility": "public",
+        "slot_date": slot_date,
+        "available_slots_by_court": build_available_slots_by_court(courts, slot_date),
+    }
 
 
 
@@ -55,7 +81,7 @@ class SportListView(generics.ListAPIView):
 
 
 class CourtCenterCustomerListView(generics.ListAPIView):
-    serializer_class = CourtCenterDetailSerializer
+    serializer_class = CourtCenterPublicDetailSerializer
     permission_classes = [AllowAny]
 
     def get_queryset(self):
@@ -69,10 +95,21 @@ class CourtCenterCustomerListView(generics.ListAPIView):
             qs = qs.order_by("-created_at")
         return qs
 
-
     def get_serializer_context(self):
         context = super().get_serializer_context()
+        slot_date = resolve_slot_date(self.request.query_params)
+        queryset = self.filter_queryset(self.get_queryset())
+        courts = [
+            court
+            for center in queryset
+            for court in center.courts.all()
+        ]
         context["owner_visibility"] = "public"
+        context["slot_date"] = slot_date
+        context["available_slots_by_court"] = build_available_slots_by_court(
+            courts,
+            slot_date,
+        )
         return context
 
 
@@ -85,9 +122,9 @@ class CourtCenterCustomerDetailView(APIView):
             pk=pk,
             status=CourtCenter.Status.PUBLISHED,
         )
-        serializer = CourtCenterDetailSerializer(
+        serializer = CourtCenterPublicDetailSerializer(
             center,
-            context={"owner_visibility": "public"},
+            context=build_public_serializer_context(request, center),
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 

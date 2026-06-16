@@ -12,6 +12,15 @@ import type {
 } from "@/features/court-centers/types";
 import { env } from "@/lib/env";
 
+export type CourtCenterQueryArgs = {
+  id: string;
+  date?: string;
+};
+
+function serializeCourtCenterArgs({ id, date }: CourtCenterQueryArgs) {
+  return `${id}|${date ?? ""}`;
+}
+
 export const courtCenterApi = createApi({
   reducerPath: "courtCenterApi",
   baseQuery: fetchBaseQuery({
@@ -36,7 +45,9 @@ export const courtCenterApi = createApi({
           ...(params.lat && { lat: params.lat.toString() }),
           ...(params.lng && { lng: params.lng.toString() }),
           ...(params.radius_km && { radius_km: params.radius_km.toString() }),
+          ...(params.q && { q: params.q }),
           ...(params.sport_ids && { sport_ids: params.sport_ids.join(",") }),
+          ...(params.date && { date: params.date }),
         }).toString()}`,
       providesTags: (result) =>
         result
@@ -49,9 +60,14 @@ export const courtCenterApi = createApi({
             ]
           : [{ type: "CourtCenters", id: "LIST" }],
     }),
-    getCourtCenter: builder.query<CourtCenter, string>({
-      query: (id) => `/court-centers/${id}`,
-      providesTags: (_result, _error, id) => [{ type: "CourtCenters", id }],
+    getCourtCenter: builder.query<CourtCenter, CourtCenterQueryArgs>({
+      query: ({ id, date }) => ({
+        url: `/court-centers/${id}`,
+        params: date ? { date } : undefined,
+      }),
+      serializeQueryArgs: ({ queryArgs }) =>
+        serializeCourtCenterArgs(queryArgs),
+      providesTags: (_result, _error, { id }) => [{ type: "CourtCenters", id }],
     }),
     getMyCourtCenters: builder.query<CourtCenter[], void>({
       query: () => "/court-centers/mine",

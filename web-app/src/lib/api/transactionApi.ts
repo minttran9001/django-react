@@ -2,6 +2,7 @@ import type { LineItemSlotInput } from "@/lib/api/lineItem";
 import type { Transaction } from "@/lib/types/transaction";
 
 import { baseApi } from "./baseApi";
+import { courtCenterApi } from "./courtCenterApi";
 
 interface InitiateTransactionBody {
   court_id: number;
@@ -16,10 +17,15 @@ export const transactionApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
-      invalidatesTags: (_result, _error, { court_id }) => [
-        { type: "Transaction", id: "LIST" },
-        { type: "SpeculatedLineItems", id: String(court_id) },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(courtCenterApi.util.invalidateTags(["CourtCenters"]));
+        } catch {
+          // Leave court center cache unchanged when initiate fails.
+        }
+      },
+      invalidatesTags: [{ type: "Transaction", id: "LIST" }],
     }),
     getTransaction: builder.query<Transaction, number>({
       query: (id) => `/transactions/${id}`,

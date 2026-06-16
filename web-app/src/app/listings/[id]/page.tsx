@@ -1,5 +1,6 @@
 import { CourtCenterDetailsView } from "@/components/court-centers/CourtCenterDetailsView";
 import { prefetchPublicCourtCenter } from "@/lib/courtCenter";
+import { formatApiDate } from "@/lib/dates";
 import {
   collectQueryHydrations,
   createQueryHydrationEntry,
@@ -13,6 +14,7 @@ export default async function CourtCenterDetailsPage({
 }) {
   const { id } = await params;
   const courtCenter = await prefetchPublicCourtCenter(id);
+  const queryArg = { id, date: formatApiDate(new Date()) };
 
   return (
     <RtkQueryHydrator
@@ -20,7 +22,7 @@ export default async function CourtCenterDetailsPage({
         createQueryHydrationEntry(
           "courtCenterApi",
           "getCourtCenter",
-          id,
+          queryArg,
           courtCenter,
         ),
       )}

@@ -1,8 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
-import { useMemo } from "react";
-import { DefaultValues, UseFormReturn } from "react-hook-form";
+import { useEffect, useMemo } from "react";
+import { UseFormReturn } from "react-hook-form";
 
 import {
   FieldButtonGroup,
@@ -15,13 +15,10 @@ import {
   type BookingFormValues,
   bookingSchema,
 } from "@/features/booking/schemas/bookingSchema";
-import {
-  getAvailableSlots,
-  isSlotInPast,
-  type TimeSlot,
-} from "@/features/booking/utils/slots";
-import type { CourtSummary } from "@/features/court-centers/types";
-import { getDayKey, normalizeToDay, type DayLabel } from "@/lib/dates";
+import { type TimeSlot } from "@/features/booking/utils/slots";
+import type { AvailableSlot, CourtSummary } from "@/features/court-centers/types";
+import { useGetCourtCenterQuery } from "@/lib/api/courtCenterApi";
+import { formatApiDate, getDayKey, normalizeToDay, type DayLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import OrderBreakdownLineItems from "./OrderBreakdownLineItems";
 import { useSpeculatedLineItemsQuery, serializeLineItemSlots } from "@/lib/api/lineItem";
@@ -42,6 +39,14 @@ function formatSlotLabel(slot: TimeSlot): string {
 
 function slotKey(slot: TimeSlot): string {
   return `${getDayKey(normalizeToDay(slot.date))}-${slot.start}-${slot.end}`;
+}
+
+function toTimeSlot(slot: AvailableSlot): TimeSlot {
+  return {
+    date: normalizeToDay(slot.date),
+    start: slot.start.slice(0, 5),
+    end: slot.end.slice(0, 5),
+  };
 }
 
 function getDayLabels(
@@ -71,23 +76,30 @@ function getDayLabels(
 
 type BookingFormProps = {
   className?: string;
+  courtCenterId: string;
   onSubmit: (data: BookingFormValues) => void;
-} & Omit<BookingFormContentProps, "form">;
+} & Omit<BookingFormContentProps, "form" | "courts">;
 
 type BookingFormContentProps = {
   form: UseFormReturn<BookingFormValues>;
   courts: CourtSummary[];
+  isLoadingCourts?: boolean;
   isLoading?: boolean;
   error?: ApiErrorLike;
 };
 
-const BookingFormContent = ({ form, courts, isLoading, error }: BookingFormContentProps) => {
+const BookingFormContent = ({
+  form,
+  courts,
+  isLoadingCourts,
+  isLoading,
+  error,
+}: BookingFormContentProps) => {
   const today = useMemo(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
     return value;
   }, []);
-
 
   const courtItems = useMemo(
     () =>
@@ -126,15 +138,32 @@ const BookingFormContent = ({ form, courts, isLoading, error }: BookingFormConte
     () => courts.find((court) => String(court.id) === courtId),
     [courts, courtId],
   );
-  const availableSlots = useMemo(() => {
-    if (!date || !selectedCourt) {
-      return [];
+
+  const availableSlots = useMemo(
+    () => (selectedCourt?.available_slots ?? []).map(toTimeSlot),
+    [selectedCourt],
+  );
+
+  useEffect(() => {
+    if (!selectedCourt || selectedSlots.length === 0) {
+      return;
     }
 
-    return getAvailableSlots(selectedCourt.schedules, date).filter(
-      (slot) => !isSlotInPast(date, slot.start),
+    const allowedKeys = new Set(
+      (selectedCourt.available_slots ?? []).map((slot) =>
+        `${slot.date}-${slot.start.slice(0, 5)}-${slot.end.slice(0, 5)}`,
+      ),
     );
-  }, [date, selectedCourt]);
+    const nextSlots = selectedSlots.filter((slot) =>
+      allowedKeys.has(
+        `${formatApiDate(normalizeToDay(slot.date))}-${slot.start}-${slot.end}`,
+      ),
+    );
+
+    if (nextSlots.length !== selectedSlots.length) {
+      form.setValue("slots", nextSlots);
+    }
+  }, [form, selectedCourt, selectedSlots]);
 
   const canBook = date && selectedCourt && selectedSlots.length > 0 && courts.length > 0;
   const dayLabels = useMemo(
@@ -157,7 +186,6 @@ const BookingFormContent = ({ form, courts, isLoading, error }: BookingFormConte
       placeholder="Select a court"
       onValueChange={() => {
         form.setValue("slots", []);
-        form.setValue("selected_date", new Date());
       }}
     />
 
@@ -168,9 +196,11 @@ const BookingFormContent = ({ form, courts, isLoading, error }: BookingFormConte
       getOptionKey={slotKey}
       getOptionLabel={formatSlotLabel}
       emptyMessage={
-        date
-          ? "No available times on this day."
-          : "Select a date to see available times."
+        !date
+          ? "Select a date to see available times."
+          : isLoadingCourts
+            ? "Loading available times..."
+            : "No available times on this day."
       }
     />
 
@@ -190,27 +220,84 @@ const BookingFormContent = ({ form, courts, isLoading, error }: BookingFormConte
     <Button
       type="submit"
       className="w-full"
-      disabled={isSubmitting || isLoading}
+      disabled={isSubmitting || isLoading || isLoadingCourts}
       isLoading={isSubmitting}
     >
       Book Court
     </Button></>)
 };
 
-const BookingForm = ({ className, onSubmit, courts, ...props }: BookingFormProps) => {
-  const defaultValues: DefaultValues<BookingFormValues> = {
-    selected_date: new Date(),
-    court_id: courts[0] ? String(courts[0].id) : "",
-    slots: [],
-  };
+const BookingForm = ({
+  className,
+  onSubmit,
+  courtCenterId,
+  ...props
+}: BookingFormProps) => {
+  const today = useMemo(() => new Date(), []);
 
   return (
-    <Form schema={bookingSchema} defaultValues={defaultValues} onSubmit={onSubmit} className={cn("space-y-4", className)}>
+    <Form
+      schema={bookingSchema}
+      defaultValues={{
+        selected_date: today,
+        court_id: "",
+        slots: [],
+      }}
+      onSubmit={onSubmit}
+      className={cn("space-y-4", className)}
+    >
       {(form) => (
-        <BookingFormContent form={form} courts={courts} {...props} />
+        <BookingFormWithCourtData
+          form={form}
+          courtCenterId={courtCenterId}
+          {...props}
+        />
       )}
     </Form>
   );
 };
+
+function BookingFormWithCourtData({
+  form,
+  courtCenterId,
+  ...props
+}: Omit<BookingFormContentProps, "courts" | "isLoadingCourts"> & {
+  courtCenterId: string;
+}) {
+  const date = form.watch("selected_date");
+  const courtId = form.watch("court_id");
+
+  const {
+    data: courtCenter,
+    isLoading: isCourtCenterLoading,
+    isFetching: isCourtCenterFetching,
+  } = useGetCourtCenterQuery(
+    {
+      id: courtCenterId,
+      date: date ? formatApiDate(normalizeToDay(date)) : undefined,
+    },
+    { skip: !courtCenterId || !date },
+  );
+
+  const courts = useMemo(
+    () => courtCenter?.courts ?? [],
+    [courtCenter?.courts],
+  );
+
+  useEffect(() => {
+    if (!courtId && courts[0]) {
+      form.setValue("court_id", String(courts[0].id));
+    }
+  }, [courtId, courts, form]);
+
+  return (
+    <BookingFormContent
+      form={form}
+      courts={courts}
+      isLoadingCourts={isCourtCenterLoading || isCourtCenterFetching}
+      {...props}
+    />
+  );
+}
 
 export default BookingForm;
