@@ -7,6 +7,7 @@ import {
 } from "@/features/auth/schemas/courtCenterSearchSchema";
 import {
   FieldAddressInput,
+  FieldDateInput,
   FieldMultiSelect,
   Form,
 } from "@/components/form";
@@ -25,8 +26,6 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
     label: sport.name,
     value: sport.id.toString(),
   }));
-
-
 
 
   return (
@@ -53,6 +52,7 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
               query: "",
             },
             sport_ids: [],
+            date: undefined,
           };
           reset(resetValues);
           onSubmit(resetValues);
@@ -70,6 +70,12 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
               name="sport_ids"
               placeholder="Select a sport"
               items={sportOptions}
+              containerClassName="w-full"
+            />
+            <FieldDateInput<CourtCenterSearchFormValues>
+              name="date"
+              variant="popover"
+              placeholder="Any date"
               containerClassName="w-full"
             />
           </div>

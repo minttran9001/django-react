@@ -16,13 +16,15 @@ export function CourtCenterListView() {
   const sport_ids = searchParams.get("sport_ids")
     ? searchParams.get("sport_ids")?.split(",")
     : undefined;
-  const date = searchParams.get("date") ?? formatApiDate(new Date());
+  const date = searchParams.get("date")
+    ? formatApiDate(new Date(searchParams.get("date") ?? ""))
+    : undefined;
 
   const filters = useMemo(() => {
     return {
       ...(lat && lng && { lat, lng }),
       ...(sport_ids && { sport_ids }),
-      date,
+      ...(date && { date }),
     };
   }, [date, lat, lng, sport_ids]);
 

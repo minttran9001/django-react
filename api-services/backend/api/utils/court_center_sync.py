@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from api.models import Court, CourtCenter, CourtSchedule
+from api.utils.slot_index import regenerate_slots_for_court
 
 
 def validate_publish(center: CourtCenter) -> None:
@@ -56,6 +57,7 @@ def sync_court_schedules(court: Court, schedules_data: list[dict]) -> None:
         submitted_ids.add(schedule.id)
 
     court.schedules.exclude(id__in=submitted_ids).delete()
+    regenerate_slots_for_court(court)
 
 
 def sync_center_schedules(center: CourtCenter, courts_data: list[dict]) -> None:

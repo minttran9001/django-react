@@ -90,20 +90,38 @@ class CourtCenterCustomerListView(generics.ListAPIView):
         )
         search_params = parse_search_params(self.request.query_params)
         qs = apply_search_filters(qs, search_params)
-        # only sort by newest when NOT doing location search
         if "lat" not in search_params:
             qs = qs.order_by("-created_at")
         return qs
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        target = page if page is not None else queryset
+
+        # Evaluate once; stash courts so get_serializer_context can reuse
+        # them without issuing a second full queryset evaluation.
+        evaluated = list(target)
+        self._courts_for_context = [
+            court for center in evaluated for court in center.courts.all()
+        ]
+
+        serializer = self.get_serializer(evaluated, many=True)
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         slot_date = resolve_slot_date(self.request.query_params)
-        queryset = self.filter_queryset(self.get_queryset())
-        courts = [
-            court
-            for center in queryset
-            for court in center.courts.all()
-        ]
+        courts = getattr(self, "_courts_for_context", None)
+        if courts is None:
+            # Fallback (e.g. schema generation): build from queryset
+            courts = [
+                court
+                for center in self.filter_queryset(self.get_queryset())
+                for court in center.courts.all()
+            ]
         context["owner_visibility"] = "public"
         context["slot_date"] = slot_date
         context["available_slots_by_court"] = build_available_slots_by_court(

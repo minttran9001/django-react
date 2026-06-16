@@ -14,8 +14,8 @@ const fontSans = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Django React App",
-  description: "Next.js frontend for Django REST API",
+  title: "Court Booking",
+  description: "Court booking platform",
 };
 
 export default async function RootLayout({

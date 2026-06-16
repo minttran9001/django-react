@@ -99,47 +99,44 @@ def build_available_slots_by_court(
     courts: list[Court],
     slot_date: date,
 ) -> dict[int, list[dict]]:
+    """Read available slots from the precomputed CourtSlot index. O(1) queries."""
     if not courts:
         return {}
 
+    from api.models.court_slot import CourtSlot  # avoid circular at module level
+
     court_ids = [court.id for court in courts]
-    bookings = Booking.objects.filter(
+    rows = CourtSlot.objects.filter(
         court_id__in=court_ids,
         date=slot_date,
-        status__in=ACTIVE_BOOKING_STATUSES,
-    ).values_list("court_id", "start_time", "end_time")
+        is_available=True,
+    ).values("court_id", "date", "start_time", "end_time").order_by("start_time")
 
-    bookings_by_court: dict[int, list[tuple[time, time]]] = {}
-    for court_id, start, end in bookings:
-        bookings_by_court.setdefault(court_id, []).append((start, end))
-
-    return {
-        court.id: get_available_slots_for_court(
-            court,
-            slot_date,
-            booked_ranges=bookings_by_court.get(court.id, []),
-        )
-        for court in courts
-    }
+    result: dict[int, list[dict]] = {court.id: [] for court in courts}
+    for row in rows:
+        result[row["court_id"]].append({
+            "date": row["date"],
+            "start": row["start_time"],
+            "end": row["end_time"],
+        })
+    return result
 
 
 def get_court_ids_with_available_slots(
     slot_date: date,
     court_queryset=None,
 ) -> set[int]:
-    day = date_to_day_of_week(slot_date)
+    """Single indexed query against CourtSlot. No Python slot math."""
+    from api.models.court_slot import CourtSlot  # avoid circular at module level
+
     qs = court_queryset if court_queryset is not None else Court.objects.all()
-    courts = list(
-        qs.filter(schedules__day_of_week=day)
-        .prefetch_related("schedules")
-        .distinct()
+    return set(
+        CourtSlot.objects.filter(
+            court__in=qs,
+            date=slot_date,
+            is_available=True,
+        ).values_list("court_id", flat=True).distinct()
     )
-    slots_by_court = build_available_slots_by_court(courts, slot_date)
-    return {
-        court_id
-        for court_id, slots in slots_by_court.items()
-        if slots
-    }
 
 
 def validate_slots_are_available_for_court(slots: list[SlotInputSerializer], court: Court) -> None:

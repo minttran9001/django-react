@@ -7,6 +7,7 @@ from .court_schedule import CourtSchedule
 from .court_schedule_exception import CourtScheduleException
 from .court_schedule_exception import CourtScheduleExceptionType
 from .booking import Booking, BookingStatus
+from .court_slot import CourtSlot
 from .user_profile import UserProfile
 from .transaction import Transaction
 
@@ -18,6 +19,7 @@ __all__ = [
     "CourtSchedule",
     "CourtScheduleException",
     "CourtScheduleExceptionType",
+    "CourtSlot",
     "EmailVerificationToken",
     "Image",
     "Sport",

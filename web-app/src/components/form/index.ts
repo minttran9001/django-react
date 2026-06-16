@@ -26,6 +26,7 @@ export {
   FieldDateInput,
   FieldDateInputComponent,
   type FieldDateInputComponentProps,
+  type FieldDateInputVariant,
 } from "./FieldDateInput";
 export {
   FieldDatePicker,

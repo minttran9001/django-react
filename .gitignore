@@ -6,6 +6,7 @@ __pycache__/
 venv/
 env/
 *.sqlite3
+api-services/backend/logs/
 
 # Environment
 .env

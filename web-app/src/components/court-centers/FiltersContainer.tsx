@@ -2,6 +2,7 @@ import { CourtCenterSearchFormValues } from "@/features/auth/schemas/courtCenter
 import FiltersForm from "./FiltersForm";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
+import { formatApiDate } from "@/lib/dates";
 
 const normalizeSearchQuery = (data: Record<string, string | number | undefined>) => {
     const searchParams = new URLSearchParams();
@@ -29,12 +30,13 @@ const FiltersContainer = () => {
         }
     }, [searchParams]);
     const onSubmit = (data: CourtCenterSearchFormValues) => {
-        const { address, sport_ids } = data;
+        const { address, sport_ids, date } = data;
         const searchQuery = normalizeSearchQuery({
             address: address.address,
             sport_ids: sport_ids?.join(",") ?? undefined,
             lat: address.lat,
             lng: address.lng,
+            date: date ? formatApiDate(date) : undefined,
         });
 
         router.push(`/listings?${searchQuery}`);

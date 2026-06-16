@@ -33,6 +33,7 @@ const formatDate = (date: string) => {
 const OrderBreakdownLineItems = ({ speculatedLineItemsData, includeFor }: OrderBreakdownLineItemsProps) => {
   const lineItems = speculatedLineItemsData.line_items;
   const filteredLineItems = lineItems.filter((lineItem) => includeFor.some((include) => lineItem.include_for.includes(include) && lineItem.line_total.amount > 0));
+  console.log({ filteredLineItems })
   const slotLineItems = filteredLineItems.filter((lineItem) => lineItem.type === "booking_slot");
   const otherLineItems = filteredLineItems.filter((lineItem) => lineItem.type !== "booking_slot");
   return (

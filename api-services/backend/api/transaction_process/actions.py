@@ -6,6 +6,7 @@ from api.models.court import Court
 from api.transaction_process.court_booking import TRANSACTION_ACTIONS
 from api.utils.booking_pricing import build_line_items
 from api.utils.booking_slots import validate_slots_are_available_for_court
+from api.utils.slot_index import mark_slots_available_from_bookings, mark_slots_unavailable
 
 if TYPE_CHECKING:
     from api.models.transaction import Transaction
@@ -60,6 +61,10 @@ def reserve_bookings(transaction: "Transaction", context: dict) -> None:
         for slot in slots
     ]
     Booking.objects.bulk_create(bookings)
+    mark_slots_unavailable(
+        court.id,
+        [{"date": slot["date"], "start": slot["start"]} for slot in slots],
+    )
 
 
 def snapshot_line_items(transaction: "Transaction", context: dict) -> None:
@@ -99,9 +104,9 @@ def confirm_bookings(transaction: "Transaction", context: dict) -> None:
 
 
 def cancel_bookings(transaction: "Transaction", context: dict) -> None:
-    transaction.bookings.exclude(status=BookingStatus.CANCELLED).update(
-        status=BookingStatus.CANCELLED
-    )
+    to_cancel = transaction.bookings.exclude(status=BookingStatus.CANCELLED)
+    mark_slots_available_from_bookings(transaction.court_id, to_cancel)
+    to_cancel.update(status=BookingStatus.CANCELLED)
 
 
 def capture_payment(transaction: "Transaction", context: dict) -> None:
