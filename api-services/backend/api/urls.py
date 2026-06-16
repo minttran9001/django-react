@@ -21,6 +21,7 @@ from .views import (
     ConfirmPaymentView,
     InitiateTransactionView,
     TransactionDetailView,
+    MyCourtCenterArchiveView,
 )
 
 urlpatterns = [
@@ -42,7 +43,7 @@ urlpatterns = [
     path('court-centers/mine/<int:pk>', MyCourtCenterDetailsView.as_view(), name='court_center_detail'),
     path('court-centers/mine/<int:pk>/schedules', MyCourtCenterSchedulesView.as_view(), name='court_center_schedules'),
     path('court-centers/mine/<int:pk>/publish', MyCourtCenterPublishView.as_view(), name='court_center_publish'),
-
+    path('court-centers/mine/<int:pk>/archive', MyCourtCenterArchiveView.as_view(), name='court_center_archive'),
     #profile
     path('profile', ProfileView.as_view(), name='profile'),
 

@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils import timezone
 
 from api.transaction_process import COURT_BOOKING_PROCESS, TRANSACTION_STATES, TRANSACTION_TRANSITIONS
 
@@ -36,4 +37,8 @@ class Transaction(models.Model):
             end_at = datetime.combine(booking.date, booking.end_time)
             if latest is None or end_at > latest:
                 latest = end_at
+        if latest is None:
+            return None
+        if timezone.is_naive(latest):
+            latest = timezone.make_aware(latest)
         return latest

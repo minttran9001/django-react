@@ -10,6 +10,7 @@ from .court_center import (
     CourtCenterSchedulesSerializer,
     CourtCenterSerializer,
     CourtCenterWriteSerializer,
+    CourtCenterArchiveSerializer,
 )
 from .court_schedule import CourtScheduleExceptionSerializer, CourtScheduleSerializer
 from .email_verification import ResendVerificationEmailSerializer, VerifyEmailSerializer
@@ -25,6 +26,7 @@ from .money import MoneySerializer
 
 __all__ = [
     "BookingSerializer",
+    "CourtCenterArchiveSerializer",
     "CourtCenterCourtsSerializer",
     "CourtCenterDetailSerializer",
     "CourtCenterDraftCreateSerializer",

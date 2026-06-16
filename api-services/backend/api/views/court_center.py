@@ -13,6 +13,7 @@ from api.models import Court, CourtCenter, Sport
 from api.utils.booking_slots import build_available_slots_by_court
 
 from ..serializers import (
+    CourtCenterArchiveSerializer,
     CourtCenterCourtsSerializer,
     CourtCenterDetailSerializer,
     CourtCenterDraftCreateSerializer,
@@ -66,11 +67,11 @@ def get_court_center_queryset():
     ).order_by("-created_at")
 
 
-def get_owned_draft(request, pk):
+def get_owned_court_center(request, pk, status=CourtCenter.Status.DRAFT):
     return get_court_center_queryset().get(
         pk=pk,
         owner=request.user,
-        status=CourtCenter.Status.DRAFT,
+        status=status,
     )
 
 
@@ -145,7 +146,6 @@ class CourtCenterCustomerDetailView(APIView):
             context=build_public_serializer_context(request, center),
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 class MyCourtCenterListView(generics.ListAPIView):
     serializer_class = CourtCenterDetailSerializer
@@ -260,7 +260,7 @@ class MyCourtCenterPublishView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk, *args, **kwargs):
-        center = get_owned_draft(request, pk)
+        center = get_owned_court_center(request, pk)
 
         try:
             validate_publish(center)
@@ -270,6 +270,24 @@ class MyCourtCenterPublishView(APIView):
         center.status = CourtCenter.Status.PUBLISHED
         center.save(update_fields=["status", "updated_at"])
         center = get_court_center_queryset().get(pk=center.pk)
+        return Response(
+            CourtCenterDetailSerializer(center).data,
+            status=status.HTTP_200_OK,
+        )
+
+class MyCourtCenterArchiveView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, *args, **kwargs):
+        center = get_owned_court_center(request, pk, status=CourtCenter.Status.PUBLISHED)
+        serializer = CourtCenterArchiveSerializer(
+            center,
+            data=request.data,
+            partial=True,
+        )
+        if not serializer.is_valid():
+            return validation_error_response(serializer.errors)
+        center = serializer.save()
         return Response(
             CourtCenterDetailSerializer(center).data,
             status=status.HTTP_200_OK,

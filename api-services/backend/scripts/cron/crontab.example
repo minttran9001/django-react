@@ -1,17 +1,23 @@
-# CourtSlot index — daily maintenance
+# Scheduled jobs for django-react API
 #
-# Install (pick one):
-#
+# Install:
 #   crontab -e
-#   # paste the line below (adjust BACKEND path and optionally python/venv)
+#   # paste lines below (adjust paths to your machine)
 #
-# Or install this file:
+# Or:
 #   crontab api-services/backend/scripts/cron/crontab.example
-#
-# Every day at 01:00 UTC — prune past slots and extend the horizon (default 60 days)
+
+# --- Transaction state machine (every minute) ---
+# Expire unpaid checkouts after 15 min; complete bookings after last slot ends
+* * * * * /Users/admin-2/Desktop/personal/django-react/api-services/backend/scripts/cron/process_transaction_transitions.sh
+
+# --- CourtSlot index (daily at 01:00) ---
+# Prune past slots and extend the booking horizon (default 60 days)
 0 1 * * * /Users/admin-2/Desktop/personal/django-react/api-services/backend/scripts/cron/generate_court_slots.sh
 
-# Optional: extend horizon to 1 year (pass --days to the management command)
-# 0 1 * * * /path/to/api-services/backend/scripts/cron/generate_court_slots.sh --days 365
+# Optional: 1-year slot horizon
+# 0 1 * * * /path/to/scripts/cron/generate_court_slots.sh --days 365
 
-# Logs: api-services/backend/logs/generate_court_slots.log
+# Logs:
+#   api-services/backend/logs/process_transaction_transitions.log
+#   api-services/backend/logs/generate_court_slots.log

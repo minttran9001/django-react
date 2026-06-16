@@ -322,3 +322,11 @@ class CourtCenterWriteSerializer(serializers.Serializer):
             sync_courts(instance, courts_data, request.user)
 
         return instance
+
+class CourtCenterArchiveSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=CourtCenter.Status.choices)
+
+    def update(self, instance, validated_data):
+        instance.status = validated_data["status"]
+        instance.save(update_fields=["status", "updated_at"])
+        return instance

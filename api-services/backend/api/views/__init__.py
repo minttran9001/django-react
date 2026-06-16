@@ -8,6 +8,7 @@ from .court_center import (
     MyCourtCenterPublishView,
     MyCourtCenterSchedulesView,
     SportListView,
+    MyCourtCenterArchiveView,
 )
 from .email_verification import ResendVerificationEmailView, VerifyEmailView
 from .image import ImageUploadView
@@ -21,6 +22,7 @@ __all__ = [
     "CourtCenterCustomerListView",
     "CourtCenterDraftCreateView",
     "MyCourtCenterDetailsView",
+    "MyCourtCenterArchiveView",
     "MyCourtCenterPublishView",
     "MyCourtCenterSchedulesView",
     "CreateUserView",

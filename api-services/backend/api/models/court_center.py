@@ -8,6 +8,7 @@ from .image import Image
 class CourtCenter(models.Model):
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
+        ARCHIVED = "archived", "Archived"
         PUBLISHED = "published", "Published"
 
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="court_centers")
