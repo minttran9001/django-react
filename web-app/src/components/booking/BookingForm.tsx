@@ -17,7 +17,7 @@ import {
 } from "@/features/booking/schemas/bookingSchema";
 import { type TimeSlot } from "@/features/booking/utils/slots";
 import type { AvailableSlot, CourtSummary } from "@/features/court-centers/types";
-import { useGetCourtCenterQuery } from "@/lib/api/courtCenterApi";
+import { useGetCourtCenterQuery, useGetSportsQuery } from "@/lib/api/courtCenterApi";
 import { formatApiDate, getDayKey, normalizeToDay, type DayLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import OrderBreakdownLineItems from "./OrderBreakdownLineItems";
@@ -95,25 +95,34 @@ const BookingFormContent = ({
   isLoading,
   error,
 }: BookingFormContentProps) => {
+
+  const sports = useGetSportsQuery();
+  const sportItems = useMemo(() => sports.data?.map((sport) => ({
+    value: String(sport.id),
+    label: sport.name,
+  })), [sports.data]);
+
   const today = useMemo(() => {
     const value = new Date();
     value.setHours(0, 0, 0, 0);
     return value;
   }, []);
 
-  const courtItems = useMemo(
-    () =>
-      courts.map((court) => ({
-        value: String(court.id),
-        label: `${court.title} (${court.sport.name})`,
-      })),
-    [courts],
-  );
+
   const { isSubmitting } = form.formState;
 
   const date = form.watch("selected_date");
   const courtId = form.watch("court_id");
   const selectedSlots = form.watch("slots");
+  const selectedSportId = form.watch("selected_sport_id");
+
+  const courtItems = useMemo(
+    () => courts.filter((court) => court.sport.id === Number(selectedSportId)).map((court) => ({
+      value: String(court.id),
+      label: `Court ${court.title} (${court.sport.name})`,
+    })),
+    [courts, selectedSportId],
+  );
 
   const lineItemQueryArgs = useMemo(
     () => ({
@@ -171,6 +180,8 @@ const BookingFormContent = ({
     [selectedSlots],
   );
 
+
+
   return (<>
     <FieldDateInput<BookingFormValues>
       name="selected_date"
@@ -179,30 +190,46 @@ const BookingFormContent = ({
       dayLabels={dayLabels}
     />
 
-    <FieldSelect<BookingFormValues>
-      name="court_id"
-      label="Court"
-      items={courtItems}
-      placeholder="Select a court"
-      onValueChange={() => {
-        form.setValue("slots", []);
-      }}
-    />
+    {isLoadingCourts ? <div className="flex items-center justify-center"><Loader2Icon className="w-4 h-4 animate-spin" /></div> :
+      <>
+        <FieldSelect<BookingFormValues>
+          name="selected_sport_id"
+          label="Sport"
+          items={sportItems ?? []}
+          placeholder="Select a sport"
+          onValueChange={() => {
+            form.setValue("court_id", "");
+            form.setValue("slots", []);
+          }}
+        />
 
-    <FieldButtonGroup<BookingFormValues, TimeSlot>
-      name="slots"
-      label="Time"
-      options={availableSlots}
-      getOptionKey={slotKey}
-      getOptionLabel={formatSlotLabel}
-      emptyMessage={
-        !date
-          ? "Select a date to see available times."
-          : isLoadingCourts
-            ? "Loading available times..."
-            : "No available times on this day."
-      }
-    />
+        {courtItems.length > 0 ? <FieldSelect<BookingFormValues>
+          name="court_id"
+          label="Court"
+          items={courtItems}
+          disabled={!selectedSportId}
+          placeholder="Select a court"
+          onValueChange={() => {
+            form.setValue("slots", []);
+          }}
+        />
+          : <p className="text-sm text-muted-foreground">No courts available for this sport.</p>}
+
+        {courtItems.length > 0 && <FieldButtonGroup<BookingFormValues, TimeSlot>
+          name="slots"
+          label="Time"
+          options={availableSlots}
+          getOptionKey={slotKey}
+          getOptionLabel={formatSlotLabel}
+          emptyMessage={
+            !date
+              ? "Select a date to see available times."
+              : isLoadingCourts
+                ? "Loading available times..."
+                : "No available times on this day."
+          }
+        />
+        }</>}
 
     <Button variant="outline" className="w-full" onClick={() => {
       form.setValue("slots", []);
@@ -212,7 +239,7 @@ const BookingFormContent = ({
     </Button>
 
     {canBook && selectedCourt ? (
-      (isSpeculatedLineItemsLoading || isSpeculatedLineItemsFetching) ? <Loader2Icon className="w-4 h-4 animate-spin" /> : speculatedLineItemsError ? <p className="text-sm text-destructive">{getApiErrorMessage(speculatedLineItemsError)}</p> : <OrderBreakdownLineItems speculatedLineItemsData={speculatedLineItemsData ?? { line_items: [], pay_in_total: { amount: 0, currency: "VND" } }} includeFor={["customer"]} />
+      (isSpeculatedLineItemsLoading || isSpeculatedLineItemsFetching) ? <div className="flex items-center justify-center"><Loader2Icon className="w-4 h-4 animate-spin" /></div> : speculatedLineItemsError ? <div className="flex items-center justify-center"><p className="text-sm text-destructive">{getApiErrorMessage(speculatedLineItemsError)}</p></div> : <OrderBreakdownLineItems speculatedLineItemsData={speculatedLineItemsData ?? { line_items: [], pay_in_total: { amount: 0, currency: "VND" } }} includeFor={["customer"]} />
     ) : null}
 
 
@@ -265,7 +292,6 @@ function BookingFormWithCourtData({
   courtCenterId: string;
 }) {
   const date = form.watch("selected_date");
-  const courtId = form.watch("court_id");
 
   const {
     data: courtCenter,
@@ -283,13 +309,6 @@ function BookingFormWithCourtData({
     () => courtCenter?.courts ?? [],
     [courtCenter?.courts],
   );
-
-  useEffect(() => {
-    if (!courtId && courts[0]) {
-      form.setValue("court_id", String(courts[0].id));
-    }
-  }, [courtId, courts, form]);
-
   return (
     <BookingFormContent
       form={form}

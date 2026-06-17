@@ -2,6 +2,7 @@ import { Money } from "./money";
 
 type LineItemMetadata = {
   court_id: number;
+  court_name: string;
   date: string;
   start: string;
   end: string;

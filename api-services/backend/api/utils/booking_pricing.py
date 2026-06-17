@@ -59,17 +59,19 @@ def build_line_items(
         hours = slot_duration_hours(slot['start'], slot['end'])
         date = slot['date']
         unit_price = court.price_per_hour
+        court_name = court.title
         total = unit_price * hours
-
+    
         line_item = {
             "type": "booking_slot",
-            "label": f"{slot['start'].strftime('%H:%M')}-{slot['end'].strftime('%H:%M')} on {date.strftime('%Y-%m-%d')}",
+            "label": f"{court_name} - {slot['start'].strftime('%H:%M')}-{slot['end'].strftime('%H:%M')} on {date.strftime('%Y-%m-%d')}",
             "code": f"line-item/{court.id}/{date.strftime('%Y-%m-%d')}/{slot['start'].strftime('%H:%M')}-{slot['end'].strftime('%H:%M')}",
             "quantity": float(hours),
             "unit_price": MoneySerializer({"amount": unit_price, "currency": currency}).data,
             "line_total": MoneySerializer({"amount": total, "currency": currency}).data,
             "include_for": ["customer", "provider"],
             "metadata": {
+                "court_name": court_name,
                 "court_id": court.id,
                 "date": date.strftime('%Y-%m-%d'),
                 "start": slot['start'].strftime('%H:%M'),

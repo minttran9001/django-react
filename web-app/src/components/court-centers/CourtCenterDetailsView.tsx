@@ -125,6 +125,7 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
     id,
     date: formatApiDate(new Date()),
   });
+
   const { data: user } = useGetMeQuery();
   const isOwnListing = user?.id === courtCenter?.owner.id;
   const galleryImages = useMemo(

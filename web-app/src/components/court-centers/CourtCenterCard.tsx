@@ -57,7 +57,7 @@ export function CourtCenterCard({
   }, [variant, center.id]);
 
   return (
-    <Link prefetch href={href} className="block h-full">
+    <Link prefetch={true} href={href} className="block h-full">
       <Card
         className={cn(
           "h-full overflow-hidden py-0 transition-shadow hover:shadow-lg",

@@ -1,16 +1,21 @@
 import axios from "axios";
 
 import { ACCESS_TOKEN_COOKIE } from "../auth/constants";
-import { formatApiDate } from "../dates";
 import { env } from "../env";
 import { cookies } from "next/headers";
 
-export const prefetchPublicCourtCenter = async (id: string) => {
+export const prefetchPublicCourtCenter = async ({
+  id,
+  date,
+}: {
+  id: string;
+  date: string;
+}) => {
   try {
     const response = await axios.get(
       `${env.NEXT_PUBLIC_API_URL}/api/court-centers/${id}`,
       {
-        params: { date: formatApiDate(new Date()) },
+        params: { date },
       },
     );
     return response.data;

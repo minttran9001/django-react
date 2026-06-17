@@ -1,5 +1,5 @@
 import type { LineItemSlotInput } from "@/lib/api/lineItem";
-import type { Transaction } from "@/lib/types/transaction";
+import { TRANSACTION_STATE, type Transaction } from "@/lib/types/transaction";
 
 import { baseApi } from "./baseApi";
 import { courtCenterApi } from "./courtCenterApi";
@@ -39,7 +39,20 @@ export const transactionApi = baseApi.injectEndpoints({
         url: `/transactions/${id}/confirm-payment`,
         method: "POST",
       }),
-      invalidatesTags: (_result, _error, id) => [{ type: "Transaction", id }],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(
+            transactionApi.util.updateQueryData(
+              "getMyTransactions",
+              { states: [TRANSACTION_STATE.PENDING_PAYMENT] },
+              (draft) => draft.filter((transaction) => transaction.id !== id),
+            ),
+          );
+        } catch {
+          // Leave transaction cache unchanged when confirm payment fails.
+        }
+      },
     }),
     getMyTransactions: builder.query<
       Transaction[],

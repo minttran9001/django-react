@@ -4,7 +4,7 @@ import { useGetMyTransactionsQuery } from "@/lib/api/transactionApi";
 import VerticalTabNavigation from "../ui/VertialTabNavigation";
 import { CalendarIcon, HistoryIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import BookingsList from "./BookingsList";
+import BookingsList, { BookingCard } from "./BookingsList";
 import { TRANSACTION_STATE } from "@/lib/types/transaction";
 
 const LoadingSkeleton = () => {
@@ -23,6 +23,7 @@ const MyBookingsView = () => {
     const activeTab = searchParams.get("tab") || "upcoming";
     const states = activeTab === "upcoming" ? [TRANSACTION_STATE.CONFIRMED] : [TRANSACTION_STATE.COMPLETED, TRANSACTION_STATE.CANCELLED, TRANSACTION_STATE.PAYMENT_EXPIRED];
     const { data: transactions = [], isLoading, isFetching } = useGetMyTransactionsQuery({ states });
+    const { data: pendingPaymentsTransactions = [] } = useGetMyTransactionsQuery({ states: [TRANSACTION_STATE.PENDING_PAYMENT] });
     const isInitialLoading = isLoading || isFetching;
     return <div className="container mx-auto flex gap-4">
         <VerticalTabNavigation
@@ -34,9 +35,21 @@ const MyBookingsView = () => {
             label="Bookings"
             activeTab={activeTab}
         />
-        <div className="basis-3/5 bg-white p-4 rounded-lg">
-            <h1 className="text-2xl font-bold mb-4">My Bookings</h1>
-            {isInitialLoading ? <LoadingSkeleton /> : <BookingsList transactions={transactions ?? []} emptyMessage="No bookings yet." />}
+
+        <div className="basis-3/5">
+            {pendingPaymentsTransactions.length > 0 && <div className="bg-yellow-50 rounded-lg mb-4 p-4">
+                <p className="text-sm text-yellow-800 mb-4">You have {pendingPaymentsTransactions.length} pending payments. Please complete your payments to confirm your bookings.</p>
+                <BookingsList transactions={pendingPaymentsTransactions ?? []} emptyMessage="No pending payments." />
+            </div>}
+
+            <div className="bg-white p-4 rounded-lg">
+                <h1 className="text-2xl font-bold mb-4">My Bookings</h1>
+
+
+                {isInitialLoading ? <LoadingSkeleton /> : <BookingsList transactions={transactions ?? []} emptyMessage="No bookings yet." />}
+            </div>
+            <div>
+            </div>
         </div>
     </div>
 };

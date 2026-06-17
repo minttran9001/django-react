@@ -50,7 +50,7 @@ const OrderBreakdownLineItems = ({ speculatedLineItemsData, includeFor }: OrderB
             </p>
             {lineItem.metadata ? (
               <p className="text-muted-foreground">
-                {formatDate(lineItem.metadata.date)} · {lineItem.metadata.start} – {lineItem.metadata.end}
+                Court {lineItem.metadata.court_name} · {formatDate(lineItem.metadata.date)} · {lineItem.metadata.start} – {lineItem.metadata.end}
               </p>
             ) : null}
           </div>
