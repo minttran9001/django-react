@@ -9,7 +9,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models import Court, CourtCenter, Transaction
-from api.serializers.transaction import InitiateTransactionSerializer, TransactionSerializer
+from api.serializers import (
+    InitiateTransactionSerializer,
+    TransactionSerializer,
+    RequestReviewSerializer,
+)
 from api.transaction_process.actions import ActionError
 from api.transaction_process.base import TransactionEngine, TransitionError
 from api.transaction_process.court_booking import (
@@ -33,7 +37,11 @@ def _load_transaction_for_response(transaction_id: int) -> Transaction:
             "provider__profile__avatar",
             "court",
         )
-        .prefetch_related("bookings")
+        .prefetch_related(
+            "bookings",
+            "reviews__reviewer__profile__avatar",
+            "reviews__court_center",
+        )
         .get(pk=transaction_id)
     )
 
@@ -145,3 +153,24 @@ class MyTransactionListView(ListAPIView):
         qs = annotate_latest_end_at(qs)
         qs = apply_transaction_search_filters(qs, search_params)
         return qs.order_by(f"-{LATEST_END_AT_ANNOTATION}")
+
+class RequestReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk: int):
+        serializer = RequestReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        transaction = get_object_or_404(
+            Transaction.objects.select_related("court"),
+            pk=pk,
+            customer=request.user,
+        )
+        engine = TransactionEngine(transaction, context={"rating": data["rating"], "comment": data["comment"]})
+        try:
+            transaction = engine.transition(TRANSACTION_TRANSITIONS.REVIEW, actor=TRANSACTION_ACTORS.CUSTOMER)
+        except ActionError as exc:
+            return validation_error_response({"detail": [str(exc)]})
+        except TransitionError as exc:
+            return validation_error_response({"detail": [str(exc)]})
+        return Response(TransactionSerializer(transaction).data, status=status.HTTP_200_OK)

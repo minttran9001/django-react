@@ -9,12 +9,21 @@ import { applyQueryHydrations } from "@/lib/rtk-query/hydration";
 import { makeStore, type AppStore } from "@/lib/store";
 
 import { InitialUserContext } from "./InitialUserContext";
+import type { Sport } from "@/features/court-centers/types";
+import type { CourtCenter } from "@/features/court-centers/types";
+import type { RtkQueryApiId } from "@/lib/rtk-query/registry";
+
+type Entity = 'sports' | 'courtCenters' | 'courtCenter' | 'myCourtCenters' | 'myCourtCenter';
+type Endpoint = 'getSports' | 'getCourtCenters' | 'getCourtCenter' | 'getMyCourtCenters' | 'getMyCourtCenter';
+type Data = Sport[] | CourtCenter[] | CourtCenter | CourtCenter[] | CourtCenter;
 
 export function StoreProvider({
   initialUser,
+  necessaryData,
   children,
 }: {
   initialUser: CurrentUser | null;
+  necessaryData?: { entity: Entity; endpoint: Endpoint; data: Data, apiId: RtkQueryApiId }[] | null;
   children: React.ReactNode;
 }) {
   const storeRef = useRef<AppStore | null>(null);
@@ -29,6 +38,19 @@ export function StoreProvider({
         data: initialUser,
       },
     ]);
+
+    if (necessaryData && necessaryData?.length > 0) {
+      necessaryData.forEach(({ apiId, endpoint, data }) => {
+        applyQueryHydrations(storeRef.current.dispatch, [
+          {
+            apiId,
+            endpointName: endpoint,
+            arg: undefined,
+            data: data,
+          },
+        ]);
+      });
+    }
   }
 
   return (

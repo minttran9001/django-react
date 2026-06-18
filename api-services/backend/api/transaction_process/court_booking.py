@@ -8,7 +8,7 @@ class TRANSACTION_STATES(models.IntegerChoices):
     CONFIRMED = 3, "Confirmed"
     COMPLETED = 4, "Completed"
     CANCELLED = 5, "Cancelled"
-
+    REVIEWED = 6, "Reviewed"
 
 class TRANSACTION_ACTIONS(models.TextChoices):
     RESERVE_BOOKINGS = "reserve_bookings", "Reserve bookings"
@@ -19,6 +19,7 @@ class TRANSACTION_ACTIONS(models.TextChoices):
     CAPTURE_PAYMENT = "capture_payment", "Capture payment"
     REFUND_PAYMENT = "refund_payment", "Refund payment"
     PAYOUT_FUNDS = "payout_funds", "Payout funds"
+    REQUEST_REVIEW = "request_review", "Request review"
 
 
 class TRANSACTION_TRANSITIONS(models.TextChoices):
@@ -28,6 +29,7 @@ class TRANSACTION_TRANSITIONS(models.TextChoices):
     CANCEL = "cancel", "Cancel"
     EXPIRE_PAYMENT = "expire_payment", "Expire payment"
     COMPLETE = "complete", "Complete"
+    REVIEW = "review", "Review"
 
 
 class TRANSACTION_ACTORS(models.TextChoices):
@@ -107,6 +109,14 @@ COURT_BOOKING_PROCESS = {
                 "type": "datetime",
                 "source": "bookings.latest_end_at",
             },
+        },
+
+        # COMPLETED -> REVIEWED
+        TRANSACTION_TRANSITIONS.REVIEW: {
+            "from": TRANSACTION_STATES.COMPLETED,
+            "to": TRANSACTION_STATES.REVIEWED,
+            "actor": TRANSACTION_ACTORS.CUSTOMER,
+            "actions": [TRANSACTION_ACTIONS.REQUEST_REVIEW],
         },
     },
 }

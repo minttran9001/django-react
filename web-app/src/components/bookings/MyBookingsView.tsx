@@ -2,10 +2,10 @@
 
 import { useGetMyTransactionsQuery } from "@/lib/api/transactionApi";
 import VerticalTabNavigation from "../ui/VertialTabNavigation";
-import { CalendarIcon, HistoryIcon } from "lucide-react";
+import { CalendarIcon, CheckCircleIcon, HistoryIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import BookingsList, { BookingCard } from "./BookingsList";
-import { TRANSACTION_STATE } from "@/lib/types/transaction";
+import BookingsList from "./BookingsList";
+import { ETransactionState } from "@/lib/types/transaction";
 
 const LoadingSkeleton = () => {
     const cards = Array.from({ length: 3 }, (_, index) => (
@@ -18,19 +18,26 @@ const LoadingSkeleton = () => {
     return <div className="space-y-4">{cards}</div>
 }
 
+const TAB_MAP_TO_STATES = {
+    upcoming: [ETransactionState.CONFIRMED],
+    completed: [ETransactionState.COMPLETED, ETransactionState.REVIEWED],
+    past: [ETransactionState.CANCELLED, ETransactionState.PAYMENT_EXPIRED],
+}
+
 const MyBookingsView = () => {
     const searchParams = useSearchParams();
     const activeTab = searchParams.get("tab") || "upcoming";
-    const states = activeTab === "upcoming" ? [TRANSACTION_STATE.CONFIRMED] : [TRANSACTION_STATE.COMPLETED, TRANSACTION_STATE.CANCELLED, TRANSACTION_STATE.PAYMENT_EXPIRED];
+    const states = TAB_MAP_TO_STATES[activeTab as keyof typeof TAB_MAP_TO_STATES];
     const { data: transactions = [], isLoading, isFetching } = useGetMyTransactionsQuery({ states });
-    const { data: pendingPaymentsTransactions = [] } = useGetMyTransactionsQuery({ states: [TRANSACTION_STATE.PENDING_PAYMENT] });
+    const { data: pendingPaymentsTransactions = [] } = useGetMyTransactionsQuery({ states: [ETransactionState.PENDING_PAYMENT] });
     const isInitialLoading = isLoading || isFetching;
     return <div className="container mx-auto flex gap-4">
         <VerticalTabNavigation
             className="basis-2/5"
             tabs={[
-                { label: "Upcoming", value: "upcoming", icon: <CalendarIcon size={16} />, href: "/bookings?tab=upcoming" },
-                { label: "Past", value: "past", icon: <HistoryIcon size={16} />, href: "/bookings?tab=past" },
+                { label: "Upcoming", value: "upcoming", icon: <CalendarIcon color="blue" size={16} />, href: "/bookings?tab=upcoming" },
+                { label: "Completed", value: "completed", icon: <CheckCircleIcon color="green" size={16} />, href: "/bookings?tab=completed" },
+                { label: "Past", value: "past", icon: <HistoryIcon color="red" size={16} />, href: "/bookings?tab=past" },
             ]}
             label="Bookings"
             activeTab={activeTab}
@@ -44,8 +51,6 @@ const MyBookingsView = () => {
 
             <div className="bg-white p-4 rounded-lg">
                 <h1 className="text-2xl font-bold mb-4">My Bookings</h1>
-
-
                 {isInitialLoading ? <LoadingSkeleton /> : <BookingsList transactions={transactions ?? []} emptyMessage="No bookings yet." />}
             </div>
             <div>

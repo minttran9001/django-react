@@ -10,6 +10,7 @@ from .booking import Booking, BookingStatus
 from .court_slot import CourtSlot
 from .user_profile import UserProfile
 from .transaction import Transaction
+from .review import Review
 
 __all__ = [
     "Booking",
@@ -25,4 +26,5 @@ __all__ = [
     "Sport",
     "UserProfile",
     "Transaction",
+    "Review",
 ]

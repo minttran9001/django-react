@@ -14,6 +14,11 @@ class Court(models.Model):
     images = GenericRelation(Image, related_query_name="court")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["center_id","sport_id","-created_at"]), #default index for center, sport and created_at
+        ]
     
     def __str__(self):
         return self.title

@@ -104,6 +104,15 @@ class CourtUpdateInputSerializer(CourtCreateInputSerializer):
     id = serializers.IntegerField(required=False)
 
 
+class CourtCenterSummarySerializer(serializers.ModelSerializer):
+    logo = ImageResourceSerializer(read_only=True)
+
+    class Meta:
+        model = CourtCenter
+        fields = ["id", "title", "logo", "address", "review_count", "review_average_rating"]
+        read_only_fields = fields
+
+
 class CourtCenterSerializer(serializers.ModelSerializer):
     owner = serializers.SerializerMethodField()
     logo = ImageResourceSerializer(read_only=True)

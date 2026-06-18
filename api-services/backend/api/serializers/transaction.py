@@ -2,7 +2,10 @@ from rest_framework import serializers
 
 from api.models import Booking, Transaction
 from api.transaction_process.court_booking import TRANSACTION_STATES
-from api.serializers import LineItemSerializer, MoneySerializer, PublicOwnerSerializer, SlotInputSerializer
+from api.serializers.line_items import LineItemSerializer, SlotInputSerializer
+from api.serializers.money import MoneySerializer
+from api.serializers.user import PublicOwnerSerializer
+from api.serializers.review import ReviewSerializer
 
 class InitiateTransactionSerializer(serializers.Serializer):
     court_id = serializers.IntegerField()
@@ -46,6 +49,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     pay_in_total = serializers.SerializerMethodField()
+    review = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
@@ -61,6 +65,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "last_transition_at",
             "last_transition",
             "bookings",
+            "review",
             "created_at",
         ]
         read_only_fields = fields
@@ -72,6 +77,14 @@ class TransactionSerializer(serializers.ModelSerializer):
                 "currency": obj.pay_in_total_currency,
             }
         ).data
+
+    def get_review(self, obj) -> dict | None:
+        # uses the prefetched reviews cache — no extra query
+        reviews = obj.reviews.all()
+        first = reviews[0] if reviews else None
+        if first is None:
+            return None
+        return ReviewSerializer(first).data
 
 class MyTransactionsInputSerializer(serializers.Serializer):
     state = serializers.ChoiceField(choices=TRANSACTION_STATES.choices, required=False)

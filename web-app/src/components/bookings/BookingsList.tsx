@@ -22,7 +22,7 @@ import type {
     Transaction,
     TransactionBooking,
 } from "@/lib/types/transaction";
-import { TRANSACTION_STATE } from "@/lib/types/transaction";
+import { ETransactionState } from "@/lib/types/transaction";
 import { getMediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils";
 
@@ -51,13 +51,13 @@ function formatMoney(amount: number, currency: string): string {
 
 function getStatusTone(state: number): StatusTone {
     switch (state) {
-        case TRANSACTION_STATE.PENDING_PAYMENT:
+        case ETransactionState.PENDING_PAYMENT:
             return "warning";
-        case TRANSACTION_STATE.CONFIRMED:
-        case TRANSACTION_STATE.COMPLETED:
+        case ETransactionState.CONFIRMED:
+        case ETransactionState.COMPLETED:
             return "success";
-        case TRANSACTION_STATE.PAYMENT_EXPIRED:
-        case TRANSACTION_STATE.CANCELLED:
+        case ETransactionState.PAYMENT_EXPIRED:
+        case ETransactionState.CANCELLED:
             return "danger";
         default:
             return "default";
@@ -106,13 +106,12 @@ function getEarliestBooking(
 }
 
 function getTransactionHref(transaction: Transaction): string | null {
-    if (transaction.current_state === TRANSACTION_STATE.PENDING_PAYMENT) {
+    if (transaction.current_state === ETransactionState.PENDING_PAYMENT) {
         return `/checkout/${transaction.id}`;
     }
 
     if (
-        transaction.current_state === TRANSACTION_STATE.CONFIRMED ||
-        transaction.current_state === TRANSACTION_STATE.COMPLETED
+        [ETransactionState.CONFIRMED, ETransactionState.COMPLETED, ETransactionState.REVIEWED].includes(transaction.current_state)
     ) {
         return `/checkout/${transaction.id}`;
     }
@@ -142,8 +141,7 @@ export function BookingCard({ transaction }: { transaction: Transaction }) {
     const href = getTransactionHref(transaction);
     const providerAvatarUrl = getMediaUrl(transaction.provider.avatar?.url);
     const tone = getStatusTone(transaction.current_state);
-    const isPending =
-        transaction.current_state === TRANSACTION_STATE.PENDING_PAYMENT;
+    const isPending = transaction.current_state === ETransactionState.PENDING_PAYMENT;
 
     const card = (
         <Card

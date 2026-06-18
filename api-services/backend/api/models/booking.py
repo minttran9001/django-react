@@ -8,6 +8,7 @@ class BookingStatus(models.IntegerChoices):
     PENDING = 0, "Pending"
     CONFIRMED = 1, "Confirmed"
     CANCELLED = 2, "Cancelled"
+    COMPLETED = 3, "Completed"
 
 
 class Booking(models.Model):

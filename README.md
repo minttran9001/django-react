@@ -40,6 +40,7 @@ django-react/
 - npm
 
 > **pyenv users:** if `python` points to 2.7, install and select a modern Python first:
+>
 > ```bash
 > pyenv install 3.12.8
 > pyenv local 3.12.8   # run inside api-services/backend
@@ -63,6 +64,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # DATABASE_URL=postgresql://...@ep-xxx-pooler.us-east-2.aws.neon.tech/mint-db?sslmode=require
 
+python manage.py makemigrations api
 python manage.py migrate
 python manage.py runserver
 ```
@@ -86,25 +88,25 @@ App runs at [http://localhost:3000](http://localhost:3000).
 
 ## Environment variables
 
-| Variable | Location | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | `api-services/backend/.env` | _(SQLite fallback)_ | Neon PostgreSQL connection string (pooled) |
-| `FRONTEND_URL` | `api-services/backend/.env` | `http://localhost:3000` | Allowed CORS origin |
-| `NEXT_PUBLIC_API_URL` | `web-app/.env.local` | `http://localhost:8000` | Django API base URL |
+| Variable              | Location                    | Default                 | Description                                |
+| --------------------- | --------------------------- | ----------------------- | ------------------------------------------ |
+| `DATABASE_URL`        | `api-services/backend/.env` | _(SQLite fallback)_     | Neon PostgreSQL connection string (pooled) |
+| `FRONTEND_URL`        | `api-services/backend/.env` | `http://localhost:3000` | Allowed CORS origin                        |
+| `NEXT_PUBLIC_API_URL` | `web-app/.env.local`        | `http://localhost:8000` | Django API base URL                        |
 
 ## API endpoints
 
 Base URL: `http://localhost:8000/api`
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/register` | No | Create account, set cookies, return user |
-| `POST` | `/token` | No | Log in with email + password, set cookies |
-| `POST` | `/token/refresh` | No | Refresh access token |
-| `POST` | `/logout` | No | Clear auth cookies |
-| `GET` | `/me` | Yes | Get current user |
-| `GET` | `/notes` | Yes | List user's notes |
-| `POST` | `/notes` | Yes | Create a note |
+| Method | Endpoint         | Auth | Description                               |
+| ------ | ---------------- | ---- | ----------------------------------------- |
+| `POST` | `/register`      | No   | Create account, set cookies, return user  |
+| `POST` | `/token`         | No   | Log in with email + password, set cookies |
+| `POST` | `/token/refresh` | No   | Refresh access token                      |
+| `POST` | `/logout`        | No   | Clear auth cookies                        |
+| `GET`  | `/me`            | Yes  | Get current user                          |
+| `GET`  | `/notes`         | Yes  | List user's notes                         |
+| `POST` | `/notes`         | Yes  | Create a note                             |
 
 > API routes do **not** use trailing slashes (`APPEND_SLASH = False`).
 
@@ -131,11 +133,11 @@ Login uses **email**, not username. On the backend, `username` is set equal to `
 
 ## Frontend pages
 
-| Route | Description |
-|-------|-------------|
-| `/` | Home (shows user when authenticated) |
-| `/login` | Sign in |
-| `/register` | Create account |
+| Route       | Description                          |
+| ----------- | ------------------------------------ |
+| `/`         | Home (shows user when authenticated) |
+| `/login`    | Sign in                              |
+| `/register` | Create account                       |
 
 ## Production notes
 

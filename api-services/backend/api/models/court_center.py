@@ -26,6 +26,15 @@ class CourtCenter(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    review_count = models.PositiveIntegerField(default=0)
+    review_average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status","-created_at"]), # default index for status and created_at
+            models.Index(fields=["status","latitude", "longitude"]), # geo prefilter for status and latitude and longitude
+        ]
+
     def __str__(self):
         return self.title
 

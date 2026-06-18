@@ -7,6 +7,7 @@ import { StoreProvider } from "@/providers/StoreProvider";
 import { cn } from "@/lib/utils";
 
 import "./globals.css";
+import { prefetchNecessaryData } from "@/lib/api/serverComponentApi";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -18,13 +19,14 @@ export const metadata: Metadata = {
   description: "Court booking platform",
 };
 
+
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getCurrentUser();
-
+  const [user, necessaryData] = await Promise.all([getCurrentUser(), prefetchNecessaryData()]);
   return (
     <html lang="en" className="h-full">
       <body
@@ -34,7 +36,7 @@ export default async function RootLayout({
         )}
         suppressHydrationWarning
       >
-        <StoreProvider initialUser={user}>
+        <StoreProvider initialUser={user ?? null} necessaryData={necessaryData ?? []}>
           <RootLayoutShell>{children}</RootLayoutShell>
         </StoreProvider>
       </body>

@@ -1,5 +1,5 @@
 import type { LineItemSlotInput } from "@/lib/api/lineItem";
-import { TRANSACTION_STATE, type Transaction } from "@/lib/types/transaction";
+import { ETransactionState, type Transaction } from "@/lib/types/transaction";
 
 import { baseApi } from "./baseApi";
 import { courtCenterApi } from "./courtCenterApi";
@@ -41,16 +41,55 @@ export const transactionApi = baseApi.injectEndpoints({
       }),
       async onQueryStarted(id, { dispatch, queryFulfilled }) {
         try {
-          await queryFulfilled;
-          dispatch(
-            transactionApi.util.updateQueryData(
-              "getMyTransactions",
-              { states: [TRANSACTION_STATE.PENDING_PAYMENT] },
-              (draft) => draft.filter((transaction) => transaction.id !== id),
-            ),
-          );
+          const { data } = await queryFulfilled;
+          if (data.id && data.current_state === ETransactionState.CONFIRMED) {
+            //add to confirmed transactions
+            dispatch(
+              transactionApi.util.updateQueryData(
+                "getMyTransactions",
+                { states: [ETransactionState.CONFIRMED] },
+                (draft) => [data, ...draft.filter((t) => t.id !== data.id)],
+              ),
+            );
+
+            //remove from pending payment transactions
+            dispatch(
+              transactionApi.util.updateQueryData(
+                "getMyTransactions",
+                { states: [ETransactionState.PENDING_PAYMENT] },
+                (draft) => draft.filter((transaction) => transaction.id !== id),
+              ),
+            );
+          }
         } catch {
           // Leave transaction cache unchanged when confirm payment fails.
+        }
+      },
+    }),
+    requestReview: builder.mutation<
+      Transaction,
+      { transactionId: number; rating: number; comment: string | null }
+    >({
+      query: ({ transactionId, rating, comment }) => ({
+        url: `/transactions/${transactionId}/request-review`,
+        method: "POST",
+        body: { rating, comment },
+      }),
+      invalidatesTags: [{ type: "Transaction", id: "LIST" }],
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data.id && data.current_state === ETransactionState.REVIEWED) {
+            dispatch(
+              transactionApi.util.updateQueryData(
+                "getTransaction",
+                data.id,
+                (draft) => ({ ...draft, review: data.review }),
+              ),
+            );
+          }
+        } catch {
+          // Leave transaction cache unchanged when request review fails.
         }
       },
     }),
@@ -84,4 +123,5 @@ export const {
   useGetTransactionQuery,
   useConfirmPaymentMutation,
   useGetMyTransactionsQuery,
+  useRequestReviewMutation,
 } = transactionApi;

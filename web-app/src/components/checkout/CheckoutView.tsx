@@ -30,6 +30,7 @@ import {
   useConfirmPaymentMutation,
   useGetTransactionQuery,
   useInitiateTransactionMutation,
+  useRequestReviewMutation,
 } from "@/lib/api/transactionApi";
 import {
   buildCheckoutLoginNext,
@@ -42,14 +43,17 @@ import {
 } from "@/lib/checkout/draft";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { getMediaUrl } from "@/lib/media";
-import { TRANSACTION_STATE, toLineItemsResponse } from "@/lib/types/transaction";
+import { ETransactionBookingStatus, ETransactionState, Transaction, toLineItemsResponse } from "@/lib/types/transaction";
 import { cn } from "@/lib/utils";
+import { ReviewForm } from "../form";
+import { RequestReviewFormValues } from "@/features/auth/schemas/reviewSchema";
+import Review from "../ui/Review";
 
 const PAYMENT_WINDOW_MINUTES = 15;
 
 function useIsClient() {
   return useSyncExternalStore(
-    () => () => {},
+    () => () => { },
     () => true,
     () => false,
   );
@@ -74,9 +78,9 @@ function StatusBadge({
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
         tone === "warning" &&
-          "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100",
+        "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100",
         tone === "success" &&
-          "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
+        "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
         tone === "default" && "bg-muted text-muted-foreground",
       )}
     >
@@ -175,6 +179,99 @@ function DraftSlotsPreview({ draft }: { draft: CheckoutDraft }) {
   );
 }
 
+
+const TransactionActions = ({ transaction }: { transaction: Transaction }) => {
+  const [requestReview] =
+    useRequestReviewMutation();
+  const [confirmPayment, { isLoading: isConfirming }] =
+    useConfirmPaymentMutation();
+
+  const nextBookingStartsAt = useMemo(() => {
+    const nextBooking = transaction.bookings.filter(booking => booking.status === ETransactionBookingStatus.CONFIRMED).sort((a, b) => parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime())[0];
+    if (!nextBooking) {
+      return null;
+    }
+    return new Date(nextBooking.date + " " + nextBooking.start_time);
+  }, [transaction.bookings]);
+  const onConfirmPayment = async () => {
+    try {
+      await confirmPayment(transaction.id).unwrap();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+  const onRequestReview = async (values: RequestReviewFormValues) => {
+    try {
+      await requestReview({ transactionId: transaction.id, rating: values.rating, comment: values.comment ?? "" }).unwrap();
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  };
+  if (transaction.current_state === ETransactionState.COMPLETED) {
+    return (
+      <div className="w-full">
+        <ReviewForm onSubmit={onRequestReview} className="mb-2" />
+        <p className="text-center text-xs text-muted-foreground">
+          Your booking is complete. Please leave a review to help other users find this venue.
+        </p>
+      </div>
+    );
+  }
+  else if (transaction.current_state === ETransactionState.PENDING_PAYMENT) {
+    return (
+      <div className="w-full">
+        <Button className="w-full mb-2" onClick={onConfirmPayment} isLoading={isConfirming}>Confirm Payment</Button>
+        <p className="text-center text-xs text-muted-foreground">
+          Payment will be processed securely. Your card is only charged when you confirm below.
+        </p>
+      </div>
+    );
+  }
+  else if (transaction.current_state === ETransactionState.PAYMENT_EXPIRED) {
+    return (
+      <div className="w-full">
+        <p className="text-center text-xs text-muted-foreground">
+          Payment window expired. Please start over.
+        </p>
+      </div>
+    );
+  }
+  else if (transaction.current_state === ETransactionState.REVIEWED) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center">
+        <Review className="mb-2" review={transaction.review} />
+        <p className="text-center text-xs text-muted-foreground">
+          Your booking has been reviewed.
+        </p>
+      </div>
+    );
+  } else if (transaction.current_state === ETransactionState.CANCELLED) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center">
+        <p className="text-center text-xs text-muted-foreground">
+          Your booking has been cancelled.
+        </p>
+      </div>
+    );
+  }
+  else if (transaction.current_state === ETransactionState.CONFIRMED) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center">
+        <p className="text-center text-xs text-muted-foreground">
+          Your booking has been confirmed.
+        </p>
+        {nextBookingStartsAt ? <p className="text-center text-xs text-muted-foreground">
+          Your booking will be started at {format(nextBookingStartsAt, "EEEE, MMM d, yyyy h:mm a")}.
+          You will be notified when your booking is ready to start.
+        </p> : null}
+      </div>
+    );
+  }
+  else {
+    return null;
+  }
+};
+
 export function CheckoutDraftView({ search }: { search: string }) {
   const router = useRouter();
   const isClient = useIsClient();
@@ -209,6 +306,7 @@ export function CheckoutDraftView({ search }: { search: string }) {
     }
 
     if (!isAuthLoading && !isAuthenticated) {
+      console.warn("redirect to login")
       router.replace(
         `/login?next=${encodeURIComponent(buildCheckoutLoginNext())}`,
       );
@@ -311,7 +409,7 @@ export function CheckoutDraftView({ search }: { search: string }) {
           )}
 
           <Card>
-            <CardContent className="space-y-3 pt-6">
+            <CardContent className="space-y-3">
               {initError ? (
                 <p className="text-sm text-destructive">
                   {getApiErrorMessage(initError)}
@@ -350,8 +448,7 @@ export function CheckoutTransactionView({
     isError,
     error,
   } = useGetTransactionQuery(transactionId, { skip: !isAuthenticated });
-  const [confirmPayment, { isLoading: isConfirming }] =
-    useConfirmPaymentMutation();
+
 
   const expiresAt = useMemo(() => {
     if (!transaction?.last_transition_at) {
@@ -370,21 +467,11 @@ export function CheckoutTransactionView({
   }, [isAuthLoading, isAuthenticated, router, transactionId]);
 
   useEffect(() => {
-    if (transaction?.current_state === TRANSACTION_STATE.CONFIRMED) {
+    if (transaction?.current_state === ETransactionState.CONFIRMED) {
       clearCheckoutSession();
     }
   }, [transaction?.current_state]);
 
-  const onConfirmPayment = async () => {
-    try {
-      await confirmPayment(transactionId).unwrap();
-      toast.success("Payment confirmed", {
-        description: "Your court booking is confirmed.",
-      });
-    } catch (confirmError) {
-      toast.error(getApiErrorMessage(confirmError));
-    }
-  };
 
   if (isAuthLoading || isLoading) {
     return (
@@ -419,9 +506,9 @@ export function CheckoutTransactionView({
   }
 
   const isPendingPayment =
-    transaction.current_state === TRANSACTION_STATE.PENDING_PAYMENT;
+    transaction.current_state === ETransactionState.PENDING_PAYMENT;
   const isConfirmed =
-    transaction.current_state === TRANSACTION_STATE.CONFIRMED;
+    transaction.current_state === ETransactionState.CONFIRMED;
   const providerAvatarUrl = getMediaUrl(transaction.provider.avatar?.url);
 
   return (
@@ -517,19 +604,8 @@ export function CheckoutTransactionView({
           />
 
           <Card>
-            <CardContent className="space-y-3 pt-6">
-              <Button
-                className="w-full"
-                size="lg"
-                disabled={!isPendingPayment}
-                isLoading={isConfirming}
-                onClick={onConfirmPayment}
-              >
-                {isConfirmed ? "Payment confirmed" : "Confirm payment"}
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                Simulated payment for development. No card is charged.
-              </p>
+            <CardContent className="space-y-3">
+              <TransactionActions transaction={transaction} />
             </CardContent>
           </Card>
         </div>

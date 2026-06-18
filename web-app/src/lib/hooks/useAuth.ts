@@ -7,7 +7,7 @@ export function useAuth() {
     refetchOnMountOrArgChange: false,
   });
 
-  const user = data?.user ?? initialUser;
+  const user = data ?? initialUser;
 
   return {
     user,

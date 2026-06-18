@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from api.models.booking import Booking, BookingStatus
 from api.models.court import Court
+from api.models.review import Review
 from api.transaction_process.court_booking import TRANSACTION_ACTIONS
 from api.utils.booking_pricing import build_line_items
 from api.utils.booking_slots import validate_slots_are_available_for_court
@@ -121,6 +122,15 @@ def payout_funds(transaction: "Transaction", context: dict) -> None:
     context["payout"] = {"status": "completed"}
 
 
+def request_review(transaction: "Transaction", context: dict) -> None:
+    review = Review(
+        transaction=transaction,
+        reviewer=transaction.customer,
+        rating=context.get("rating"),
+        comment=context.get("comment"),
+    )
+    review.save()
+
 ACTION_HANDLERS = {
     TRANSACTION_ACTIONS.RESERVE_BOOKINGS: reserve_bookings,
     TRANSACTION_ACTIONS.SNAPSHOT_LINE_ITEMS: snapshot_line_items,
@@ -130,6 +140,7 @@ ACTION_HANDLERS = {
     TRANSACTION_ACTIONS.CAPTURE_PAYMENT: capture_payment,
     TRANSACTION_ACTIONS.REFUND_PAYMENT: refund_payment,
     TRANSACTION_ACTIONS.PAYOUT_FUNDS: payout_funds,
+    TRANSACTION_ACTIONS.REQUEST_REVIEW: request_review,
 }
 
 

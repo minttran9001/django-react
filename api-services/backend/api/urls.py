@@ -23,6 +23,7 @@ from .views import (
     TransactionDetailView,
     MyCourtCenterArchiveView,
     MyTransactionListView,
+    RequestReviewView,
 )
 
 urlpatterns = [
@@ -53,6 +54,7 @@ urlpatterns = [
     path('transactions/initiate', InitiateTransactionView.as_view(), name='initiate_transaction'),
     path('transactions/<int:pk>', TransactionDetailView.as_view(), name='transaction_detail'),
     path('transactions/<int:pk>/confirm-payment', ConfirmPaymentView.as_view(), name='confirm_payment'),
-
+    path('transactions/<int:pk>/request-review', RequestReviewView.as_view(), name='request_review'),
+    
     path('transactions/mine', MyTransactionListView.as_view(), name='my_transaction_list'),
 ]

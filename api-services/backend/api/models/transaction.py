@@ -37,6 +37,11 @@ class Transaction(models.Model):
     pay_out_total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     pay_out_total_currency = models.CharField(max_length=3)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["customer_id","provider_id","court_id","-created_at","current_state"]), #default index for customer, provider, court, created_at and current_state
+        ]
+
     @property
     def latest_end_at(self) -> datetime | None:
         latest = None
