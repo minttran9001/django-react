@@ -62,10 +62,6 @@ def reserve_bookings(transaction: "Transaction", context: dict) -> None:
         for slot in slots
     ]
     Booking.objects.bulk_create(bookings)
-    mark_slots_unavailable(
-        court.id,
-        [{"date": slot["date"], "start": slot["start"]} for slot in slots],
-    )
 
 
 def snapshot_line_items(transaction: "Transaction", context: dict) -> None:
@@ -101,6 +97,10 @@ def create_payment(transaction: "Transaction", context: dict) -> None:
 def confirm_bookings(transaction: "Transaction", context: dict) -> None:
     transaction.bookings.filter(status=BookingStatus.PENDING).update(
         status=BookingStatus.CONFIRMED
+    )
+    mark_slots_unavailable(
+        transaction.court_id,
+        [{"date": booking.date, "start": booking.start_time} for booking in transaction.bookings.filter(status=BookingStatus.PENDING)],
     )
 
 

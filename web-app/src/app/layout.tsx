@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 import "./globals.css";
 import { prefetchNecessaryData } from "@/lib/api/serverComponentApi";
+import { UserGeoCoordinatesProvider } from "@/providers/UserGeoCoordinatesContext";
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -37,7 +38,9 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <StoreProvider initialUser={user ?? null} necessaryData={necessaryData ?? []}>
-          <RootLayoutShell>{children}</RootLayoutShell>
+          <UserGeoCoordinatesProvider>
+            <RootLayoutShell>{children}</RootLayoutShell>
+          </UserGeoCoordinatesProvider>
         </StoreProvider>
       </body>
     </html>

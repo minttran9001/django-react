@@ -13,6 +13,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ThreeDotMenu from "../ui/ThreeDotMenu";
 import { useMemo } from "react";
+import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
 type CourtCenterCardProps = {
   center: CourtCenter;
   className?: string;
@@ -55,6 +56,8 @@ export function CourtCenterCard({
     }
     return [];
   }, [variant, center.id]);
+
+  const { distanceString } = useDistanceFromCourtCenter(center);
 
   return (
     <Link prefetch={true} href={href} className="block h-full">
@@ -108,7 +111,13 @@ export function CourtCenterCard({
           <div className="flex min-h-10 items-start gap-2 text-sm text-muted-foreground">
             <MapPin className="mt-0.5 size-4 shrink-0" />
             <span className="line-clamp-2">{center.address || "\u00A0"}</span>
+
           </div>
+          {distanceString ? (
+            <span className="w-fit rounded-full bg-muted-foreground/10 text-green-600 px-2.5 py-1 text-xs font-medium">
+              {distanceString}
+            </span>
+          ) : null}
 
           <div className="mt-auto flex min-h-7 flex-wrap items-center gap-2">
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">

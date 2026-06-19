@@ -28,6 +28,8 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
   }));
 
 
+  const today = new Date();
+
   return (
     <Form
       schema={courtCenterSearchSchema}
@@ -77,6 +79,7 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
               variant="popover"
               placeholder="Any date"
               containerClassName="w-full"
+              disabledDays={{ before: today }}
             />
           </div>
           <div className="flex flex-row gap-2 self-end">

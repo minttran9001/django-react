@@ -1,21 +1,22 @@
 "use client";
 
-import { format, formatDistanceStrict, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   AlertCircleIcon,
   ArrowLeftIcon,
-  CheckCircle2Icon,
-  ClockIcon,
   Loader2Icon,
   ShieldCheckIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
 
 import OrderBreakdownLineItems from "@/components/booking/OrderBreakdownLineItems";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  PAYMENT_WINDOW_MINUTES,
+  formatSlotTime,
+  useIsClient,
+} from "@/components/checkout/helpers";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,144 +25,31 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSpeculatedLineItemsQuery } from "@/lib/api/lineItem";
+import { LineItemSlotInput, useSpeculatedLineItemsQuery } from "@/lib/api/lineItem";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import {
-  useConfirmPaymentMutation,
-  useGetTransactionQuery,
-  useInitiateTransactionMutation,
-  useRequestReviewMutation,
-} from "@/lib/api/transactionApi";
+import { useConfirmPaymentMutation, useInitiateTransactionMutation } from "@/lib/api/transactionApi";
 import {
   buildCheckoutLoginNext,
   clearCheckoutDraft,
-  clearCheckoutSession,
-  loadPendingCheckoutTransactionId,
+  loadPendingCheckoutTransaction,
   resolveCheckoutDraft,
-  savePendingCheckoutTransactionId,
-  type CheckoutDraft,
+  savePendingCheckoutTransaction,
+  clearPendingCheckoutTransaction,
 } from "@/lib/checkout/draft";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { getMediaUrl } from "@/lib/media";
-import { ETransactionBookingStatus, ETransactionState, Transaction, toLineItemsResponse } from "@/lib/types/transaction";
-import { cn } from "@/lib/utils";
-import { ReviewForm } from "../form";
-import { RequestReviewFormValues } from "@/features/auth/schemas/reviewSchema";
-import Review from "../ui/Review";
+import { ETransactionState, Transaction } from "@/lib/types/transaction";
 
-const PAYMENT_WINDOW_MINUTES = 15;
-
-function useIsClient() {
-  return useSyncExternalStore(
-    () => () => { },
-    () => true,
-    () => false,
-  );
-}
-
-function formatSlotTime(time: string): string {
-  const [hours, minutes] = time.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  return format(date, "h:mm a");
-}
-
-function StatusBadge({
-  label,
-  tone = "default",
-}: {
-  label: string;
-  tone?: "default" | "warning" | "success";
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        tone === "warning" &&
-        "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100",
-        tone === "success" &&
-        "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
-        tone === "default" && "bg-muted text-muted-foreground",
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function PaymentCountdown({ expiresAt }: { expiresAt: Date }) {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  const expired = now >= expiresAt;
-  const remaining = expired
-    ? "Payment window expired"
-    : `Complete payment within ${formatDistanceStrict(expiresAt, now)}`;
-
-  return (
-    <div
-      className={cn(
-        "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
-        expired
-          ? "border-destructive/30 bg-destructive/5 text-destructive"
-          : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100",
-      )}
-    >
-      <ClockIcon className="mt-0.5 size-4 shrink-0" />
-      <div>
-        <p className="font-medium">{remaining}</p>
-        <p className="mt-0.5 text-xs opacity-80">
-          Your slot reservation is held until {format(expiresAt, "h:mm a")}.
-          Unpaid bookings are released automatically.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function ProviderCard({
-  name,
-  avatarUrl,
-}: {
-  name: string;
-  avatarUrl: string | null;
-}) {
-  const initials = name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  return (
-    <div className="flex items-center gap-3 rounded-lg border bg-background px-4 py-3">
-      <Avatar size="lg">
-        {avatarUrl ? <AvatarImage src={avatarUrl} alt={name} /> : null}
-        <AvatarFallback>{initials || "VN"}</AvatarFallback>
-      </Avatar>
-      <div>
-        <p className="text-sm text-muted-foreground">Hosted by</p>
-        <p className="font-medium">{name || "Venue host"}</p>
-      </div>
-    </div>
-  );
-}
-
-function DraftSlotsPreview({ draft }: { draft: CheckoutDraft }) {
+function DraftSlotsPreview({ slots }: { slots: LineItemSlotInput[] }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Your selection</CardTitle>
         <CardDescription>
-          {draft.slots.length} {draft.slots.length === 1 ? "slot" : "slots"}
+          {slots.length} {slots.length === 1 ? "slot" : "slots"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {draft.slots.map((slot) => (
+        {slots.map((slot) => (
           <div
             key={`${slot.date}-${slot.start}-${slot.end}`}
             className="rounded-lg border bg-muted/30 px-4 py-3"
@@ -180,125 +68,54 @@ function DraftSlotsPreview({ draft }: { draft: CheckoutDraft }) {
 }
 
 
-const TransactionActions = ({ transaction }: { transaction: Transaction }) => {
-  const [requestReview] =
-    useRequestReviewMutation();
-  const [confirmPayment, { isLoading: isConfirming }] =
-    useConfirmPaymentMutation();
-
-  const nextBookingStartsAt = useMemo(() => {
-    const nextBooking = transaction.bookings.filter(booking => booking.status === ETransactionBookingStatus.CONFIRMED).sort((a, b) => parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime())[0];
-    if (!nextBooking) {
-      return null;
-    }
-    return new Date(nextBooking.date + " " + nextBooking.start_time);
-  }, [transaction.bookings]);
-  const onConfirmPayment = async () => {
-    try {
-      await confirmPayment(transaction.id).unwrap();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-  const onRequestReview = async (values: RequestReviewFormValues) => {
-    try {
-      await requestReview({ transactionId: transaction.id, rating: values.rating, comment: values.comment ?? "" }).unwrap();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
-  if (transaction.current_state === ETransactionState.COMPLETED) {
-    return (
-      <div className="w-full">
-        <ReviewForm onSubmit={onRequestReview} className="mb-2" />
-        <p className="text-center text-xs text-muted-foreground">
-          Your booking is complete. Please leave a review to help other users find this venue.
-        </p>
-      </div>
-    );
-  }
-  else if (transaction.current_state === ETransactionState.PENDING_PAYMENT) {
-    return (
-      <div className="w-full">
-        <Button className="w-full mb-2" onClick={onConfirmPayment} isLoading={isConfirming}>Confirm Payment</Button>
-        <p className="text-center text-xs text-muted-foreground">
-          Payment will be processed securely. Your card is only charged when you confirm below.
-        </p>
-      </div>
-    );
-  }
-  else if (transaction.current_state === ETransactionState.PAYMENT_EXPIRED) {
-    return (
-      <div className="w-full">
-        <p className="text-center text-xs text-muted-foreground">
-          Payment window expired. Please start over.
-        </p>
-      </div>
-    );
-  }
-  else if (transaction.current_state === ETransactionState.REVIEWED) {
-    return (
-      <div className="w-full flex flex-col items-center justify-center">
-        <Review className="mb-2" review={transaction.review} />
-        <p className="text-center text-xs text-muted-foreground">
-          Your booking has been reviewed.
-        </p>
-      </div>
-    );
-  } else if (transaction.current_state === ETransactionState.CANCELLED) {
-    return (
-      <div className="w-full flex flex-col items-center justify-center">
-        <p className="text-center text-xs text-muted-foreground">
-          Your booking has been cancelled.
-        </p>
-      </div>
-    );
-  }
-  else if (transaction.current_state === ETransactionState.CONFIRMED) {
-    return (
-      <div className="w-full flex flex-col items-center justify-center">
-        <p className="text-center text-xs text-muted-foreground">
-          Your booking has been confirmed.
-        </p>
-        {nextBookingStartsAt ? <p className="text-center text-xs text-muted-foreground">
-          Your booking will be started at {format(nextBookingStartsAt, "EEEE, MMM d, yyyy h:mm a")}.
-          You will be notified when your booking is ready to start.
-        </p> : null}
-      </div>
-    );
-  }
-  else {
-    return null;
-  }
-};
-
 export function CheckoutDraftView({ search }: { search: string }) {
   const router = useRouter();
   const isClient = useIsClient();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [initiateTransaction, { isLoading: isInitiating }] =
     useInitiateTransactionMutation();
+
+  const [confirmPayment, { isLoading: isConfirmingPayment }] =
+    useConfirmPaymentMutation();
+
+  const isLoading = isInitiating || isConfirmingPayment;
+
   const [initError, setInitError] = useState<unknown>(null);
 
-  const pendingTransactionId = isClient
-    ? loadPendingCheckoutTransactionId()
+  const pendingTransaction = isClient
+    ? loadPendingCheckoutTransaction()
     : null;
+
   const draft = isClient ? resolveCheckoutDraft(search) : null;
 
-  useEffect(() => {
-    if (pendingTransactionId) {
-      router.replace(`/checkout/${pendingTransactionId}`);
-    }
-  }, [pendingTransactionId, router]);
+  const courtId = draft?.court_id ?? pendingTransaction?.bookings?.[0]?.court;
+
+
+  const pendingSlots = pendingTransaction?.bookings.map((booking) => ({
+    date: booking.date,
+    start: booking.start_time,
+    end: booking.end_time,
+  })) ?? [];
+  const draftSlots = draft?.slots ?? [];
+  const slots = draftSlots.length > 0 ? draftSlots : pendingSlots;
 
   const { data: speculatedLineItems, isLoading: isSpeculateLoading } =
     useSpeculatedLineItemsQuery(
       {
-        courtId: String(draft?.court_id ?? ""),
-        slots: draft?.slots ?? [],
+        courtId: String(courtId),
+        slots,
       },
-      { skip: !draft },
+      { skip: !courtId || slots.length === 0 },
     );
+
+  useEffect(() => {
+    if (!isClient || !pendingTransaction || pendingTransaction.current_state !== ETransactionState.PENDING_PAYMENT) {
+      return;
+    }
+    clearCheckoutDraft();
+    clearPendingCheckoutTransaction();
+    router.push(`/transaction/${pendingTransaction.id}`);
+  }, [pendingTransaction, isClient, router]);
 
   useEffect(() => {
     if (!isClient || !draft) {
@@ -306,7 +123,6 @@ export function CheckoutDraftView({ search }: { search: string }) {
     }
 
     if (!isAuthLoading && !isAuthenticated) {
-      console.warn("redirect to login")
       router.replace(
         `/login?next=${encodeURIComponent(buildCheckoutLoginNext())}`,
       );
@@ -320,30 +136,54 @@ export function CheckoutDraftView({ search }: { search: string }) {
 
     setInitError(null);
 
-    try {
-      const transaction = await initiateTransaction({
+    //step 1: initiate transaction
+    const onInitiateTransaction = async (pendingTransaction: Transaction | null) => {
+      const hasPendingPayment = pendingTransaction?.current_state === ETransactionState.PENDING_PAYMENT;
+      if (hasPendingPayment) {
+        return Promise.resolve(pendingTransaction);
+      }
+
+      const newTransaction = await initiateTransaction({
         court_id: draft.court_id,
         slots: draft.slots,
       }).unwrap();
-
-      savePendingCheckoutTransactionId(transaction.id);
+      savePendingCheckoutTransaction(newTransaction);
       clearCheckoutDraft();
-      router.push(`/checkout/${transaction.id}`);
-    } catch (error) {
-      setInitError(error);
-      toast.error(getApiErrorMessage(error));
-    }
+      return Promise.resolve(newTransaction);
+    };
+    //step 2: auto confirm payment
+    const onAutoConfirmPayment = async (transaction: Transaction | null) => {
+      if (!transaction) {
+        return Promise.resolve(null);
+      }
+      const alreadyConfirmed = transaction.current_state === ETransactionState.CONFIRMED;
+      if (alreadyConfirmed) {
+        return Promise.resolve(transaction);
+      }
+      const confirmedTransaction = await confirmPayment(transaction.id).unwrap();
+      savePendingCheckoutTransaction(confirmedTransaction);
+      return Promise.resolve(confirmedTransaction);
+    };
+    //step 3: navigate to transaction details
+    const onNavigateToTransactionDetails = async (transaction: Transaction | null) => {
+      if (!transaction) {
+        return Promise.resolve(null);
+      }
+      clearPendingCheckoutTransaction();
+      router.push(`/transaction/${transaction.id}`);
+      return Promise.resolve(transaction);
+    };
+
+    const applyAsync = (acc: Promise<Transaction | null>, val: (x: Transaction | null) => Promise<Transaction | null>) => acc.then(val);
+    const composeAsync = (...funcs: ((x: Transaction | null) => Promise<Transaction | null>)[]) => (x: Transaction | null) => funcs.reduce(applyAsync, Promise.resolve(x));
+    const handler = composeAsync(onInitiateTransaction, onAutoConfirmPayment, onNavigateToTransactionDetails);
+    const transaction = await handler(pendingTransaction);
+    return transaction;
   };
 
-  if (!isClient || pendingTransactionId) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2Icon className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  console.log({ courtId, slots })
 
-  if (!draft) {
+  if (!courtId || slots.length === 0) {
     return (
       <Card className="mx-auto max-w-lg">
         <CardHeader>
@@ -367,6 +207,7 @@ export function CheckoutDraftView({ search }: { search: string }) {
     );
   }
 
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="space-y-1">
@@ -386,7 +227,7 @@ export function CheckoutDraftView({ search }: { search: string }) {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="space-y-6">
-          <DraftSlotsPreview draft={draft} />
+          <DraftSlotsPreview slots={slots} />
           <div className="flex items-start gap-3 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
             <ShieldCheckIcon className="mt-0.5 size-4 shrink-0" />
             <p>
@@ -418,194 +259,17 @@ export function CheckoutDraftView({ search }: { search: string }) {
               <Button
                 className="w-full"
                 size="lg"
-                isLoading={isInitiating}
+                isLoading={isLoading}
                 disabled={isSpeculateLoading || !speculatedLineItems}
                 onClick={onCreateBooking}
               >
-                Create booking
+                {pendingTransaction && pendingTransaction.current_state === ETransactionState.PENDING_PAYMENT ? "Confirm payment" : "Create booking"}
               </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                You will be able to confirm payment on the next step.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function CheckoutTransactionView({
-  transactionId,
-}: {
-  transactionId: number;
-}) {
-  const router = useRouter();
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const {
-    data: transaction,
-    isLoading,
-    isError,
-    error,
-  } = useGetTransactionQuery(transactionId, { skip: !isAuthenticated });
-
-
-  const expiresAt = useMemo(() => {
-    if (!transaction?.last_transition_at) {
-      return null;
-    }
-    const startedAt = parseISO(transaction.last_transition_at);
-    return new Date(startedAt.getTime() + PAYMENT_WINDOW_MINUTES * 60 * 1000);
-  }, [transaction]);
-
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.replace(
-        `/login?next=${encodeURIComponent(`/checkout/${transactionId}`)}`,
-      );
-    }
-  }, [isAuthLoading, isAuthenticated, router, transactionId]);
-
-  useEffect(() => {
-    if (transaction?.current_state === ETransactionState.CONFIRMED) {
-      clearCheckoutSession();
-    }
-  }, [transaction?.current_state]);
-
-
-  if (isAuthLoading || isLoading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2Icon className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (isError || !transaction) {
-    return (
-      <Card className="mx-auto max-w-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircleIcon className="size-5 text-destructive" />
-            Checkout unavailable
-          </CardTitle>
-          <CardDescription>
-            {getApiErrorMessage(error) || "This transaction could not be loaded."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="outline" asChild>
-            <Link href="/listings">
-              <ArrowLeftIcon />
-              Back to listings
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const isPendingPayment =
-    transaction.current_state === ETransactionState.PENDING_PAYMENT;
-  const isConfirmed =
-    transaction.current_state === ETransactionState.CONFIRMED;
-  const providerAvatarUrl = getMediaUrl(transaction.provider.avatar?.url);
-
-  return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <Button variant="ghost" size="sm" className="-ml-2" asChild>
-            <Link href="/listings">
-              <ArrowLeftIcon />
-              Back to listings
-            </Link>
-          </Button>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Checkout
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Booking #{transaction.id} · {transaction.process_name}
-          </p>
-        </div>
-        <StatusBadge
-          label={transaction.current_state_display}
-          tone={
-            isConfirmed ? "success" : isPendingPayment ? "warning" : "default"
-          }
-        />
-      </div>
-
-      {isConfirmed ? (
-        <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100">
-          <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-medium">Booking confirmed</p>
-            <p className="mt-0.5 text-xs opacity-80">
-              Payment received. See you on the court!
-            </p>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-        <div className="space-y-6">
-          {isPendingPayment && expiresAt ? (
-            <PaymentCountdown expiresAt={expiresAt} />
-          ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Your booking</CardTitle>
-              <CardDescription>
-                {transaction.bookings.length}{" "}
-                {transaction.bookings.length === 1 ? "slot" : "slots"} reserved
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {transaction.bookings.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="flex items-start justify-between gap-4 rounded-lg border bg-muted/30 px-4 py-3"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {format(parseISO(booking.date), "EEEE, MMM d, yyyy")}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatSlotTime(booking.start_time)} –{" "}
-                      {formatSlotTime(booking.end_time)}
-                    </p>
-                  </div>
-                  <StatusBadge label={booking.status_display} />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <ProviderCard
-            name={transaction.provider.name}
-            avatarUrl={providerAvatarUrl}
-          />
-
-          <div className="flex items-start gap-3 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-            <ShieldCheckIcon className="mt-0.5 size-4 shrink-0" />
-            <p>
-              Payment is processed securely. Your card is only charged when you
-              confirm below.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4 lg:sticky lg:top-24">
-          <OrderBreakdownLineItems
-            speculatedLineItemsData={toLineItemsResponse(transaction)}
-            includeFor={["customer"]}
-          />
-
-          <Card>
-            <CardContent className="space-y-3">
-              <TransactionActions transaction={transaction} />
+              {pendingTransaction && pendingTransaction.current_state !== ETransactionState.PENDING_PAYMENT ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  You will be able to confirm payment in {PAYMENT_WINDOW_MINUTES} minutes.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </div>

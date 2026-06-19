@@ -6,7 +6,7 @@ from rest_framework import serializers
 from api.models import Booking, BookingStatus, Court
 from api.serializers.line_items import SlotInputSerializer
 
-ACTIVE_BOOKING_STATUSES = [BookingStatus.PENDING, BookingStatus.CONFIRMED]
+ACTIVE_BOOKING_STATUSES = [BookingStatus.PENDING]
 ALLOWED_SLOT_DURATION_MINUTES = 60
 
 def slot_duration_minutes(start, end) -> int:

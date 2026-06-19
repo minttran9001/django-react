@@ -12,6 +12,7 @@ export const bookingSchema = z.object({
   court_id: z.string().min(1, "Select a court"),
   slots: z.array(timeSlotSchema).min(1, "Select at least one time slot"),
   selected_date: z.date({ error: "Select a date" }),
+  selected_sport_id: z.string().min(1, "Select a sport"),
 });
 
 export type BookingFormValues = z.infer<typeof bookingSchema>;

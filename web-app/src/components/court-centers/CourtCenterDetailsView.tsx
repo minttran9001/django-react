@@ -32,6 +32,7 @@ import { formatApiDate } from "@/lib/dates";
 import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
 import BookingPanel from "../booking/BookingPanel";
+import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
 
 type CourtCenterDetailsViewProps = {
   id: string;
@@ -125,8 +126,8 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
     id,
     date: formatApiDate(new Date()),
   });
-
   const { data: user } = useGetMeQuery();
+  const { distanceString } = useDistanceFromCourtCenter(courtCenter);
   const isOwnListing = user?.id === courtCenter?.owner.id;
   const galleryImages = useMemo(
     () => (courtCenter ? getGalleryImages(courtCenter) : []),
@@ -280,6 +281,11 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
                     Open in Google Maps
                     <ExternalLink className="size-3.5" />
                   </a>
+                ) : null}
+                {distanceString ? (
+                  <p className="w-fit rounded-full bg-muted text-green-600 px-2.5 py-1 text-sm font-medium">
+                    {distanceString} from you
+                  </p>
                 ) : null}
               </CardContent>
             </Card>

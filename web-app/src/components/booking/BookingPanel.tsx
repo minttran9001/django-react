@@ -75,6 +75,7 @@ const BookingPanel = ({ courtCenterId, courts, className, courtCenterStatus, isO
 
     const onSubmit = (data: BookingFormValues) => {
         saveCheckoutDraft({
+            court_center_id: courtCenterId,
             court_id: Number(data.court_id),
             slots: serializeLineItemSlots(data.slots),
         });
