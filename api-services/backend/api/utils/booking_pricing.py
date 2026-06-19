@@ -4,40 +4,12 @@ from typing import Optional
 from api.models import Court
 from api.serializers.line_items import SlotInputSerializer
 from api.serializers.money import MoneySerializer
+from api.utils.booking_slots import merge_adjacent_slots
 
 SLOT_DURATION_MINUTES = 60
 VAT_RATE = Decimal("0.1")
 CUSTOMER_PLATFORM_FEE_RATE = Decimal("0.05")
 PROVIDER_PLATFORM_FEE_RATE = Decimal("0.05")
-
-
-def slots_are_adjacent(end_a, start_b, tolerance_minutes: int = 0) -> bool:
-    gap = (
-        datetime.combine(date.min, start_b) - datetime.combine(date.min, end_a)
-    ).total_seconds() / 60
-    return 0 <= gap <= tolerance_minutes
-
-def merge_adjacent_slots(
-    slots: list[SlotInputSerializer],
-    tolerance_minutes: int = 0,
-) -> list[SlotInputSerializer]:
-    if not slots:
-        return []
-    merged: list[SlotInputSerializer] = []
-    for slot_date in sorted({s["date"] for s in slots}):
-        day_slots = sorted(
-            (s for s in slots if s["date"] == slot_date),
-            key=lambda s: s["start"],
-        )
-        current = dict(day_slots[0])
-        for next_slot in day_slots[1:]:
-            if slots_are_adjacent(current["end"], next_slot["start"], tolerance_minutes):
-                current["end"] = max(current["end"], next_slot["end"])
-            else:
-                merged.append(current)
-                current = dict(next_slot)
-        merged.append(current)
-    return merged
 
 
 def slot_duration_hours(start: datetime.time, end: datetime.time) -> Decimal:

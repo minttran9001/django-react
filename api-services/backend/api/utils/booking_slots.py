@@ -28,6 +28,61 @@ def times_overlap(start_a, end_a, start_b, end_b) -> bool:
     return start_a < end_b and start_b < end_a
 
 
+def slots_are_adjacent(end_a, start_b, tolerance_minutes: int = 0) -> bool:
+    gap = (
+        datetime.combine(date.min, start_b) - datetime.combine(date.min, end_a)
+    ).total_seconds() / 60
+    return 0 <= gap <= tolerance_minutes
+
+
+def merge_adjacent_slots(
+    slots: list[SlotInputSerializer],
+    tolerance_minutes: int = 0,
+) -> list[SlotInputSerializer]:
+    if not slots:
+        return []
+    merged: list[SlotInputSerializer] = []
+    for slot_date in sorted({s["date"] for s in slots}):
+        day_slots = sorted(
+            (s for s in slots if s["date"] == slot_date),
+            key=lambda s: s["start"],
+        )
+        current = dict(day_slots[0])
+        for next_slot in day_slots[1:]:
+            if slots_are_adjacent(current["end"], next_slot["start"], tolerance_minutes):
+                current["end"] = max(current["end"], next_slot["end"])
+            else:
+                merged.append(current)
+                current = dict(next_slot)
+        merged.append(current)
+    return merged
+
+
+def expand_slot_to_hourly_specs(slot: SlotInputSerializer) -> list[dict]:
+    """Expand a slot (possibly multi-hour) into 60-minute specs for the slot index."""
+    specs: list[dict] = []
+    cursor = _time_to_minutes(slot["start"])
+    end_min = _time_to_minutes(slot["end"])
+    while cursor + ALLOWED_SLOT_DURATION_MINUTES <= end_min:
+        specs.append({
+            "date": slot["date"],
+            "start": _minutes_to_time(cursor),
+        })
+        cursor += ALLOWED_SLOT_DURATION_MINUTES
+    return specs
+
+
+def bookings_to_slot_specs(bookings) -> list[dict]:
+    specs: list[dict] = []
+    for booking in bookings:
+        specs.extend(expand_slot_to_hourly_specs({
+            "date": booking.date,
+            "start": booking.start_time,
+            "end": booking.end_time,
+        }))
+    return specs
+
+
 def _time_to_minutes(value: time) -> int:
     return value.hour * 60 + value.minute
 
@@ -153,10 +208,6 @@ def validate_slots_are_available_for_court(slots: list[SlotInputSerializer], cou
         if slot_date < today or (slot_date == today and start <= now_time):
             raise serializers.ValidationError({
                 "slots": f"Slot {slot_date} {start}-{end} is in the past."
-            })
-        if slot_duration_minutes(start, end) != 60:
-            raise serializers.ValidationError({
-                "slots": f"Slot {slot_date} {start}-{end} must be 60 minutes."
             })
         if not slot_fits_weekly_schedule(court, slot_date, start, end):
             raise serializers.ValidationError({

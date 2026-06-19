@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import OrderBreakdownLineItems from "@/components/booking/OrderBreakdownLineItems";
 import {
   PAYMENT_WINDOW_MINUTES,
+  combineAdjacentSlots,
   formatSlotTime,
   useIsClient,
 } from "@/components/checkout/helpers";
@@ -97,7 +98,8 @@ export function CheckoutDraftView({ search }: { search: string }) {
     end: booking.end_time,
   })) ?? [];
   const draftSlots = draft?.slots ?? [];
-  const slots = draftSlots.length > 0 ? draftSlots : pendingSlots;
+  const combinedDraftSlots = combineAdjacentSlots(draftSlots);
+  const slots = combinedDraftSlots.length > 0 ? combinedDraftSlots : pendingSlots;
 
   const { data: speculatedLineItems, isLoading: isSpeculateLoading } =
     useSpeculatedLineItemsQuery(
@@ -105,7 +107,7 @@ export function CheckoutDraftView({ search }: { search: string }) {
         courtId: String(courtId),
         slots,
       },
-      { skip: !courtId || slots.length === 0 },
+      { skip: !courtId || slots.length === 0 || (pendingTransaction?.line_items?.length ?? 0) > 0 },
     );
 
   useEffect(() => {
@@ -181,7 +183,6 @@ export function CheckoutDraftView({ search }: { search: string }) {
     return transaction;
   };
 
-  console.log({ courtId, slots })
 
   if (!courtId || slots.length === 0) {
     return (

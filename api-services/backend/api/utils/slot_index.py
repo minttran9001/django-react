@@ -133,12 +133,14 @@ def mark_slots_available_from_bookings(court_id: int, booking_queryset) -> None:
     booking_queryset should be filtered to only the bookings being released
     BEFORE their status is updated.
     """
-    specs = list(booking_queryset.values_list("date", "start_time"))
+    from api.utils.booking_slots import bookings_to_slot_specs
+
+    specs = bookings_to_slot_specs(booking_queryset)
     if not specs:
         return
     q = Q()
-    for booking_date, start_t in specs:
-        q |= Q(date=booking_date, start_time=start_t)
+    for spec in specs:
+        q |= Q(date=spec["date"], start_time=spec["start"])
     CourtSlot.objects.filter(court_id=court_id).filter(q).update(is_available=True)
 
 

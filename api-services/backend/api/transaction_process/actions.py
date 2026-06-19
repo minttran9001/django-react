@@ -6,7 +6,11 @@ from api.models.court import Court
 from api.models.review import Review
 from api.transaction_process.court_booking import TRANSACTION_ACTIONS
 from api.utils.booking_pricing import build_line_items
-from api.utils.booking_slots import validate_slots_are_available_for_court
+from api.utils.booking_slots import (
+    bookings_to_slot_specs,
+    merge_adjacent_slots,
+    validate_slots_are_available_for_court,
+)
 from api.utils.slot_index import mark_slots_available_from_bookings, mark_slots_unavailable
 
 if TYPE_CHECKING:
@@ -48,6 +52,7 @@ def reserve_bookings(transaction: "Transaction", context: dict) -> None:
     slots = _require_slots(transaction, context)
     court = _load_court(transaction)
     validate_slots_are_available_for_court(slots, court)
+    merged_slots = merge_adjacent_slots(slots)
 
     bookings = [
         Booking(
@@ -59,7 +64,7 @@ def reserve_bookings(transaction: "Transaction", context: dict) -> None:
             start_time=slot["start"],
             end_time=slot["end"],
         )
-        for slot in slots
+        for slot in merged_slots
     ]
     Booking.objects.bulk_create(bookings)
 
@@ -95,13 +100,11 @@ def create_payment(transaction: "Transaction", context: dict) -> None:
 
 
 def confirm_bookings(transaction: "Transaction", context: dict) -> None:
+    pending = list(transaction.bookings.filter(status=BookingStatus.PENDING))
     transaction.bookings.filter(status=BookingStatus.PENDING).update(
         status=BookingStatus.CONFIRMED
     )
-    mark_slots_unavailable(
-        transaction.court_id,
-        [{"date": booking.date, "start": booking.start_time} for booking in transaction.bookings.filter(status=BookingStatus.PENDING)],
-    )
+    mark_slots_unavailable(transaction.court_id, bookings_to_slot_specs(pending))
 
 
 def cancel_bookings(transaction: "Transaction", context: dict) -> None:

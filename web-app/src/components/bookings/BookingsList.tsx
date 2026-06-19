@@ -106,14 +106,10 @@ function getEarliestBooking(
 }
 
 function getTransactionHref(transaction: Transaction): string | null {
-    if (transaction.current_state === ETransactionState.PENDING_PAYMENT) {
-        return `/checkout/${transaction.id}`;
-    }
-
     if (
-        [ETransactionState.CONFIRMED, ETransactionState.COMPLETED, ETransactionState.REVIEWED].includes(transaction.current_state)
+        [ETransactionState.PENDING_PAYMENT, ETransactionState.CONFIRMED, ETransactionState.COMPLETED, ETransactionState.REVIEWED].includes(transaction.current_state)
     ) {
-        return `/checkout/${transaction.id}`;
+        return `/transaction/${transaction.id}`;
     }
 
     return null;
