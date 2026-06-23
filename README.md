@@ -113,9 +113,6 @@ Base URL: `http://localhost:8000/api`
 | `POST` | `/token`         | No   | Log in with email + password, set cookies |
 | `POST` | `/token/refresh` | No   | Refresh access token                      |
 | `POST` | `/logout`        | No   | Clear auth cookies                        |
-| `GET`  | `/me`            | Yes  | Get current user                          |
-| `GET`  | `/notes`         | Yes  | List user's notes                         |
-| `POST` | `/notes`         | Yes  | Create a note                             |
 
 > API routes do **not** use trailing slashes (`APPEND_SLASH = False`).
 
