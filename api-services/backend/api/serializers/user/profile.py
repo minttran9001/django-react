@@ -6,46 +6,9 @@ from api.models import UserProfile
 from api.utils.attach_images import resolve_owner_image
 from api.utils.user_account import change_user_email, user_email_taken
 
-from api.serializers.fields import ApiDateField
+from ..fields import ApiDateField
 
-from .image import ImageResourceSerializer
-
-
-class UserProfileReadSerializer(serializers.ModelSerializer):
-    avatar = ImageResourceSerializer(read_only=True)
-
-    class Meta:
-        model = UserProfile
-        fields = ["name", "phone_number", "address", "date_of_birth", "avatar"]
-
-
-class UserIdSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ["id"]
-
-
-class PublicOwnerSerializer(serializers.ModelSerializer):
-    """Safe owner fields for public listing search and browse."""
-
-    class Meta:
-        model = User
-        fields = ["id"]
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        try:
-            profile = instance.profile
-        except UserProfile.DoesNotExist:
-            profile = None
-
-        representation["name"] = profile.name if profile else ""
-        representation["avatar"] = (
-            ImageResourceSerializer(profile.avatar).data
-            if profile and profile.avatar
-            else None
-        )
-        return representation
+from .base import UserProfileReadSerializer
 
 
 class UserReadSerializer(serializers.ModelSerializer):
