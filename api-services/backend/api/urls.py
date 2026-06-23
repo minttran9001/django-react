@@ -24,6 +24,7 @@ from .views import (
     MyCourtCenterArchiveView,
     MyTransactionListView,
     RequestReviewView,
+    MyTransactionCountsView,
 )
 
 urlpatterns = [
@@ -49,12 +50,13 @@ urlpatterns = [
     #profile
     path('profile', ProfileView.as_view(), name='profile'),
 
-    #booking
+    #transaction for customer
     path('line-items/customer', SpeculateLineItemListViewForCustomer.as_view(), name='speculate_line_item_list_for_customer'),
     path('transactions/initiate', InitiateTransactionView.as_view(), name='initiate_transaction'),
     path('transactions/<int:pk>', TransactionDetailView.as_view(), name='transaction_detail'),
     path('transactions/<int:pk>/confirm-payment', ConfirmPaymentView.as_view(), name='confirm_payment'),
     path('transactions/<int:pk>/request-review', RequestReviewView.as_view(), name='request_review'),
-    
+
     path('transactions/mine', MyTransactionListView.as_view(), name='my_transaction_list'),
+    path("transactions/mine/counts", MyTransactionCountsView.as_view(), name='my_transaction_overview'),
 ]

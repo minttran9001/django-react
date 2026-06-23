@@ -56,8 +56,8 @@ cd api-services/backend
 
 # Create and activate a virtual environment (requires Python 3.11+)
 python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-
+source venv/bin/activate
+ # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Copy env and add your Neon connection string (same format as court-booking)
@@ -67,6 +67,11 @@ cp .env.example .env
 python manage.py makemigrations api
 python manage.py migrate
 python manage.py runserver
+```
+
+```
+#RUN TRANSACTION TRANSITION SCHEDULER
+python3 manage.py process_transaction_transitions
 ```
 
 API runs at [http://localhost:8000](http://localhost:8000).

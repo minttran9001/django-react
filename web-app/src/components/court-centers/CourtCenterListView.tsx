@@ -19,14 +19,18 @@ export function CourtCenterListView() {
   const date = searchParams.get("date")
     ? formatApiDate(new Date(searchParams.get("date") ?? ""))
     : undefined;
+  const radius_km = searchParams.get("radius_km")
+    ? Number(searchParams.get("radius_km"))
+    : undefined;
 
   const filters = useMemo(() => {
     return {
       ...(lat && lng && { lat, lng }),
       ...(sport_ids && { sport_ids }),
       ...(date && { date }),
+      ...(radius_km && { radius_km }),
     };
-  }, [date, lat, lng, sport_ids]);
+  }, [date, lat, lng, sport_ids, radius_km]);
 
   const { data: courtCenters = [], isLoading, isError, isFetching } =
     useGetCourtCentersQuery(filters);

@@ -6,6 +6,7 @@ from api.models.court import Court
 from api.models.review import Review
 from api.transaction_process.court_booking import TRANSACTION_ACTIONS
 from api.utils.booking_pricing import build_line_items
+from api.utils.app_timezone import DEFAULT_TIMEZONE
 from api.utils.booking_slots import (
     bookings_to_slot_specs,
     merge_adjacent_slots,
@@ -51,7 +52,8 @@ def _compute_pay_out(line_items: list[dict], currency: str) -> dict:
 def reserve_bookings(transaction: "Transaction", context: dict) -> None:
     slots = _require_slots(transaction, context)
     court = _load_court(transaction)
-    validate_slots_are_available_for_court(slots, court)
+    tz = context.get("timezone") or DEFAULT_TIMEZONE
+    validate_slots_are_available_for_court(slots, court, tz)
     merged_slots = merge_adjacent_slots(slots)
 
     bookings = [

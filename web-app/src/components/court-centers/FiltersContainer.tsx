@@ -27,19 +27,25 @@ const FiltersContainer = () => {
                 address: searchParams.get("address") ?? "",
             },
             sport_ids: searchParams.get("sport_ids") ? searchParams.get("sport_ids")?.split(",") : undefined,
+            radius_km: searchParams.get("radius_km") ? Number(searchParams.get("radius_km")) : undefined,
         }
     }, [searchParams]);
     const onSubmit = (data: CourtCenterSearchFormValues) => {
-        const { address, sport_ids, date } = data;
-        const searchQuery = normalizeSearchQuery({
-            address: address.address,
-            sport_ids: sport_ids?.join(",") ?? undefined,
-            lat: address.lat,
-            lng: address.lng,
-            date: date ? formatApiDate(date) : undefined,
-        });
+        try {
+            const { address, sport_ids, date, radius_km } = data;
+            const searchQuery = normalizeSearchQuery({
+                address: address.address,
+                sport_ids: sport_ids?.join(",") ?? undefined,
+                lat: address.lat,
+                lng: address.lng,
+                date: date ? formatApiDate(date) : undefined,
+                radius_km,
+            });
 
-        router.push(`/listings?${searchQuery}`);
+            router.push(`/listings?${searchQuery}`);
+        } catch (error) {
+            console.error(error);
+        }
     }
 
     return (

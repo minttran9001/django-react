@@ -1,11 +1,12 @@
 "use client"
 
-import { useGetMyTransactionsQuery } from "@/lib/api/transactionApi";
+import { useGetMyTransactionCountsQuery, useGetMyTransactionsQuery } from "@/lib/api/transactionApi";
 import VerticalTabNavigation from "../ui/VertialTabNavigation";
 import { CalendarIcon, CheckCircleIcon, HistoryIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import BookingsList from "./BookingsList";
-import { ETransactionState } from "@/lib/types/transaction";
+import { ETransactionState, MyTransactionCountsResponse } from "@/lib/types/transaction";
+import isEmpty from "lodash/isEmpty";
 
 const LoadingSkeleton = () => {
     const cards = Array.from({ length: 3 }, (_, index) => (
@@ -24,20 +25,30 @@ const TAB_MAP_TO_STATES = {
     past: [ETransactionState.CANCELLED, ETransactionState.PAYMENT_EXPIRED],
 }
 
+const getCount = (states: ETransactionState[], counts?: MyTransactionCountsResponse["states"]) => {
+    if (isEmpty(counts)) return 0;
+    return states.map(state => counts[state] ?? 0).reduce((a, b) => a + b, 0);
+}
+
 const MyBookingsView = () => {
     const searchParams = useSearchParams();
     const activeTab = searchParams.get("tab") || "upcoming";
     const states = TAB_MAP_TO_STATES[activeTab as keyof typeof TAB_MAP_TO_STATES];
     const { data: transactions = [], isLoading, isFetching } = useGetMyTransactionsQuery({ states });
     const { data: pendingPaymentsTransactions = [] } = useGetMyTransactionsQuery({ states: [ETransactionState.PENDING_PAYMENT] });
+    const { data: transactionCounts } = useGetMyTransactionCountsQuery({ states: Object.values(TAB_MAP_TO_STATES).flat() });
+    const counts = transactionCounts?.states
     const isInitialLoading = isLoading || isFetching;
+    const upcomingCount = getCount(TAB_MAP_TO_STATES.upcoming, counts);
+    const completedCount = getCount(TAB_MAP_TO_STATES.completed, counts);
+    const pastCount = getCount(TAB_MAP_TO_STATES.past, counts);
     return <div className="container mx-auto flex gap-4">
         <VerticalTabNavigation
             className="basis-2/5"
             tabs={[
-                { label: "Upcoming", value: "upcoming", icon: <CalendarIcon color="blue" size={16} />, href: "/bookings?tab=upcoming" },
-                { label: "Completed", value: "completed", icon: <CheckCircleIcon color="green" size={16} />, href: "/bookings?tab=completed" },
-                { label: "Past", value: "past", icon: <HistoryIcon color="red" size={16} />, href: "/bookings?tab=past" },
+                { label: `Upcoming (${upcomingCount})`, value: "upcoming", icon: <CalendarIcon color="blue" size={16} />, href: "/bookings?tab=upcoming" },
+                { label: `Completed (${completedCount})`, value: "completed", icon: <CheckCircleIcon color="green" size={16} />, href: "/bookings?tab=completed" },
+                { label: `Past (${pastCount})`, value: "past", icon: <HistoryIcon color="red" size={16} />, href: "/bookings?tab=past" },
             ]}
             label="Bookings"
             activeTab={activeTab}

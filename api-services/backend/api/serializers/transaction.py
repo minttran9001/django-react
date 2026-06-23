@@ -107,3 +107,6 @@ class MyTransactionListSerializer(serializers.Serializer):
             *TransactionSerializer.Meta.fields,
         ]
         read_only_fields = fields
+
+class MyTransactionCountsResponseSerializer(serializers.Serializer):
+    states = serializers.DictField(child=serializers.IntegerField())

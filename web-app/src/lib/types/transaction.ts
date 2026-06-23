@@ -56,3 +56,7 @@ export function toLineItemsResponse(
     pay_in_total: transaction.pay_in_total,
   };
 }
+
+export type MyTransactionCountsResponse = {
+  states: Record<ETransactionState, number>;
+};

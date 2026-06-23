@@ -50,8 +50,8 @@ export function CourtCenterCard({
   const items = useMemo(() => {
     if (variant === "owner") {
       return [
-        { id: "edit", label: <Link href={`/listings/${center.id}/edit?step=1`}>Edit</Link> },
-        { id: "delete", label: <Link href={`/listings/${center.id}/delete`}>Delete</Link> },
+        { id: "edit", label: <Link className="w-full" href={`/listings/${center.id}/edit?step=1`}>Edit</Link> },
+        { id: "delete", label: <Link className="w-full" href={`/listings/${center.id}/delete`}>Delete</Link> },
       ];
     }
     return [];

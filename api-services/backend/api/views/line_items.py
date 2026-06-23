@@ -6,6 +6,7 @@ from rest_framework import status
 from api.serializers.line_items import LineItemQuoteRequestSerializer, LineItemSerializer
 from api.utils.booking_pricing import build_line_items
 from api.models import Court, CourtCenter
+from api.utils.app_timezone import timezone_from_query_params
 from api.utils.booking_slots import validate_slots_are_available_for_court
 from api.serializers.money import MoneySerializer
 
@@ -26,7 +27,11 @@ class SpeculateLineItemListViewForCustomer(APIView):
             center__status=CourtCenter.Status.PUBLISHED,
         )
 
-        validate_slots_are_available_for_court(slots, court)
+        validate_slots_are_available_for_court(
+            slots,
+            court,
+            timezone_from_query_params(request.query_params),
+        )
 
         line_items_data = build_line_items(court, slots, include_for=["customer"])
         line_items = line_items_data["line_items"]

@@ -1,4 +1,4 @@
-import { formatApiDate, normalizeToDay } from "@/lib/dates";
+import { formatApiDate, getUserTimezone, normalizeToDay } from "@/lib/dates";
 
 import { baseApi } from "./baseApi";
 import type { SpeculatedLineItemsResponse } from "../types/lineItem";
@@ -12,6 +12,7 @@ export type LineItemSlotInput = {
 export type SpeculatedLineItemsArgs = {
   courtId: string;
   slots: LineItemSlotInput[];
+  timezone?: string;
 };
 
 export function serializeLineItemSlots(
@@ -27,8 +28,10 @@ export function serializeLineItemSlots(
 function serializeSpeculatedLineItemsArgs({
   courtId,
   slots,
+  timezone,
 }: SpeculatedLineItemsArgs) {
-  return `${courtId}|${slots.map((slot) => `${slot.date}-${slot.start}-${slot.end}`).join(",")}`;
+  const tz = timezone ?? getUserTimezone();
+  return `${courtId}|${tz}|${slots.map((slot) => `${slot.date}-${slot.start}-${slot.end}`).join(",")}`;
 }
 
 export const lineItemApi = baseApi.injectEndpoints({
@@ -37,9 +40,10 @@ export const lineItemApi = baseApi.injectEndpoints({
       SpeculatedLineItemsResponse,
       SpeculatedLineItemsArgs
     >({
-      query: ({ courtId, slots }) => ({
+      query: ({ courtId, slots, timezone }) => ({
         url: `/line-items/customer`,
         method: "POST",
+        params: { timezone: timezone ?? getUserTimezone() },
         body: {
           court_id: courtId,
           slots,

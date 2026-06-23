@@ -20,6 +20,7 @@ from .transaction import (
     TransactionDetailView,
     MyTransactionListView,
     RequestReviewView,
+    MyTransactionCountsView,
 )
 
 __all__ = [
@@ -47,4 +48,5 @@ __all__ = [
     "TransactionDetailView",
     "MyTransactionListView",
     "RequestReviewView",
+    "MyTransactionCountsView",
 ]

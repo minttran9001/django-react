@@ -9,6 +9,7 @@ import {
   FieldAddressInput,
   FieldDateInput,
   FieldMultiSelect,
+  FieldTextInput,
   Form,
 } from "@/components/form";
 import { useGetSportsQuery } from "@/lib/api/courtCenterApi";
@@ -55,6 +56,7 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
             },
             sport_ids: [],
             date: undefined,
+            radius_km: undefined,
           };
           reset(resetValues);
           onSubmit(resetValues);

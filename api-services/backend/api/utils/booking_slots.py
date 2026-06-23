@@ -1,10 +1,16 @@
 from datetime import date, datetime, time
+from zoneinfo import ZoneInfo
 
-from django.utils import timezone
 from rest_framework import serializers
 
 from api.models import Booking, BookingStatus, Court
 from api.serializers.line_items import SlotInputSerializer
+from api.utils.app_timezone import (
+    DEFAULT_TIMEZONE,
+    is_slot_start_in_past,
+    now_time_in_tz,
+    today_in_tz,
+)
 
 ACTIVE_BOOKING_STATUSES = [BookingStatus.PENDING]
 ALLOWED_SLOT_DURATION_MINUTES = 60
@@ -120,12 +126,10 @@ def generate_schedule_slots_for_date(
 def get_available_slots_for_court(
     court: Court,
     slot_date: date,
+    tz: ZoneInfo = DEFAULT_TIMEZONE,
     booked_ranges: list[tuple[time, time]] | None = None,
 ) -> list[dict]:
     candidates = generate_schedule_slots_for_date(court, slot_date)
-    now = timezone.localtime()
-    today = now.date()
-    now_time = now.time()
 
     if booked_ranges is None:
         booked_ranges = list(
@@ -138,7 +142,7 @@ def get_available_slots_for_court(
 
     available: list[dict] = []
     for start, end in candidates:
-        if slot_date < today or (slot_date == today and start <= now_time):
+        if is_slot_start_in_past(slot_date, start, tz):
             continue
         if any(
             times_overlap(start, end, booked_start, booked_end)
@@ -153,6 +157,7 @@ def get_available_slots_for_court(
 def build_available_slots_by_court(
     courts: list[Court],
     slot_date: date,
+    tz: ZoneInfo = DEFAULT_TIMEZONE,
 ) -> dict[int, list[dict]]:
     """Read available slots from the precomputed CourtSlot index. O(1) queries."""
     if not courts:
@@ -167,11 +172,19 @@ def build_available_slots_by_court(
         is_available=True,
     ).values("court_id", "date", "start_time", "end_time").order_by("start_time")
 
+    today = today_in_tz(tz)
+
     result: dict[int, list[dict]] = {court.id: [] for court in courts}
+    if slot_date < today:
+        return result
+
     for row in rows:
+        start = row["start_time"]
+        if is_slot_start_in_past(slot_date, start, tz):
+            continue
         result[row["court_id"]].append({
             "date": row["date"],
-            "start": row["start_time"],
+            "start": start,
             "end": row["end_time"],
         })
     return result
@@ -180,32 +193,40 @@ def build_available_slots_by_court(
 def get_court_ids_with_available_slots(
     slot_date: date,
     court_queryset=None,
+    tz: ZoneInfo = DEFAULT_TIMEZONE,
 ) -> set[int]:
     """Single indexed query against CourtSlot. No Python slot math."""
     from api.models.court_slot import CourtSlot  # avoid circular at module level
 
+    today = today_in_tz(tz)
+    if slot_date < today:
+        return set()
+
     qs = court_queryset if court_queryset is not None else Court.objects.all()
-    return set(
-        CourtSlot.objects.filter(
-            court__in=qs,
-            date=slot_date,
-            is_available=True,
-        ).values_list("court_id", flat=True).distinct()
+    slot_qs = CourtSlot.objects.filter(
+        court__in=qs,
+        date=slot_date,
+        is_available=True,
     )
+    if slot_date == today:
+        slot_qs = slot_qs.filter(start_time__gt=now_time_in_tz(tz))
+
+    return set(slot_qs.values_list("court_id", flat=True).distinct())
 
 
-def validate_slots_are_available_for_court(slots: list[SlotInputSerializer], court: Court) -> None:
+def validate_slots_are_available_for_court(
+    slots: list[SlotInputSerializer],
+    court: Court,
+    tz: ZoneInfo = DEFAULT_TIMEZONE,
+) -> None:
     if not slots:
         raise serializers.ValidationError({"slots": "At least one slot is required."})
-    now = timezone.localtime()
-    today = now.date()
-    now_time = now.time()
     # 1. Past + duration + schedule
     for slot in slots:
         slot_date = slot["date"]
         start = slot["start"]
         end = slot["end"]
-        if slot_date < today or (slot_date == today and start <= now_time):
+        if is_slot_start_in_past(slot_date, start, tz):
             raise serializers.ValidationError({
                 "slots": f"Slot {slot_date} {start}-{end} is in the past."
             })

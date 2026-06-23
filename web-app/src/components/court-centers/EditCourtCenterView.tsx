@@ -5,26 +5,24 @@ import { ArrowLeft } from "lucide-react";
 
 import { ListingWizard } from "@/components/court-centers/wizard/ListingWizard";
 import { Button } from "@/components/ui/button";
-import type { CourtCenter } from "@/features/court-centers/types";
 import { useGetMyCourtCenterQuery } from "@/lib/api/courtCenterApi";
 
 type EditCourtCenterViewProps = {
   id: string;
-  initialCenter: CourtCenter;
 };
 
-export function EditCourtCenterView({ id, initialCenter }: EditCourtCenterViewProps) {
+export function EditCourtCenterView({ id }: EditCourtCenterViewProps) {
   const { data: courtCenter, isLoading, isError } = useGetMyCourtCenterQuery(id, {
     refetchOnMountOrArgChange: false,
   });
-  const center = courtCenter ?? initialCenter;
-  const isPublished = center.status === "published";
+  const center = courtCenter ?? null;
+  const isPublished = center?.status === "published";
 
-  if (isLoading && !courtCenter && !initialCenter) {
+  if (isLoading && !courtCenter) {
     return <p className="text-muted-foreground">Loading listing...</p>;
   }
 
-  if (isError || !center) {
+  if (isError || !courtCenter) {
     return (
       <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-8 text-center">
         <p className="text-lg font-medium text-destructive">
@@ -63,7 +61,7 @@ export function EditCourtCenterView({ id, initialCenter }: EditCourtCenterViewPr
         </p>
       </div>
 
-      <ListingWizard mode="edit" listingId={id} initialCenter={center} />
+      <ListingWizard mode="edit" listingId={id} initialCenter={courtCenter} />
     </div>
   );
 }

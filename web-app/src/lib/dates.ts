@@ -12,6 +12,14 @@ export function formatApiDate(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+/** IANA timezone from the user's browser (e.g. Asia/Ho_Chi_Minh). */
+export function getUserTimezone(): string {
+  if (typeof Intl === "undefined") {
+    return "UTC";
+  }
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 /**
  * Parse common date inputs without shifting the calendar day.
  * Supports Date, timestamp, YYYY-MM-DD, and ISO datetime strings.

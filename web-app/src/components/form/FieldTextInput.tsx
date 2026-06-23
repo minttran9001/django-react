@@ -64,19 +64,19 @@ export const FieldTextInputComponent = React.forwardRef<
 
 type FieldTextInputProps<TFieldValues extends FieldValues> =
   BaseFieldProps<TFieldValues> &
-    Omit<
-      FieldTextInputComponentProps,
-      | "value"
-      | "onChange"
-      | "onBlur"
-      | "error"
-      | "invalid"
-      | "label"
-      | "description"
-      | "containerClassName"
-    > & {
-      onValueChange?: (value: string) => void;
-    };
+  Omit<
+    FieldTextInputComponentProps,
+    | "value"
+    | "onChange"
+    | "onBlur"
+    | "error"
+    | "invalid"
+    | "label"
+    | "description"
+    | "containerClassName"
+  > & {
+    onValueChange?: (value: string) => void;
+  };
 
 export function FieldTextInput<TFieldValues extends FieldValues>({
   name,
@@ -85,6 +85,7 @@ export function FieldTextInput<TFieldValues extends FieldValues>({
   containerClassName,
   disabled,
   onValueChange,
+  type,
   ...props
 }: FieldTextInputProps<TFieldValues>) {
   const { field, errorMessage, invalid, id } = useFormField<
@@ -98,12 +99,24 @@ export function FieldTextInput<TFieldValues extends FieldValues>({
       name={field.name}
       label={label}
       description={description}
+      type={type}
       value={field.value ?? ""}
       onChange={(event) => {
-        field.onChange(event);
-        onValueChange?.(event.target.value);
+        field.onChange({
+          target: {
+            value: type === "number" ? Number(event.target.value) : event.target.value,
+          },
+        });
+        onValueChange?.(type === "number" ? Number(event.target.value) : event.target.value);
       }}
-      onBlur={field.onBlur}
+      onBlur={() => {
+        field.onBlur({
+          target: {
+            value: type === "number" ? Number(field.value) : field.value,
+          },
+        });
+        onValueChange?.(type === "number" ? Number(field.value) : field.value);
+      }}
       ref={field.ref}
       error={errorMessage}
       invalid={invalid}

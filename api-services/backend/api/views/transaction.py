@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -11,6 +12,7 @@ from rest_framework.views import APIView
 from api.models import Court, CourtCenter, Transaction
 from api.serializers import (
     InitiateTransactionSerializer,
+    MyTransactionCountsResponseSerializer,
     TransactionSerializer,
     RequestReviewSerializer,
 )
@@ -21,6 +23,7 @@ from api.transaction_process.court_booking import (
     TRANSACTION_STATES,
     TRANSACTION_TRANSITIONS,
 )
+from api.utils.app_timezone import timezone_from_query_params
 from api.utils.exceptions import validation_error_response
 from api.utils import (
     annotate_latest_end_at,
@@ -76,7 +79,13 @@ class InitiateTransactionView(APIView):
             pay_out_total_currency=court.price_currency,
         )
 
-        engine = TransactionEngine(transaction, context={"slots": data["slots"]})
+        engine = TransactionEngine(
+            transaction,
+            context={
+                "slots": data["slots"],
+                "timezone": timezone_from_query_params(request.query_params),
+            },
+        )
 
         try:
             transaction = engine.transition(
@@ -174,3 +183,27 @@ class RequestReviewView(APIView):
         except TransitionError as exc:
             return validation_error_response({"detail": [str(exc)]})
         return Response(TransactionSerializer(transaction).data, status=status.HTTP_200_OK)
+
+
+class MyTransactionCountsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        search_params = parse_transaction_search_params(request.query_params)
+        qs = Transaction.objects.filter(customer=request.user)
+        qs = annotate_latest_end_at(qs)
+        qs = apply_transaction_search_filters(qs, search_params)
+
+        counts = {
+            row["current_state"]: row["count"]
+            for row in qs.values("current_state").annotate(count=Count("id"))
+        }
+
+        requested_states = search_params.get("states")
+        if requested_states is not None:
+            for state in requested_states:
+                counts.setdefault(state, 0)
+
+        return Response(
+            MyTransactionCountsResponseSerializer({"states": counts}).data
+        )

@@ -11,14 +11,20 @@ import type {
   UploadImagesResponse,
 } from "@/features/court-centers/types";
 import { env } from "@/lib/env";
+import { getUserTimezone } from "@/lib/dates";
 
 export type CourtCenterQueryArgs = {
   id: string;
   date?: string;
+  timezone?: string;
 };
 
-function serializeCourtCenterArgs({ id, date }: CourtCenterQueryArgs) {
-  return `${id}|${date ?? ""}`;
+function withTimezone(timezone?: string) {
+  return timezone ?? getUserTimezone();
+}
+
+function serializeCourtCenterArgs({ id, date, timezone }: CourtCenterQueryArgs) {
+  return `${id}|${date ?? ""}|${withTimezone(timezone)}`;
 }
 
 export const courtCenterApi = createApi({
@@ -38,6 +44,7 @@ export const courtCenterApi = createApi({
         q?: string;
         sport_ids?: string[];
         date?: string;
+        timezone?: string;
       }
     >({
       query: (params) =>
@@ -48,6 +55,7 @@ export const courtCenterApi = createApi({
           ...(params.q && { q: params.q }),
           ...(params.sport_ids && { sport_ids: params.sport_ids.join(",") }),
           ...(params.date && { date: params.date }),
+          timezone: withTimezone(params.timezone),
         }).toString()}`,
       providesTags: (result) =>
         result
@@ -61,9 +69,12 @@ export const courtCenterApi = createApi({
           : [{ type: "CourtCenters", id: "LIST" }],
     }),
     getCourtCenter: builder.query<CourtCenter, CourtCenterQueryArgs>({
-      query: ({ id, date }) => ({
+      query: ({ id, date, timezone }) => ({
         url: `/court-centers/${id}`,
-        params: date ? { date } : undefined,
+        params: {
+          ...(date ? { date } : {}),
+          timezone: withTimezone(timezone),
+        },
       }),
       serializeQueryArgs: ({ queryArgs }) =>
         serializeCourtCenterArgs(queryArgs),

@@ -137,13 +137,9 @@ export function ListingWizard(props: ListingWizardProps) {
       }
 
       setCurrentStep(step);
-      window.history.replaceState(
-        window.history.state,
-        "",
-        `/listings/${id}/edit?step=${step}`,
-      );
+      router.replace(`/listings/${id}/edit?step=${step}`);
     },
-    [listingId],
+    [listingId, router],
   );
 
   const handleBasicSubmit = async (values: BasicStepValues) => {
@@ -216,9 +212,9 @@ export function ListingWizard(props: ListingWizardProps) {
             price_per_hour:
               String(court.price_per_hour.amount).trim() !== ""
                 ? {
-                    amount: Number(court.price_per_hour.amount),
-                    currency: court.price_per_hour.currency || "VND",
-                  }
+                  amount: Number(court.price_per_hour.amount),
+                  currency: court.price_per_hour.currency || "VND",
+                }
                 : undefined,
           })),
         },

@@ -1,12 +1,14 @@
 import math
 from datetime import date
 
+from zoneinfo import ZoneInfo
+
 from django.db.models import ExpressionWrapper, F, FloatField, Q, QuerySet
 from django.db.models.functions import ACos, Cos, Radians, Sin
 from rest_framework.exceptions import ValidationError
 
 from api.models import CourtCenter
-from api.models.court_slot import CourtSlot
+from api.utils.app_timezone import DEFAULT_TIMEZONE, now_time_in_tz, today_in_tz
 
 
 def apply_location_filter(
@@ -85,14 +87,26 @@ def apply_keyword_filter(qs: QuerySet[CourtCenter], q: str) -> QuerySet[CourtCen
         Q(courts__title__icontains=q)
     ).distinct()
 
-def apply_date_filter(qs: QuerySet[CourtCenter], search_date: date) -> QuerySet[CourtCenter]:
+def apply_date_filter(
+    qs: QuerySet[CourtCenter],
+    search_date: date,
+    tz: ZoneInfo = DEFAULT_TIMEZONE,
+) -> QuerySet[CourtCenter]:
     """Single indexed JOIN — no Python slot math, no booking scan."""
-    return qs.filter(
-        courts__slots__date=search_date,
-        courts__slots__is_available=True,
-    ).distinct()
+    today = today_in_tz(tz)
+    if search_date < today:
+        return qs.none()
 
-def apply_search_filters(qs, search_params: dict):
+    filters = {
+        "courts__slots__date": search_date,
+        "courts__slots__is_available": True,
+    }
+    if search_date == today:
+        filters["courts__slots__start_time__gt"] = now_time_in_tz(tz)
+
+    return qs.filter(**filters).distinct()
+
+def apply_search_filters(qs, search_params: dict, tz: ZoneInfo = DEFAULT_TIMEZONE):
     if "lat" in search_params:
         qs = apply_location_filter(
             qs,
@@ -105,5 +119,5 @@ def apply_search_filters(qs, search_params: dict):
     if q := search_params.get("q"):
         qs = apply_keyword_filter(qs, q)
     if search_date := search_params.get("date"):
-        qs = apply_date_filter(qs, search_date)
+        qs = apply_date_filter(qs, search_date, tz)
     return qs

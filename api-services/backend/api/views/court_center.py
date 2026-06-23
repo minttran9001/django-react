@@ -2,7 +2,6 @@ from datetime import date
 
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models import Court, CourtCenter, Sport
+from api.utils.app_timezone import today_in_tz, timezone_from_query_params
 from api.utils.booking_slots import build_available_slots_by_court
 
 from ..serializers import (
@@ -29,23 +29,24 @@ from ..utils.exceptions import validation_error_response
 
 
 
-def resolve_slot_date(query_params) -> date:
+def resolve_slot_date(query_params, tz) -> date:
     date_str = query_params.get("date")
     if date_str:
         try:
             return date.fromisoformat(date_str)
         except ValueError as exc:
             raise ValidationError({"date": "Use YYYY-MM-DD format."}) from exc
-    return timezone.localdate()
+    return today_in_tz(tz)
 
 
 def build_public_serializer_context(request, center: CourtCenter) -> dict:
-    slot_date = resolve_slot_date(request.query_params)
+    tz = timezone_from_query_params(request.query_params)
+    slot_date = resolve_slot_date(request.query_params, tz)
     courts = list(center.courts.all())
     return {
         "owner_visibility": "public",
         "slot_date": slot_date,
-        "available_slots_by_court": build_available_slots_by_court(courts, slot_date),
+        "available_slots_by_court": build_available_slots_by_court(courts, slot_date, tz),
     }
 
 
@@ -90,7 +91,7 @@ class CourtCenterCustomerListView(generics.ListAPIView):
             status=CourtCenter.Status.PUBLISHED
         )
         search_params = parse_search_params(self.request.query_params)
-        qs = apply_search_filters(qs, search_params)
+        qs = apply_search_filters(qs, search_params, timezone_from_query_params(self.request.query_params))
         if "lat" not in search_params:
             qs = qs.order_by("-created_at")
         return qs
@@ -114,7 +115,8 @@ class CourtCenterCustomerListView(generics.ListAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        slot_date = resolve_slot_date(self.request.query_params)
+        tz = timezone_from_query_params(self.request.query_params)
+        slot_date = resolve_slot_date(self.request.query_params, tz)
         courts = getattr(self, "_courts_for_context", None)
         if courts is None:
             # Fallback (e.g. schema generation): build from queryset
@@ -128,6 +130,7 @@ class CourtCenterCustomerListView(generics.ListAPIView):
         context["available_slots_by_court"] = build_available_slots_by_court(
             courts,
             slot_date,
+            tz,
         )
         return context
 

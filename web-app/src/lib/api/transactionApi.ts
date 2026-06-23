@@ -1,8 +1,13 @@
 import type { LineItemSlotInput } from "@/lib/api/lineItem";
-import { ETransactionState, type Transaction } from "@/lib/types/transaction";
+import {
+  ETransactionState,
+  MyTransactionCountsResponse,
+  type Transaction,
+} from "@/lib/types/transaction";
 
 import { baseApi } from "./baseApi";
 import { courtCenterApi } from "./courtCenterApi";
+import { getUserTimezone } from "@/lib/dates";
 import { isEmpty } from "lodash";
 
 interface InitiateTransactionBody {
@@ -11,12 +16,14 @@ interface InitiateTransactionBody {
 }
 
 export const transactionApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     initiateTransaction: builder.mutation<Transaction, InitiateTransactionBody>(
       {
         query: (body) => ({
           url: "/transactions/initiate",
           method: "POST",
+          params: { timezone: getUserTimezone() },
           body,
         }),
         async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
@@ -60,6 +67,14 @@ export const transactionApi = baseApi.injectEndpoints({
                 (draft) => draft.filter((transaction) => transaction.id !== id),
               ),
             );
+
+            dispatch(
+              transactionApi.util.updateQueryData(
+                "getTransaction",
+                data.id,
+                () => data,
+              ),
+            );
           }
         } catch {
           // Leave transaction cache unchanged when confirm payment fails.
@@ -75,7 +90,7 @@ export const transactionApi = baseApi.injectEndpoints({
         method: "POST",
         body: { rating, comment },
       }),
-      invalidatesTags: [{ type: "Transaction", id: "LIST" }],
+      invalidatesTags: () => [{ type: "Transaction", id: "LIST" }],
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
@@ -84,11 +99,12 @@ export const transactionApi = baseApi.injectEndpoints({
               transactionApi.util.updateQueryData(
                 "getTransaction",
                 data.id,
-                (draft) => ({ ...draft, review: data.review }),
+                () => data,
               ),
             );
           }
-        } catch {
+        } catch (error) {
+          console.error("request review failed", error);
           // Leave transaction cache unchanged when request review fails.
         }
       },
@@ -115,6 +131,22 @@ export const transactionApi = baseApi.injectEndpoints({
         }`,
       providesTags: [{ type: "Transaction", id: "LIST" }],
     }),
+    getMyTransactionCounts: builder.query<
+      MyTransactionCountsResponse,
+      { states?: number[] }
+    >({
+      query: (queryParams) =>
+        `/transactions/mine/counts${
+          !isEmpty(queryParams)
+            ? `?${new URLSearchParams({
+                ...(queryParams.states && {
+                  states: queryParams.states.join(","),
+                }),
+              }).toString()}`
+            : ""
+        }`,
+      providesTags: () => [{ type: "Transaction", id: "COUNTS" }],
+    }),
   }),
 });
 
@@ -124,4 +156,5 @@ export const {
   useConfirmPaymentMutation,
   useGetMyTransactionsQuery,
   useRequestReviewMutation,
+  useGetMyTransactionCountsQuery,
 } = transactionApi;
