@@ -1,7 +1,7 @@
 "use client";
 
 
-import { FieldTextInput, FieldTextarea, Form } from "@/components/form";
+import { FieldPendingImageInput, FieldTextInput, FieldTextarea, Form } from "@/components/form";
 import {
   Card,
   CardContent,
@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PendingImageInput } from "@/components/ui/PendingImageInput";
 import {
   basicStepSchema,
   type BasicStepValues,
@@ -20,10 +19,6 @@ import { cn } from "@/lib/utils";
 
 type BasicStepProps = {
   defaultValues: BasicStepValues;
-  logoImage: ImageResource[];
-  centerImages: ImageResource[];
-  onLogoChange: (images: ImageResource[]) => void;
-  onCenterImagesChange: (images: ImageResource[]) => void;
   onUpload: (files: File[]) => Promise<ImageResource[]>;
   isUploading: boolean;
   disabled?: boolean;
@@ -33,10 +28,6 @@ type BasicStepProps = {
 
 export function BasicStep({
   defaultValues,
-  logoImage,
-  centerImages,
-  onLogoChange,
-  onCenterImagesChange,
   onUpload,
   isUploading,
   disabled,
@@ -69,22 +60,20 @@ export function BasicStep({
             disabled={disabled}
           />
 
-          <PendingImageInput
+          <FieldPendingImageInput
+            name="logoImage"
             label="Logo"
             description="One main photo for your court center."
-            value={logoImage}
-            onChange={onLogoChange}
             onUpload={onUpload}
             disabled={disabled}
             isUploading={isUploading}
           />
 
-          <PendingImageInput
+          <FieldPendingImageInput
+            name="centerImages"
             label="Listing images"
             description="Additional photos of the venue."
             multiple
-            value={centerImages}
-            onChange={onCenterImagesChange}
             onUpload={onUpload}
             disabled={disabled}
             isUploading={isUploading}

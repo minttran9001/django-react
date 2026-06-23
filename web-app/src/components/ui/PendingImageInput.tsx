@@ -92,7 +92,10 @@ export function PendingImageInput({
               variant="secondary"
               size="icon-xs"
               className="absolute top-1 right-1"
-              onClick={() => removeImage(image.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                removeImage(image.id);
+              }}
               disabled={disabled || isUploading}
               aria-label={`Remove ${label}`}
             >

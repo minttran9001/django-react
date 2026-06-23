@@ -2,7 +2,10 @@ import type { BasicStepValues } from "@/features/court-centers/schemas/basicStep
 import type { CourtsStepValues } from "@/features/court-centers/schemas/courtsStepSchema";
 import type { LocationStepValues } from "@/features/court-centers/schemas/locationStepSchema";
 import type { SchedulesStepValues } from "@/features/court-centers/schemas/schedulesStepSchema";
-import type { CourtCenter, ImageResource } from "@/features/court-centers/types";
+import type {
+  CourtCenter,
+  ImageResource,
+} from "@/features/court-centers/types";
 
 export const WIZARD_STEPS = [
   { id: 1, label: "Basic" },
@@ -30,10 +33,19 @@ export function centerToBasicValues(center: CourtCenter): BasicStepValues {
   return {
     title: center.title,
     description: center.description ?? "",
+    logoImage: center.logo
+      ? { id: center.logo.id, url: center.logo.url }
+      : { id: 0, url: "" },
+    centerImages: center.images.map((image) => ({
+      id: image.id,
+      url: image.url,
+    })),
   };
 }
 
-export function centerToLocationValues(center: CourtCenter): LocationStepValues {
+export function centerToLocationValues(
+  center: CourtCenter,
+): LocationStepValues {
   return {
     latitude: center.latitude ?? "",
     longitude: center.longitude ?? "",
@@ -50,16 +62,19 @@ export function centerToCourtsValues(center: CourtCenter): CourtsStepValues {
         title: court.title,
         description: court.description ?? "",
         price_per_hour: {
-          amount: court.price_per_hour?.amount != null
-            ? String(court.price_per_hour.amount)
-            : "",
+          amount:
+            court.price_per_hour?.amount != null
+              ? String(court.price_per_hour.amount)
+              : "",
           currency: court.price_per_hour?.currency ?? "VND",
         },
       })) ?? [],
   };
 }
 
-export function centerToSchedulesValues(center: CourtCenter): SchedulesStepValues {
+export function centerToSchedulesValues(
+  center: CourtCenter,
+): SchedulesStepValues {
   return {
     courts:
       center.courts?.map((court) => ({

@@ -1,6 +1,6 @@
 "use client";
 
-import type { FieldPath, FieldValues } from "react-hook-form";
+import type { FieldValues } from "react-hook-form";
 
 import { PendingImageInput } from "@/components/ui/PendingImageInput";
 import type { ImageResource } from "@/features/court-centers/types";
@@ -47,19 +47,19 @@ export function FieldPendingImageInputComponent({
 
 type FieldPendingImageInputProps<TFieldValues extends FieldValues> =
   BaseFieldProps<TFieldValues> &
-    Omit<
-      FieldPendingImageInputComponentProps,
-      | "value"
-      | "onChange"
-      | "error"
-      | "invalid"
-      | "containerClassName"
-    > & {
-      multiple?: boolean;
-      onValueChange?: (
-        value: ImageResource | ImageResource[] | undefined,
-      ) => void;
-    };
+  Omit<
+    FieldPendingImageInputComponentProps,
+    | "value"
+    | "onChange"
+    | "error"
+    | "invalid"
+    | "containerClassName"
+  > & {
+    multiple?: boolean;
+    onValueChange?: (
+      value: ImageResource | ImageResource[] | undefined,
+    ) => void;
+  };
 
 export function FieldPendingImageInput<TFieldValues extends FieldValues>({
   name,
@@ -91,11 +91,9 @@ export function FieldPendingImageInput<TFieldValues extends FieldValues>({
       description={description}
       value={images}
       onChange={(nextImages) => {
-        const nextValue = multiple
-          ? nextImages
-          : nextImages[0];
+        const nextValue = multiple ? nextImages : nextImages[0] ?? null;
         field.onChange(nextValue);
-        onValueChange?.(multiple ? nextImages : nextImages[0]);
+        onValueChange?.(nextValue);
       }}
       onUpload={onUpload}
       multiple={multiple}

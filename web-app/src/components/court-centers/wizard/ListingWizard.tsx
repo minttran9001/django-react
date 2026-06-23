@@ -97,12 +97,6 @@ export function ListingWizard(props: ListingWizardProps) {
     [center],
   );
 
-  const [logoImage, setLogoImage] = useState<ImageResource[]>(
-    initialImages?.logoImage ?? [],
-  );
-  const [centerImages, setCenterImages] = useState<ImageResource[]>(
-    initialImages?.centerImages ?? [],
-  );
   const [courtImages, setCourtImages] = useState<Record<number, ImageResource[]>>(
     initialImages?.courtImages ?? {},
   );
@@ -144,10 +138,11 @@ export function ListingWizard(props: ListingWizardProps) {
 
   const handleBasicSubmit = async (values: BasicStepValues) => {
     setSubmitError(null);
+    const { logoImage, centerImages } = values;
     const payload = {
       title: values.title,
       description: values.description,
-      logo_id: logoImage[0]?.id,
+      logo_id: logoImage.id,
       image_ids: centerImages.map((image) => image.id),
     };
 
@@ -327,12 +322,8 @@ export function ListingWizard(props: ListingWizardProps) {
         <BasicStep
           formId={FORM_ID}
           defaultValues={
-            center ? centerToBasicValues(center) : { title: "", description: "" }
+            center ? centerToBasicValues(center) : { title: "", description: "", logoImage: { id: 0, url: "" }, centerImages: [] }
           }
-          logoImage={logoImage}
-          centerImages={centerImages}
-          onLogoChange={setLogoImage}
-          onCenterImagesChange={setCenterImages}
           onUpload={uploadFiles}
           isUploading={isUploadingImages}
           disabled={isSaving}
