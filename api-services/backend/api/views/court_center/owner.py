@@ -9,7 +9,7 @@ from api.models import CourtCenter
 from api.utils.court_center_sync import validate_publish
 from api.utils.exceptions import validation_error_response
 
-from ..serializers import (
+from ...serializers import (
     CourtCenterArchiveSerializer,
     CourtCenterCourtsSerializer,
     CourtCenterDetailSerializer,

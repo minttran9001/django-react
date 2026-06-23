@@ -9,7 +9,7 @@ from api.utils.app_timezone import timezone_from_query_params
 from api.utils.booking_slots import build_available_slots_by_court
 from api.utils.court_center_search import apply_search_filters, parse_search_params
 
-from ..serializers import CourtCenterPublicDetailSerializer, SportSerializer
+from ...serializers import CourtCenterPublicDetailSerializer, SportSerializer
 
 from ._base import build_slot_context, get_court_center_queryset, resolve_slot_date
 

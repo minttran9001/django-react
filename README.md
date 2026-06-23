@@ -72,6 +72,10 @@ python manage.py runserver
 ```
 #RUN TRANSACTION TRANSITION SCHEDULER
 python3 manage.py process_transaction_transitions
+
+#Run generate court slots
+python3 manage.py generate_court_slots
+
 ```
 
 API runs at [http://localhost:8000](http://localhost:8000).
