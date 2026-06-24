@@ -138,7 +138,6 @@ export function BookingCard({ transaction }: { transaction: Transaction }) {
     const providerAvatarUrl = getMediaUrl(transaction.provider.avatar?.url);
     const tone = getStatusTone(transaction.current_state);
     const isPending = transaction.current_state === ETransactionState.PENDING_PAYMENT;
-
     const card = (
         <Card
             className={cn(

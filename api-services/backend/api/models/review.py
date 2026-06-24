@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from .court_center import CourtCenter
 from .transaction import Transaction
 from django.core.validators import MinValueValidator, MaxValueValidator
 
@@ -22,4 +21,4 @@ class Review(models.Model):
 
     @property
     def court_center(self):
-        return self.transaction.court_center
+        return self.transaction.court.center

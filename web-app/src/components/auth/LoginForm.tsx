@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 import { FieldTextInput, Form } from "@/components/form";
@@ -30,6 +30,9 @@ export function LoginForm() {
     password: "",
   };
 
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") ?? "/";
+
 
   useEffect(() => {
     return () => {
@@ -41,7 +44,7 @@ export function LoginForm() {
   const onSubmit = async (values: LoginFormValues) => {
     try {
       await login(values).unwrap();
-      router.push("/");
+      router.replace(redirect);
     } catch {
       // Error state is handled via isError below.
     }

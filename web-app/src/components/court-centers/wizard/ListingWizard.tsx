@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AvailabilityStep } from "@/components/court-centers/wizard/AvailabilityStep";
 import { BasicStep } from "@/components/court-centers/wizard/BasicStep";
@@ -9,7 +9,10 @@ import { CourtsStep } from "@/components/court-centers/wizard/CourtsStep";
 import { LocationStep } from "@/components/court-centers/wizard/LocationStep";
 import { ReviewStep } from "@/components/court-centers/wizard/ReviewStep";
 import { Button } from "@/components/ui/button";
-import type { BasicStepValues } from "@/features/court-centers/schemas/basicStepSchema";
+import {
+  emptyBasicStepFormValues,
+  type BasicStepValues,
+} from "@/features/court-centers/schemas/basicStepSchema";
 import type { CourtsStepValues } from "@/features/court-centers/schemas/courtsStepSchema";
 import type { LocationStepValues } from "@/features/court-centers/schemas/locationStepSchema";
 import type { SchedulesStepValues } from "@/features/court-centers/schemas/schedulesStepSchema";
@@ -68,19 +71,6 @@ export function ListingWizard(props: ListingWizardProps) {
   const center = liveCenter ?? (isCreateMode ? null : props.initialCenter);
   const isPublished = center?.status === "published";
 
-  useEffect(() => {
-    if (isCreateMode || !listingId) {
-      return;
-    }
-
-    const syncStepFromUrl = () => {
-      const params = new URLSearchParams(window.location.search);
-      setCurrentStep(parseStep(params.get("step")));
-    };
-
-    window.addEventListener("popstate", syncStepFromUrl);
-    return () => window.removeEventListener("popstate", syncStepFromUrl);
-  }, [isCreateMode, listingId]);
 
   const { data: sports = [], isLoading: isLoadingSports } = useGetSportsQuery();
   const [uploadImages, { isLoading: isUploadingImages }] =
@@ -322,7 +312,7 @@ export function ListingWizard(props: ListingWizardProps) {
         <BasicStep
           formId={FORM_ID}
           defaultValues={
-            center ? centerToBasicValues(center) : { title: "", description: "", logoImage: { id: 0, url: "" }, centerImages: [] }
+            center ? centerToBasicValues(center) : emptyBasicStepFormValues
           }
           onUpload={uploadFiles}
           isUploading={isUploadingImages}

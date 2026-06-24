@@ -2,7 +2,7 @@ export const PATHNAME_HEADER = "x-pathname";
 
 export const AUTH_ROUTES = ["/login", "/register", "/verify-email"] as const;
 
-export const PUBLIC_ROUTES = ["/", "/listings"] as const;
+export const PUBLIC_ROUTES = ["/", "/listings", "/listings/:id"] as const;
 
 export const AUTH_ROUTE_SET = new Set<string>(AUTH_ROUTES);
 
@@ -10,6 +10,14 @@ export const PUBLIC_ROUTE_SET = new Set<string>(PUBLIC_ROUTES);
 
 export function isAuthRoute(pathname: string) {
   return AUTH_ROUTE_SET.has(pathname);
+}
+
+function routeToRegex(route: string) {
+  return new RegExp(`^${route.replace(/:\w+/g, "[^/]+")}$`);
+}
+
+export function isPublicRoute(pathname: string) {
+  return PUBLIC_ROUTES.some((route) => routeToRegex(route).test(pathname));
 }
 
 export type LayoutVariant = "auth" | "marketing" | "app";

@@ -13,33 +13,31 @@ import type { ZodType } from "zod";
 
 import { cn } from "@/lib/utils";
 
-// ZodType<Output, Input> — both constrained to TFieldValues so:
-//   1. zodResolver's Zod v4 overload sees Input extends FieldValues ✓
-//   2. TypeScript infers TFieldValues from the schema prop — no explicit generic needed
-type FormSchema<TFieldValues extends FieldValues> = ZodType<
-  TFieldValues,
-  TFieldValues
->;
-
-type FormProps<TFieldValues extends FieldValues> = {
-  schema: FormSchema<TFieldValues>;
-  defaultValues?: DefaultValues<TFieldValues>;
-  onSubmit: SubmitHandler<TFieldValues>;
+type FormProps<
+  TInput extends FieldValues,
+  TOutput extends FieldValues = TInput,
+> = {
+  schema: ZodType<TOutput, TInput>;
+  defaultValues?: DefaultValues<TInput>;
+  onSubmit: SubmitHandler<TOutput>;
   children:
     | React.ReactNode
-    | ((form: UseFormReturn<TFieldValues>) => React.ReactNode);
+    | ((form: UseFormReturn<TInput, unknown, TOutput>) => React.ReactNode);
   className?: string;
 } & Omit<React.ComponentProps<"form">, "onSubmit" | "children" | "className">;
 
-export function Form<TFieldValues extends FieldValues>({
+export function Form<
+  TInput extends FieldValues,
+  TOutput extends FieldValues = TInput,
+>({
   schema,
   defaultValues,
   onSubmit,
   children,
   className,
   ...formProps
-}: FormProps<TFieldValues>) {
-  const form = useForm<TFieldValues>({
+}: FormProps<TInput, TOutput>) {
+  const form = useForm<TInput, unknown, TOutput>({
     resolver: zodResolver(schema),
     defaultValues,
   });

@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from api.models import Booking, Transaction
 
+from ..court_center import CourtSummarySerializer
 from ..line_items import LineItemSerializer
 from ..money import MoneySerializer
 from ..review import ReviewSerializer
@@ -28,6 +29,7 @@ class TransactionBookingSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     customer = PublicOwnerSerializer(read_only=True)
     provider = PublicOwnerSerializer(read_only=True)
+    court = CourtSummarySerializer(read_only=True)
     bookings = TransactionBookingSerializer(many=True, read_only=True)
     line_items = LineItemSerializer(many=True, read_only=True)
     current_state_display = serializers.CharField(
@@ -46,6 +48,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "process_name",
             "customer",
             "provider",
+            "court",
             "line_items",
             "pay_in_total",
             "last_transition_at",

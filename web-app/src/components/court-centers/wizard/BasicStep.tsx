@@ -11,14 +11,16 @@ import {
 } from "@/components/ui/card";
 import {
   basicStepSchema,
+  type BasicStepFormValues,
   type BasicStepValues,
 } from "@/features/court-centers/schemas/basicStepSchema";
 import type { ImageResource } from "@/features/court-centers/types";
 import { fieldClassName } from "@/components/court-centers/wizard/constants";
 import { cn } from "@/lib/utils";
+import type { ZodType } from "zod";
 
 type BasicStepProps = {
-  defaultValues: BasicStepValues;
+  defaultValues: BasicStepFormValues;
   onUpload: (files: File[]) => Promise<ImageResource[]>;
   isUploading: boolean;
   disabled?: boolean;
@@ -35,7 +37,15 @@ export function BasicStep({
   formId,
 }: BasicStepProps) {
   return (
-    <Form schema={basicStepSchema} defaultValues={defaultValues} onSubmit={onSubmit} id={formId} className="space-y-8">
+    <Form<BasicStepFormValues, BasicStepValues>
+      schema={
+        basicStepSchema as ZodType<BasicStepValues, BasicStepFormValues>
+      }
+      defaultValues={defaultValues}
+      onSubmit={onSubmit}
+      id={formId}
+      className="space-y-8"
+    >
       <Card>
         <CardHeader>
           <CardTitle>Basic details</CardTitle>
@@ -44,14 +54,14 @@ export function BasicStep({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <FieldTextInput<BasicStepValues>
+          <FieldTextInput<BasicStepFormValues>
             name="title"
             label="Center name"
             placeholder="Sunrise Sports Complex"
             disabled={disabled}
           />
 
-          <FieldTextarea<BasicStepValues>
+          <FieldTextarea<BasicStepFormValues>
             name="description"
             label="Description"
             rows={4}

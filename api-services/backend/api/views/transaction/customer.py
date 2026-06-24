@@ -23,7 +23,7 @@ from api.transaction_process.court_booking import (
 from api.utils.app_timezone import timezone_from_query_params
 from api.utils.exceptions import validation_error_response
 
-from ._helpers import load_transaction_for_response
+from ._helpers import load_transaction_for_response, transaction_queryset_for_serializer
 
 
 class InitiateTransactionView(APIView):
@@ -88,11 +88,7 @@ class TransactionDetailView(APIView):
 
     def get(self, request, pk: int):
         transaction = get_object_or_404(
-            Transaction.objects.select_related(
-                "customer__profile__avatar",
-                "provider__profile__avatar",
-                "court",
-            ).prefetch_related("bookings"),
+            transaction_queryset_for_serializer(),
             pk=pk,
             customer=request.user,
         )
@@ -150,6 +146,7 @@ class RequestReviewView(APIView):
             return validation_error_response({"detail": [str(exc)]})
         except TransitionError as exc:
             return validation_error_response({"detail": [str(exc)]})
+        transaction = load_transaction_for_response(transaction.pk)
         return Response(
             TransactionSerializer(transaction).data,
             status=status.HTTP_200_OK,

@@ -1,4 +1,4 @@
-import type { BasicStepValues } from "@/features/court-centers/schemas/basicStepSchema";
+import type { BasicStepFormValues } from "@/features/court-centers/schemas/basicStepSchema";
 import type { CourtsStepValues } from "@/features/court-centers/schemas/courtsStepSchema";
 import type { LocationStepValues } from "@/features/court-centers/schemas/locationStepSchema";
 import type { SchedulesStepValues } from "@/features/court-centers/schemas/schedulesStepSchema";
@@ -29,13 +29,13 @@ export function normalizeTime(time: string): string {
   return time.length >= 5 ? time.slice(0, 5) : time;
 }
 
-export function centerToBasicValues(center: CourtCenter): BasicStepValues {
+export function centerToBasicValues(center: CourtCenter): BasicStepFormValues {
   return {
     title: center.title,
     description: center.description ?? "",
     logoImage: center.logo
       ? { id: center.logo.id, url: center.logo.url }
-      : { id: 0, url: "" },
+      : undefined,
     centerImages: center.images.map((image) => ({
       id: image.id,
       url: image.url,

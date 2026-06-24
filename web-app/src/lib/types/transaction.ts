@@ -1,4 +1,4 @@
-import type { PublicOwner } from "@/features/court-centers/types";
+import type { CourtSummary, PublicOwner } from "@/features/court-centers/types";
 import type {
   LineItem,
   SpeculatedLineItemsResponse,
@@ -30,6 +30,7 @@ export type Transaction = {
   process_name: string;
   customer: PublicOwner;
   provider: PublicOwner;
+  court: CourtSummary;
   line_items: LineItem[];
   pay_in_total: Money;
   last_transition_at: string;

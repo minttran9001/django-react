@@ -12,14 +12,10 @@ import {
   userFromAccessToken,
 } from "@/lib/auth/fetch-user";
 import type { CurrentUser } from "@/lib/auth/types";
-import {
-  AUTH_ROUTE_SET,
-  PATHNAME_HEADER,
-  PUBLIC_ROUTE_SET,
-} from "@/lib/routes";
+import { isAuthRoute, isPublicRoute, PATHNAME_HEADER } from "@/lib/routes";
 
 function isProtectedRoute(pathname: string) {
-  return !AUTH_ROUTE_SET.has(pathname) && !PUBLIC_ROUTE_SET.has(pathname);
+  return !isAuthRoute(pathname) && !isPublicRoute(pathname);
 }
 
 /**
@@ -100,7 +96,7 @@ const shouldRedirectToHome = (
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAuthRoute = AUTH_ROUTE_SET.has(pathname);
+  const isAuthRouteValue = isAuthRoute(pathname);
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const isSoftNav = isSoftNavigation(request);
 
@@ -108,7 +104,7 @@ export async function proxy(request: NextRequest) {
   if (isSoftNav && accessToken && isAccessTokenValid(accessToken)) {
     const user = userFromAccessToken(accessToken);
 
-    if (shouldRedirectToHome(user, isAuthRoute)) {
+    if (shouldRedirectToHome(user, isAuthRouteValue)) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
@@ -119,7 +115,9 @@ export async function proxy(request: NextRequest) {
 
   // Soft nav without a token on a protected route — redirect immediately.
   if (isSoftNav && !accessToken && shouldRedirectToLogin(null, pathname)) {
-    const response = NextResponse.redirect(new URL("/login", request.url));
+    const response = NextResponse.redirect(
+      new URL(`/login?redirect=${pathname}`, request.url),
+    );
     clearTokens(response);
     return response;
   }
@@ -127,14 +125,16 @@ export async function proxy(request: NextRequest) {
   // Full page load: fetch full user from /me (with refresh fallback).
   const { user, setCookies } = await prefetchUser(request);
 
-  if (shouldRedirectToHome(user, isAuthRoute)) {
+  if (shouldRedirectToHome(user, isAuthRouteValue)) {
     const response = NextResponse.redirect(new URL("/", request.url));
     forwardCookies(response, setCookies);
     return response;
   }
 
   if (shouldRedirectToLogin(user, pathname)) {
-    const response = NextResponse.redirect(new URL("/login", request.url));
+    const response = NextResponse.redirect(
+      new URL(`/login?redirect=${pathname}`, request.url),
+    );
     clearTokens(response);
     return response;
   }

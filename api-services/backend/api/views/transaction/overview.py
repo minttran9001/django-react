@@ -15,6 +15,7 @@ from api.utils import (
     parse_transaction_search_params,
 )
 from api.utils.transaction_search import LATEST_END_AT_ANNOTATION
+from api.views.transaction._helpers import transaction_queryset_for_serializer
 
 
 class MyTransactionListView(ListAPIView):
@@ -22,12 +23,7 @@ class MyTransactionListView(ListAPIView):
     serializer_class = TransactionSerializer
 
     def get_queryset(self):
-        qs = Transaction.objects.filter(customer=self.request.user)
-        qs = qs.select_related(
-            "customer__profile__avatar",
-            "provider__profile__avatar",
-            "court",
-        ).prefetch_related("bookings")
+        qs = transaction_queryset_for_serializer().filter(customer=self.request.user)
         search_params = parse_transaction_search_params(self.request.query_params)
         qs = annotate_latest_end_at(qs)
         qs = apply_transaction_search_filters(qs, search_params)

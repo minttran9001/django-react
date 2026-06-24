@@ -2,11 +2,14 @@
 
 import { useGetMyTransactionCountsQuery, useGetMyTransactionsQuery } from "@/lib/api/transactionApi";
 import VerticalTabNavigation from "../ui/VertialTabNavigation";
-import { CalendarIcon, CheckCircleIcon, HistoryIcon } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { Calendar, CalendarIcon, CheckCircleIcon, HistoryIcon } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
 import BookingsList from "./BookingsList";
 import { ETransactionState, MyTransactionCountsResponse } from "@/lib/types/transaction";
 import isEmpty from "lodash/isEmpty";
+import { Button } from "../ui/button";
+import MyBookingBigCalendar from "./MyBookingBigCalendar";
+import Link from "next/link";
 
 const LoadingSkeleton = () => {
     const cards = Array.from({ length: 3 }, (_, index) => (
@@ -25,6 +28,10 @@ const TAB_MAP_TO_STATES = {
     past: [ETransactionState.CANCELLED, ETransactionState.PAYMENT_EXPIRED],
 }
 
+const CALENDAR_STATES = [
+    ...Object.values(TAB_MAP_TO_STATES).flat(),
+]
+
 const getCount = (states: ETransactionState[], counts?: MyTransactionCountsResponse["states"]) => {
     if (isEmpty(counts)) return 0;
     return states.map(state => counts[state] ?? 0).reduce((a, b) => a + b, 0);
@@ -32,42 +39,68 @@ const getCount = (states: ETransactionState[], counts?: MyTransactionCountsRespo
 
 const MyBookingsView = () => {
     const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const isBigCalendar = pathname.includes("/bookings/calendar");
     const activeTab = searchParams.get("tab") || "upcoming";
     const states = TAB_MAP_TO_STATES[activeTab as keyof typeof TAB_MAP_TO_STATES];
-    const { data: transactions = [], isLoading, isFetching } = useGetMyTransactionsQuery({ states });
-    const { data: pendingPaymentsTransactions = [] } = useGetMyTransactionsQuery({ states: [ETransactionState.PENDING_PAYMENT] });
+    const { data: transactions = [], isLoading, isFetching } = useGetMyTransactionsQuery({ states }, { skip: isBigCalendar });
+    const {
+        data: calendarTransactions = [],
+        isLoading: isCalendarLoading,
+    } = useGetMyTransactionsQuery(
+        { states: CALENDAR_STATES },
+        { skip: !isBigCalendar },
+    );
+    const { data: pendingPaymentsTransactions = [] } = useGetMyTransactionsQuery({ states: [ETransactionState.PENDING_PAYMENT] }, { skip: isBigCalendar });
     const { data: transactionCounts } = useGetMyTransactionCountsQuery({ states: Object.values(TAB_MAP_TO_STATES).flat() });
     const counts = transactionCounts?.states
     const isInitialLoading = isLoading || isFetching;
     const upcomingCount = getCount(TAB_MAP_TO_STATES.upcoming, counts);
     const completedCount = getCount(TAB_MAP_TO_STATES.completed, counts);
     const pastCount = getCount(TAB_MAP_TO_STATES.past, counts);
-    return <div className="container mx-auto flex gap-4">
-        <VerticalTabNavigation
-            className="basis-2/5"
-            tabs={[
-                { label: `Upcoming (${upcomingCount})`, value: "upcoming", icon: <CalendarIcon color="blue" size={16} />, href: "/bookings?tab=upcoming" },
-                { label: `Completed (${completedCount})`, value: "completed", icon: <CheckCircleIcon color="green" size={16} />, href: "/bookings?tab=completed" },
-                { label: `Past (${pastCount})`, value: "past", icon: <HistoryIcon color="red" size={16} />, href: "/bookings?tab=past" },
-            ]}
-            label="Bookings"
-            activeTab={activeTab}
-        />
+    return (<div className="container mx-auto flex flex-col">
+        <Link
+            href={isBigCalendar ? "/bookings?tab=upcoming" : "/bookings/calendar"}
+            prefetch
+            className="mb-4 self-end"
+        >
+            <Button variant="outline" size="sm">
+                <Calendar className="size-4" />
+                {isBigCalendar ? "Back to list" : "Show my calendar"}
+            </Button>
+        </Link>
+        {isBigCalendar ? (
+            <MyBookingBigCalendar
+                transactions={calendarTransactions}
+                isLoading={isCalendarLoading}
+            />
+        ) : <div className="flex">
+            <VerticalTabNavigation
+                className="basis-2/5"
+                tabs={[
+                    { label: `Upcoming (${upcomingCount})`, value: "upcoming", icon: <CalendarIcon color="blue" size={16} />, href: "/bookings?tab=upcoming" },
+                    { label: `Completed (${completedCount})`, value: "completed", icon: <CheckCircleIcon color="green" size={16} />, href: "/bookings?tab=completed" },
+                    { label: `Past (${pastCount})`, value: "past", icon: <HistoryIcon color="red" size={16} />, href: "/bookings?tab=past" },
+                ]}
+                label="Bookings"
+                activeTab={activeTab}
+            />
 
-        <div className="basis-3/5">
-            {pendingPaymentsTransactions.length > 0 && <div className="bg-yellow-50 rounded-lg mb-4 p-4">
-                <p className="text-sm text-yellow-800 mb-4">You have {pendingPaymentsTransactions.length} pending payments. Please complete your payments to confirm your bookings.</p>
-                <BookingsList transactions={pendingPaymentsTransactions ?? []} emptyMessage="No pending payments." />
-            </div>}
+            <div className="flex-1">
+                {pendingPaymentsTransactions.length > 0 && <div className="bg-yellow-50 rounded-lg mb-4 p-4">
+                    <p className="text-sm text-yellow-800 mb-4">You have {pendingPaymentsTransactions.length} pending payments. Please complete your payments to confirm your bookings.</p>
+                    <BookingsList transactions={pendingPaymentsTransactions ?? []} emptyMessage="No pending payments." />
+                </div>}
 
-            <div className="bg-white p-4 rounded-lg">
-                <h1 className="text-2xl font-bold mb-4">My Bookings</h1>
-                {isInitialLoading ? <LoadingSkeleton /> : <BookingsList transactions={transactions ?? []} emptyMessage="No bookings yet." />}
+                <div className="bg-white p-4 rounded-lg">
+                    <h1 className="text-2xl font-bold mb-4">My Bookings</h1>
+                    {isInitialLoading ? <LoadingSkeleton /> : <BookingsList transactions={transactions ?? []} emptyMessage="No bookings yet." />}
+                </div>
+                <div>
+                </div>
             </div>
-            <div>
-            </div>
-        </div>
-    </div>
+        </div>}
+    </div>)
 };
 
 export default MyBookingsView;
