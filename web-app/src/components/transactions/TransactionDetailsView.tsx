@@ -57,9 +57,9 @@ function StatusBadge({
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
         tone === "warning" &&
-          "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100",
+        "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100",
         tone === "success" &&
-          "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
+        "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
         tone === "default" && "bg-muted text-muted-foreground",
       )}
     >
@@ -293,7 +293,7 @@ export function TransactionDetailsView({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertCircleIcon className="size-5 text-destructive" />
-            Checkout unavailable
+            Transaction unavailable
           </CardTitle>
           <CardDescription>
             {getApiErrorMessage(error) ||
@@ -329,11 +329,8 @@ export function TransactionDetailsView({
             </Link>
           </Button>
           <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Checkout
+            Booking #{transaction.id}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Booking #{transaction.id} · {transaction.process_name}
-          </p>
         </div>
         <StatusBadge
           label={transaction.current_state_display}

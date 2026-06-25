@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Calendar, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { SlotInfo } from "react-big-calendar";
@@ -15,6 +15,8 @@ import TransactionsByDate, {
     TRANSACTIONS_BY_DATE_PANEL_WIDTH,
     TRANSACTIONS_BY_DATE_TRANSITION_MS,
 } from "./TransactionsByDate";
+import { Button } from "../ui/button";
+import Link from "next/link";
 
 const BookingEventsCalendar = dynamic(
     () => import("./BookingEventsCalendar"),
@@ -94,13 +96,23 @@ const MyBookingBigCalendar = ({
 
     return (
         <div className="rounded-xl border bg-card p-4">
-            <div className="mb-4">
-                <h1 className="text-2xl font-bold">My calendar</h1>
-                <p className="text-sm text-muted-foreground">
-                    Click a day to see bookings, or click an event for details.
-                </p>
-            </div>
+            <div className="flex justify-between items-center">
+                <div className="mb-4">
+                    <h1 className="text-2xl font-bold">My calendar</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Click a day to see bookings, or click an event for details.
+                    </p>
+                </div>
 
+
+                <Link href="/bookings?tab=upcoming">
+                    <Button variant="outline" size="sm">
+                        <Calendar className="size-4" />
+                        Back to list
+                    </Button>
+                </Link>
+
+            </div>
             <div className="flex min-h-[640px] overflow-hidden gap-4">
                 <BookingEventsCalendar
                     className="min-w-0 flex-1"
