@@ -22,6 +22,7 @@ from .transaction import (
     RequestReviewView,
     MyTransactionCountsView,
 )
+from .message import SendMessageView
 
 __all__ = [
     "CookieTokenRefreshView",
@@ -49,4 +50,5 @@ __all__ = [
     "MyTransactionListView",
     "RequestReviewView",
     "MyTransactionCountsView",
+    "SendMessageView",
 ]

@@ -25,7 +25,10 @@ from .views import (
     MyTransactionListView,
     RequestReviewView,
     MyTransactionCountsView,
+    SendMessageView,
 )
+
+
 
 urlpatterns = [
     path('register', CreateUserView.as_view(), name='register'),
@@ -59,4 +62,7 @@ urlpatterns = [
 
     path('transactions/mine', MyTransactionListView.as_view(), name='my_transaction_list'),
     path("transactions/mine/counts", MyTransactionCountsView.as_view(), name='my_transaction_overview'),
+
+    #conversation
+    path('messages/send', SendMessageView.as_view(), name='send_message'),
 ]

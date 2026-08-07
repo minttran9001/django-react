@@ -11,7 +11,9 @@ from .court_slot import CourtSlot
 from .user_profile import UserProfile
 from .transaction import Transaction
 from .review import Review
-
+from .conversation import Conversation
+from .message import Message
+from .member import Member
 __all__ = [
     "Booking",
     "BookingStatus",
@@ -27,4 +29,7 @@ __all__ = [
     "UserProfile",
     "Transaction",
     "Review",
+    "Conversation",
+    "Message",
+    "Member",
 ]
