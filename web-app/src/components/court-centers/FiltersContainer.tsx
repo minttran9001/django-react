@@ -26,20 +26,20 @@ const FiltersContainer = () => {
                 lng: searchParams.get("lng") ? Number(searchParams.get("lng")) : undefined,
                 address: searchParams.get("address") ?? "",
             },
-            sport_ids: searchParams.get("sport_ids") ? searchParams.get("sport_ids")?.split(",") : undefined,
-            radius_km: searchParams.get("radius_km") ? Number(searchParams.get("radius_km")) : undefined,
+            sportIds: searchParams.get("sportIds") ? searchParams.get("sportIds")?.split(",") : undefined,
+            radiusKm: searchParams.get("radiusKm") ? Number(searchParams.get("radiusKm")) : undefined,
         }
     }, [searchParams]);
     const onSubmit = (data: CourtCenterSearchFormValues) => {
         try {
-            const { address, sport_ids, date, radius_km } = data;
+            const { address, sportIds, date, radiusKm } = data;
             const searchQuery = normalizeSearchQuery({
                 address: address.address,
-                sport_ids: sport_ids?.join(",") ?? undefined,
+                sportIds: sportIds?.join(",") ?? undefined,
                 lat: address.lat,
                 lng: address.lng,
                 date: date ? formatApiDate(date) : undefined,
-                radius_km,
+                radiusKm,
             });
 
             router.push(`/listings?${searchQuery}`);

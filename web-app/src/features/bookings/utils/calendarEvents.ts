@@ -32,9 +32,9 @@ export function transactionsToCalendarEvents(
   return transactions.flatMap((transaction) =>
     transaction.bookings.map((booking) => ({
       id: `${transaction.id}-${booking.id}`,
-      title: `Court ${transaction.court.title} · ${format(bookingToDateTime(booking.date, booking.start_time), "HH:mm")} - ${format(bookingToDateTime(booking.date, booking.end_time), "HH:mm")}`,
-      start: bookingToDateTime(booking.date, booking.start_time),
-      end: bookingToDateTime(booking.date, booking.end_time),
+      title: `Court ${transaction.court.title} · ${format(bookingToDateTime(booking.date, booking.startTime), "HH:mm")} - ${format(bookingToDateTime(booking.date, booking.endTime), "HH:mm")}`,
+      start: bookingToDateTime(booking.date, booking.startTime),
+      end: bookingToDateTime(booking.date, booking.endTime),
       transaction,
       booking,
     })),
@@ -66,7 +66,7 @@ export function getTransactionHref(transaction: Transaction): string | null {
       ETransactionState.CONFIRMED,
       ETransactionState.COMPLETED,
       ETransactionState.REVIEWED,
-    ].includes(transaction.current_state)
+    ].includes(transaction.currentState)
   ) {
     return `/transaction/${transaction.id}`;
   }

@@ -142,12 +142,12 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
       )
       .sort(
         (a, b) =>
-          parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime(),
+          parseISO(a.startTime).getTime() - parseISO(b.startTime).getTime(),
       )[0];
     if (!nextBooking) {
       return null;
     }
-    return new Date(nextBooking.date + " " + nextBooking.start_time);
+    return new Date(nextBooking.date + " " + nextBooking.startTime);
   }, [transaction.bookings]);
 
   const onConfirmPayment = async () => {
@@ -170,7 +170,7 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
     }
   };
 
-  if (transaction.current_state === ETransactionState.COMPLETED) {
+  if (transaction.currentState === ETransactionState.COMPLETED) {
     return (
       <div className="w-full">
         <ReviewForm onSubmit={onRequestReview} className="mb-2" />
@@ -180,7 +180,7 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
         </p>
       </div>
     );
-  } else if (transaction.current_state === ETransactionState.PENDING_PAYMENT) {
+  } else if (transaction.currentState === ETransactionState.PENDING_PAYMENT) {
     return (
       <div className="w-full">
         <Button
@@ -196,7 +196,7 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
         </p>
       </div>
     );
-  } else if (transaction.current_state === ETransactionState.PAYMENT_EXPIRED) {
+  } else if (transaction.currentState === ETransactionState.PAYMENT_EXPIRED) {
     return (
       <div className="w-full">
         <p className="text-center text-xs text-muted-foreground">
@@ -204,7 +204,7 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
         </p>
       </div>
     );
-  } else if (transaction.current_state === ETransactionState.REVIEWED) {
+  } else if (transaction.currentState === ETransactionState.REVIEWED) {
     return (
       <div className="flex w-full flex-col items-center justify-center">
         <Review className="mb-2" review={transaction.review} />
@@ -213,7 +213,7 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
         </p>
       </div>
     );
-  } else if (transaction.current_state === ETransactionState.CANCELLED) {
+  } else if (transaction.currentState === ETransactionState.CANCELLED) {
     return (
       <div className="flex w-full flex-col items-center justify-center">
         <p className="text-center text-xs text-muted-foreground">
@@ -221,7 +221,7 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
         </p>
       </div>
     );
-  } else if (transaction.current_state === ETransactionState.CONFIRMED) {
+  } else if (transaction.currentState === ETransactionState.CONFIRMED) {
     return (
       <div className="flex w-full flex-col items-center justify-center">
         <p className="text-center text-xs text-muted-foreground">
@@ -256,10 +256,10 @@ export function TransactionDetailsView({
   } = useGetTransactionQuery(transactionId, { skip: !isAuthenticated });
 
   const expiresAt = useMemo(() => {
-    if (!transaction?.last_transition_at) {
+    if (!transaction?.lastTransitionAt) {
       return null;
     }
-    const startedAt = parseISO(transaction.last_transition_at);
+    const startedAt = parseISO(transaction.lastTransitionAt);
     return new Date(
       startedAt.getTime() + PAYMENT_WINDOW_MINUTES * 60 * 1000,
     );
@@ -274,10 +274,10 @@ export function TransactionDetailsView({
   }, [isAuthLoading, isAuthenticated, router, transactionId]);
 
   useEffect(() => {
-    if (transaction?.current_state === ETransactionState.CONFIRMED) {
+    if (transaction?.currentState === ETransactionState.CONFIRMED) {
       clearCheckoutSession();
     }
-  }, [transaction?.current_state]);
+  }, [transaction?.currentState]);
 
   if (isAuthLoading || isLoading) {
     return (
@@ -313,9 +313,9 @@ export function TransactionDetailsView({
   }
 
   const isPendingPayment =
-    transaction.current_state === ETransactionState.PENDING_PAYMENT;
+    transaction.currentState === ETransactionState.PENDING_PAYMENT;
   const isConfirmed =
-    transaction.current_state === ETransactionState.CONFIRMED;
+    transaction.currentState === ETransactionState.CONFIRMED;
   const providerAvatarUrl = getMediaUrl(transaction.provider.avatar?.url);
 
   return (
@@ -333,7 +333,7 @@ export function TransactionDetailsView({
           </h1>
         </div>
         <StatusBadge
-          label={transaction.current_state_display}
+          label={transaction.currentStateDisplay}
           tone={
             isConfirmed ? "success" : isPendingPayment ? "warning" : "default"
           }
@@ -377,11 +377,11 @@ export function TransactionDetailsView({
                       {format(parseISO(booking.date), "EEEE, MMM d, yyyy")}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {formatSlotTime(booking.start_time)} –{" "}
-                      {formatSlotTime(booking.end_time)}
+                      {formatSlotTime(booking.startTime)} –{" "}
+                      {formatSlotTime(booking.endTime)}
                     </p>
                   </div>
-                  <StatusBadge label={booking.status_display} />
+                  <StatusBadge label={booking.statusDisplay} />
                 </div>
               ))}
             </CardContent>

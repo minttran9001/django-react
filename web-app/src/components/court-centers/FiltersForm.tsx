@@ -54,9 +54,9 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
               address: "",
               query: "",
             },
-            sport_ids: [],
+            sportIds: [],
             date: undefined,
-            radius_km: undefined,
+            radiusKm: undefined,
           };
           reset(resetValues);
           onSubmit(resetValues);
@@ -71,7 +71,7 @@ const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
               containerClassName="w-full"
             />
             <FieldMultiSelect<CourtCenterSearchFormValues>
-              name="sport_ids"
+              name="sportIds"
               placeholder="Select a sport"
               items={sportOptions}
               containerClassName="w-full"

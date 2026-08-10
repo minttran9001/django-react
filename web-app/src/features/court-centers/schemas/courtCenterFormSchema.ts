@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const courtInputSchema = z.object({
   id: z.number().int().positive().optional(),
-  sport_id: z.number().int().positive("Select a sport"),
+  sportId: z.number().int().positive("Select a sport"),
   title: z.string().min(1, "Court title is required"),
   description: z.string().optional(),
 });
@@ -34,14 +34,14 @@ export type CourtCenterFormInput = {
   latitude?: string;
   longitude?: string;
   address?: string;
-  logo_id?: number;
-  image_ids?: number[];
+  logoId?: number;
+  imageIds?: number[];
   courts: Array<{
     id?: number;
-    sport_id: number;
+    sportId: number;
     title: string;
     description?: string;
-    image_ids?: number[];
+    imageIds?: number[];
   }>;
 };
 
@@ -59,14 +59,14 @@ export function formValuesToRequest(
     latitude: values.latitude || undefined,
     longitude: values.longitude || undefined,
     address: values.address || undefined,
-    logo_id: images.logoId,
-    image_ids: images.centerImageIds,
+    logoId: images.logoId,
+    imageIds: images.centerImageIds,
     courts: values.courts.map((court, index) => ({
       id: court.id,
-      sport_id: court.sport_id,
+      sportId: court.sportId,
       title: court.title,
       description: court.description || undefined,
-      image_ids: images.courtImageIdsByIndex[index] ?? [],
+      imageIds: images.courtImageIdsByIndex[index] ?? [],
     })),
   };
 }

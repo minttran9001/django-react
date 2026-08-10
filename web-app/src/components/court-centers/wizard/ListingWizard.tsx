@@ -132,8 +132,8 @@ export function ListingWizard(props: ListingWizardProps) {
     const payload = {
       title: values.title,
       description: values.description,
-      logo_id: logoImage.id,
-      image_ids: centerImages.map((image) => image.id),
+      logoId: logoImage.id,
+      imageIds: centerImages.map((image) => image.id),
     };
 
     try {
@@ -190,15 +190,15 @@ export function ListingWizard(props: ListingWizardProps) {
         body: {
           courts: values.courts.map((court, index) => ({
             id: court.id,
-            sport_id: court.sport_id,
+            sportId: court.sportId,
             title: court.title,
             description: court.description || undefined,
-            image_ids: (courtImages[index] ?? []).map((image) => image.id),
-            price_per_hour:
-              String(court.price_per_hour.amount).trim() !== ""
+            imageIds: (courtImages[index] ?? []).map((image) => image.id),
+            pricePerHour:
+              String(court.pricePerHour.amount).trim() !== ""
                 ? {
-                  amount: Number(court.price_per_hour.amount),
-                  currency: court.price_per_hour.currency || "VND",
+                  amount: Number(court.pricePerHour.amount),
+                  currency: court.pricePerHour.currency || "VND",
                 }
                 : undefined,
           })),
@@ -225,9 +225,9 @@ export function ListingWizard(props: ListingWizardProps) {
             id: court.id,
             schedules: combineAdjacentSchedules(court.schedules).map((schedule) => ({
               id: schedule.id,
-              day_of_week: schedule.day_of_week,
-              start_time: schedule.start_time,
-              end_time: schedule.end_time,
+              dayOfWeek: schedule.dayOfWeek,
+              startTime: schedule.startTime,
+              endTime: schedule.endTime,
             })),
           })),
         },

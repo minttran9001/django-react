@@ -1,8 +1,8 @@
 import { Money } from "./money";
 
 type LineItemMetadata = {
-  court_id: number;
-  court_name: string;
+  courtId: number;
+  courtName: string;
   date: string;
   start: string;
   end: string;
@@ -13,13 +13,13 @@ export type LineItem = {
   code: string;
   label: string;
   quantity: number;
-  unit_price: Money;
-  line_total: Money;
-  include_for: ("customer" | "provider")[];
+  unitPrice: Money;
+  lineTotal: Money;
+  includeFor: ("customer" | "provider")[];
   metadata?: LineItemMetadata;
 };
 
 export type SpeculatedLineItemsResponse = {
-  line_items: LineItem[];
-  pay_in_total: Money;
+  lineItems: LineItem[];
+  payInTotal: Money;
 };

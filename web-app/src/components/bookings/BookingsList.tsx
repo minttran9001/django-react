@@ -107,7 +107,7 @@ function getEarliestBooking(
 
 function getTransactionHref(transaction: Transaction): string | null {
     if (
-        [ETransactionState.PENDING_PAYMENT, ETransactionState.CONFIRMED, ETransactionState.COMPLETED, ETransactionState.REVIEWED].includes(transaction.current_state)
+        [ETransactionState.PENDING_PAYMENT, ETransactionState.CONFIRMED, ETransactionState.COMPLETED, ETransactionState.REVIEWED].includes(transaction.currentState)
     ) {
         return `/transaction/${transaction.id}`;
     }
@@ -124,7 +124,7 @@ function BookingSlotSummary({ booking }: { booking: TransactionBooking }) {
                     {format(parseISO(booking.date), "EEEE, MMM d, yyyy")}
                 </p>
                 <p className="text-muted-foreground">
-                    {formatSlotTime(booking.start_time)} – {formatSlotTime(booking.end_time)}
+                    {formatSlotTime(booking.startTime)} – {formatSlotTime(booking.endTime)}
                 </p>
             </div>
         </div>
@@ -136,8 +136,8 @@ export function BookingCard({ transaction }: { transaction: Transaction }) {
     const extraSlots = Math.max(0, transaction.bookings.length - 1);
     const href = getTransactionHref(transaction);
     const providerAvatarUrl = getMediaUrl(transaction.provider.avatar?.url);
-    const tone = getStatusTone(transaction.current_state);
-    const isPending = transaction.current_state === ETransactionState.PENDING_PAYMENT;
+    const tone = getStatusTone(transaction.currentState);
+    const isPending = transaction.currentState === ETransactionState.PENDING_PAYMENT;
     const card = (
         <Card
             className={cn(
@@ -152,11 +152,11 @@ export function BookingCard({ transaction }: { transaction: Transaction }) {
                             Booking #{transaction.id}
                         </CardTitle>
                         <CardDescription className="line-clamp-1">
-                            {transaction.process_name.replace(/-/g, " ")}
+                            {transaction.processName.replace(/-/g, " ")}
                         </CardDescription>
                     </div>
                     <StatusBadge
-                        label={transaction.current_state_display}
+                        label={transaction.currentStateDisplay}
                         tone={tone}
                     />
                 </div>
@@ -198,8 +198,8 @@ export function BookingCard({ transaction }: { transaction: Transaction }) {
                         <ReceiptIcon className="size-4 shrink-0" />
                         <span>
                             {formatMoney(
-                                transaction.pay_in_total.amount,
-                                transaction.pay_in_total.currency,
+                                transaction.payInTotal.amount,
+                                transaction.payInTotal.currency,
                             )}
                         </span>
                     </div>

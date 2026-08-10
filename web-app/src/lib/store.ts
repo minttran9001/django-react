@@ -3,6 +3,9 @@ import { configureStore } from "@reduxjs/toolkit";
 import { authApi } from "@/lib/api/authApi";
 import { baseApi } from "@/lib/api/baseApi";
 import { courtCenterApi } from "@/lib/api/courtCenterApi";
+import { conversationApi } from "@/lib/api/conversationApi/conversationApi";
+import reducers from "@/lib/slices";
+import { messageApi } from "@/lib/api/messageApi/messageApi";
 
 export function makeStore() {
   return configureStore({
@@ -10,12 +13,17 @@ export function makeStore() {
       [baseApi.reducerPath]: baseApi.reducer,
       [authApi.reducerPath]: authApi.reducer,
       [courtCenterApi.reducerPath]: courtCenterApi.reducer,
+      [conversationApi.reducerPath]: conversationApi.reducer,
+      [messageApi.reducerPath]: messageApi.reducer,
+      ...reducers,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().concat(
         baseApi.middleware,
         authApi.middleware,
         courtCenterApi.middleware,
+        conversationApi.middleware,
+        messageApi.middleware,
       ),
   });
 }

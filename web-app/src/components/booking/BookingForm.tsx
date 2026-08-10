@@ -111,10 +111,10 @@ const BookingFormContent = ({
 
   const { isSubmitting } = form.formState;
 
-  const date = form.watch("selected_date");
-  const courtId = form.watch("court_id");
+  const date = form.watch("selectedDate");
+  const courtId = form.watch("courtId");
   const selectedSlots = form.watch("slots");
-  const selectedSportId = form.watch("selected_sport_id");
+  const selectedSportId = form.watch("selectedSportId");
 
   const courtItems = useMemo(
     () => courts.filter((court) => court.sport.id === Number(selectedSportId)).map((court) => ({
@@ -149,7 +149,7 @@ const BookingFormContent = ({
   );
 
   const availableSlots = useMemo(
-    () => (selectedCourt?.available_slots ?? []).map(toTimeSlot),
+    () => (selectedCourt?.availableSlots ?? []).map(toTimeSlot),
     [selectedCourt],
   );
 
@@ -159,7 +159,7 @@ const BookingFormContent = ({
     }
 
     const allowedKeys = new Set(
-      (selectedCourt.available_slots ?? []).map((slot) =>
+      (selectedCourt.availableSlots ?? []).map((slot) =>
         `${slot.date}-${slot.start.slice(0, 5)}-${slot.end.slice(0, 5)}`,
       ),
     );
@@ -184,7 +184,7 @@ const BookingFormContent = ({
 
   return (<>
     <FieldDateInput<BookingFormValues>
-      name="selected_date"
+      name="selectedDate"
       label="Date"
       disabledDays={{ before: today }}
       dayLabels={dayLabels}
@@ -193,18 +193,18 @@ const BookingFormContent = ({
     {isLoadingCourts ? <div className="flex items-center justify-center"><Loader2Icon className="w-4 h-4 animate-spin" /></div> :
       <>
         <FieldSelect<BookingFormValues>
-          name="selected_sport_id"
+          name="selectedSportId"
           label="Sport"
           items={sportItems ?? []}
           placeholder="Select a sport"
           onValueChange={() => {
-            form.setValue("court_id", "");
+            form.setValue("courtId", "");
             form.setValue("slots", []);
           }}
         />
 
         {courtItems.length > 0 ? <FieldSelect<BookingFormValues>
-          name="court_id"
+          name="courtId"
           label="Court"
           items={courtItems}
           disabled={!selectedSportId}
@@ -233,13 +233,13 @@ const BookingFormContent = ({
 
     <Button variant="outline" className="w-full" onClick={() => {
       form.setValue("slots", []);
-      form.setValue("selected_date", new Date());
+      form.setValue("selectedDate", new Date());
     }}>
       Clear
     </Button>
 
     {canBook && selectedCourt ? (
-      (isSpeculatedLineItemsLoading || isSpeculatedLineItemsFetching) ? <div className="flex items-center justify-center"><Loader2Icon className="w-4 h-4 animate-spin" /></div> : speculatedLineItemsError ? <div className="flex items-center justify-center"><p className="text-sm text-destructive">{getApiErrorMessage(speculatedLineItemsError)}</p></div> : <OrderBreakdownLineItems speculatedLineItemsData={speculatedLineItemsData ?? { line_items: [], pay_in_total: { amount: 0, currency: "VND" } }} includeFor={["customer"]} />
+      (isSpeculatedLineItemsLoading || isSpeculatedLineItemsFetching) ? <div className="flex items-center justify-center"><Loader2Icon className="w-4 h-4 animate-spin" /></div> : speculatedLineItemsError ? <div className="flex items-center justify-center"><p className="text-sm text-destructive">{getApiErrorMessage(speculatedLineItemsError)}</p></div> : <OrderBreakdownLineItems speculatedLineItemsData={speculatedLineItemsData ?? { lineItems: [], payInTotal: { amount: 0, currency: "VND" } }} includeFor={["customer"]} />
     ) : null}
 
 
@@ -266,8 +266,8 @@ const BookingForm = ({
     <Form
       schema={bookingSchema}
       defaultValues={{
-        selected_date: today,
-        court_id: "",
+        selectedDate: today,
+        courtId: "",
         slots: [],
       }}
       onSubmit={onSubmit}
@@ -291,7 +291,7 @@ function BookingFormWithCourtData({
 }: Omit<BookingFormContentProps, "courts" | "isLoadingCourts"> & {
   courtCenterId: string;
 }) {
-  const date = form.watch("selected_date");
+  const date = form.watch("selectedDate");
 
   const {
     data: courtCenter,

@@ -16,13 +16,13 @@ export const WIZARD_STEPS = [
 ] as const;
 
 export const DAY_OPTIONS = [
-  { value: 0, label: "Monday" },
-  { value: 1, label: "Tuesday" },
-  { value: 2, label: "Wednesday" },
-  { value: 3, label: "Thursday" },
-  { value: 4, label: "Friday" },
-  { value: 5, label: "Saturday" },
-  { value: 6, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+  { value: 7, label: "Sunday" },
 ] as const;
 
 export function normalizeTime(time: string): string {
@@ -58,15 +58,15 @@ export function centerToCourtsValues(center: CourtCenter): CourtsStepValues {
     courts:
       center.courts?.map((court) => ({
         id: court.id,
-        sport_id: court.sport.id,
+        sportId: court.sport.id,
         title: court.title,
         description: court.description ?? "",
-        price_per_hour: {
+        pricePerHour: {
           amount:
-            court.price_per_hour?.amount != null
-              ? String(court.price_per_hour.amount)
+            court.pricePerHour?.amount != null
+              ? String(court.pricePerHour.amount)
               : "",
-          currency: court.price_per_hour?.currency ?? "VND",
+          currency: court.pricePerHour?.currency ?? "VND",
         },
       })) ?? [],
   };
@@ -81,18 +81,18 @@ export function centerToSchedulesValues(
         id: court.id,
         title: court.title,
         schedules:
-          court.schedules.length > 0
+          court.schedules && court.schedules.length > 0
             ? court.schedules.map((schedule) => ({
                 id: schedule.id,
-                day_of_week: schedule.day_of_week,
-                start_time: normalizeTime(schedule.start_time),
-                end_time: normalizeTime(schedule.end_time),
+                dayOfWeek: schedule.dayOfWeek,
+                startTime: normalizeTime(schedule.startTime),
+                endTime: normalizeTime(schedule.endTime),
               }))
             : [
                 {
-                  day_of_week: 0,
-                  start_time: "08:00",
-                  end_time: "22:00",
+                  dayOfWeek: 0,
+                  startTime: "08:00",
+                  endTime: "22:00",
                 },
               ],
       })) ?? [],

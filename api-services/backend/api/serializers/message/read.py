@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from api.models import Conversation, Message
+from api.models import Message
+from api.serializers.user import PublicOwnerSerializer
 
 class ReadMessageSerializer(serializers.ModelSerializer):
     client_id = serializers.CharField(max_length=255)
@@ -9,7 +10,25 @@ class ReadMessageSerializer(serializers.ModelSerializer):
         fields = ["id", "client_id", "body", "status", "created_at"]
 
 
-class ConversationBriefSerializer(serializers.ModelSerializer):
+class MessageListQuerySerializer(serializers.Serializer):
+    limit = serializers.IntegerField(min_value=1, max_value=100, default=40)
+    before_id = serializers.IntegerField(required=False, min_value=1)
+    # optional: after_id for loading newer (polling / reconnect)
+    after_id = serializers.IntegerField(required=False, min_value=1)
+
+
+
+class ReadMessageListSerializer(serializers.ModelSerializer):
+    sender = PublicOwnerSerializer(read_only=True)
+
     class Meta:
-        model = Conversation
-        fields = ["id", "name", "type"]
+        model = Message
+        fields = [
+            "id",
+            "client_id",
+            "conversation_id",
+            "body",
+            "status",
+            "created_at",
+            "sender",
+        ]

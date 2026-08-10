@@ -3,13 +3,13 @@ import { z } from "zod";
 const scheduleSlotSchema = z
   .object({
     id: z.number().int().positive().optional(),
-    day_of_week: z.number().int().min(0).max(6),
-    start_time: z.string().min(1, "Start time is required"),
-    end_time: z.string().min(1, "End time is required"),
+    dayOfWeek: z.number().int().min(0).max(6),
+    startTime: z.string().min(1, "Start time is required"),
+    endTime: z.string().min(1, "End time is required"),
   })
-  .refine((slot) => slot.end_time > slot.start_time, {
+  .refine((slot) => slot.endTime > slot.startTime, {
     message: "End time must be after start time",
-    path: ["end_time"],
+    path: ["endTime"],
   });
 
 const courtSchedulesSchema = z.object({

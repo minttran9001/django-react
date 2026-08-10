@@ -22,10 +22,10 @@ function getDayLabel(dayOfWeek: number): string {
 }
 
 const groupAvailabilityByDay = (schedules: CourtSchedule[]) => schedules.reduce<Record<number, CourtSchedule[]>>((acc, schedule) => {
-  if (!acc[schedule.day_of_week]) {
-    acc[schedule.day_of_week] = [];
+  if (!acc[schedule.dayOfWeek]) {
+    acc[schedule.dayOfWeek] = [];
   }
-  acc[schedule.day_of_week].push(schedule);
+  acc[schedule.dayOfWeek].push(schedule);
   return acc;
 }, {});
 
@@ -117,7 +117,7 @@ export function ReviewStep({ center }: ReviewStepProps) {
                       <span>-</span>
                       <div className="flex flex-col gap-1">
                         {schedules.map((schedule) => (
-                          <span key={schedule.id}>{normalizeTime(schedule.start_time)} – {normalizeTime(schedule.end_time)}</span>
+                          <span key={schedule.id}>{normalizeTime(schedule.startTime)} – {normalizeTime(schedule.endTime)}</span>
                         ))}
                       </div>
                     </li>

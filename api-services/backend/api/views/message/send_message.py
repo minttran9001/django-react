@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from api.serializers import ConversationBriefSerializer, ReadMessageSerializer, SendMessageSerializer
+from api.serializers import ConversationReadSerializer, ReadMessageSerializer, SendMessageSerializer
 from ._helpers import NotConversationMemberError, resolve_conversation_for_send_message, persist_message
 from rest_framework.response import Response
 from rest_framework import status
@@ -27,7 +27,7 @@ class SendMessageView(APIView):
             return error_response(str(exc), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, code="internal_server_error")
 
         payload = {
-            "conversation": ConversationBriefSerializer(conversation).data,
+            "conversation": ConversationReadSerializer(conversation).data,
             "message": ReadMessageSerializer(message).data,
             "conversation_created": conv_created,
         }

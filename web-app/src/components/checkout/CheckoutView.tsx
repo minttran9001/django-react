@@ -89,13 +89,13 @@ export function CheckoutDraftView({ search }: { search: string }) {
 
   const draft = isClient ? resolveCheckoutDraft(search) : null;
 
-  const courtId = draft?.court_id ?? pendingTransaction?.bookings?.[0]?.court;
+  const courtId = draft?.courtId ?? pendingTransaction?.bookings?.[0]?.court;
 
 
   const pendingSlots = pendingTransaction?.bookings.map((booking) => ({
     date: booking.date,
-    start: booking.start_time,
-    end: booking.end_time,
+    start: booking.startTime,
+    end: booking.endTime,
   })) ?? [];
   const draftSlots = draft?.slots ?? [];
   const combinedDraftSlots = combineAdjacentSlots(draftSlots);
@@ -107,11 +107,11 @@ export function CheckoutDraftView({ search }: { search: string }) {
         courtId: String(courtId),
         slots,
       },
-      { skip: !courtId || slots.length === 0 || (pendingTransaction?.line_items?.length ?? 0) > 0 },
+      { skip: !courtId || slots.length === 0 || (pendingTransaction?.lineItems?.length ?? 0) > 0 },
     );
 
   useEffect(() => {
-    if (!isClient || !pendingTransaction || pendingTransaction.current_state !== ETransactionState.PENDING_PAYMENT) {
+    if (!isClient || !pendingTransaction || pendingTransaction.currentState !== ETransactionState.PENDING_PAYMENT) {
       return;
     }
     clearCheckoutDraft();
@@ -140,13 +140,13 @@ export function CheckoutDraftView({ search }: { search: string }) {
 
     //step 1: initiate transaction
     const onInitiateTransaction = async (pendingTransaction: Transaction | null) => {
-      const hasPendingPayment = pendingTransaction?.current_state === ETransactionState.PENDING_PAYMENT;
+      const hasPendingPayment = pendingTransaction?.currentState === ETransactionState.PENDING_PAYMENT;
       if (hasPendingPayment) {
         return Promise.resolve(pendingTransaction);
       }
 
       const newTransaction = await initiateTransaction({
-        court_id: draft.court_id,
+        courtId: draft.courtId,
         slots: draft.slots,
       }).unwrap();
       savePendingCheckoutTransaction(newTransaction);
@@ -158,7 +158,7 @@ export function CheckoutDraftView({ search }: { search: string }) {
       if (!transaction) {
         return Promise.resolve(null);
       }
-      const alreadyConfirmed = transaction.current_state === ETransactionState.CONFIRMED;
+      const alreadyConfirmed = transaction.currentState === ETransactionState.CONFIRMED;
       if (alreadyConfirmed) {
         return Promise.resolve(transaction);
       }
@@ -264,9 +264,9 @@ export function CheckoutDraftView({ search }: { search: string }) {
                 disabled={isSpeculateLoading || !speculatedLineItems}
                 onClick={onCreateBooking}
               >
-                {pendingTransaction && pendingTransaction.current_state === ETransactionState.PENDING_PAYMENT ? "Confirm payment" : "Create booking"}
+                {pendingTransaction && pendingTransaction.currentState === ETransactionState.PENDING_PAYMENT ? "Confirm payment" : "Create booking"}
               </Button>
-              {pendingTransaction && pendingTransaction.current_state !== ETransactionState.PENDING_PAYMENT ? (
+              {pendingTransaction && pendingTransaction.currentState !== ETransactionState.PENDING_PAYMENT ? (
                 <p className="text-center text-xs text-muted-foreground">
                   You will be able to confirm payment in {PAYMENT_WINDOW_MINUTES} minutes.
                 </p>

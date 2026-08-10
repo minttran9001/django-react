@@ -82,7 +82,7 @@ const BookingEventsCalendar = ({
         style={{ height: 640 }}
         components={{ event: BookingCalendarEvent }}
         eventPropGetter={(event) => ({
-          className: `booking-event booking-event--${getBookingEventTone(event.transaction.current_state)}`,
+          className: `booking-event booking-event--${getBookingEventTone(event.transaction.currentState)}`,
         })}
         onSelectSlot={onSelectSlot}
       />

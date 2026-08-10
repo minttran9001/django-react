@@ -40,9 +40,9 @@ export const courtCenterApi = createApi({
       {
         lat?: number;
         lng?: number;
-        radius_km?: number;
+        radiusKm?: number;
         q?: string;
-        sport_ids?: string[];
+        sportIds?: string[];
         date?: string;
         timezone?: string;
       }
@@ -51,9 +51,9 @@ export const courtCenterApi = createApi({
         `/court-centers?${new URLSearchParams({
           ...(params.lat && { lat: params.lat.toString() }),
           ...(params.lng && { lng: params.lng.toString() }),
-          ...(params.radius_km && { radius_km: params.radius_km.toString() }),
+          ...(params.radiusKm && { radiusKm: params.radiusKm.toString() }),
           ...(params.q && { q: params.q }),
-          ...(params.sport_ids && { sport_ids: params.sport_ids.join(",") }),
+          ...(params.sportIds && { sportIds: params.sportIds.join(",") }),
           ...(params.date && { date: params.date }),
           timezone: withTimezone(params.timezone),
         }).toString()}`,

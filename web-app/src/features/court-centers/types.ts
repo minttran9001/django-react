@@ -3,7 +3,7 @@ import { Money } from "@/lib/types/money";
 export interface ImageResource {
   id: number;
   url: string;
-  public_id: string;
+  publicId: string;
 }
 
 export interface Sport {
@@ -11,19 +11,19 @@ export interface Sport {
   name: string;
   code: string;
   description: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CourtSchedule {
   id: number;
   court: number;
-  day_of_week: number;
-  day_of_week_display: string;
-  start_time: string;
-  end_time: string;
-  created_at: string;
-  updated_at: string;
+  dayOfWeek: number;
+  dayOfWeekDisplay: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AvailableSlot {
@@ -39,10 +39,10 @@ export interface CourtSummary {
   description: string;
   images: ImageResource[];
   schedules?: CourtSchedule[];
-  available_slots?: AvailableSlot[];
-  price_per_hour: Money;
-  created_at: string;
-  updated_at: string;
+  availableSlots?: AvailableSlot[];
+  pricePerHour: Money;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type CourtCenterStatus = "draft" | "published";
@@ -61,9 +61,9 @@ export interface User extends OwnerId {
   email: string;
   avatar: ImageResource | null;
   name: string;
-  phone_number: string;
+  phoneNumber: string;
   address: string;
-  date_of_birth: string | null;
+  dateOfBirth: string | null;
 }
 
 export interface CourtCenter {
@@ -78,23 +78,23 @@ export interface CourtCenter {
   images: ImageResource[];
   courts?: CourtSummary[];
   status: CourtCenterStatus;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateCourtInput {
   id?: number;
-  sport_id: number;
+  sportId: number;
   title: string;
   description?: string;
-  image_ids?: number[];
+  imageIds?: number[];
 }
 
 export interface DraftCreateRequest {
   title: string;
   description?: string;
-  logo_id?: number;
-  image_ids?: number[];
+  logoId?: number;
+  imageIds?: number[];
 }
 
 export interface LocationUpdateRequest {
@@ -109,9 +109,9 @@ export interface CourtsUpdateRequest {
 
 export interface ScheduleInput {
   id?: number;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
 }
 
 export interface CourtSchedulesInput {

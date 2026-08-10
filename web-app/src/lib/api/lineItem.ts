@@ -45,7 +45,7 @@ export const lineItemApi = baseApi.injectEndpoints({
         method: "POST",
         params: { timezone: timezone ?? getUserTimezone() },
         body: {
-          court_id: courtId,
+          courtId,
           slots,
         },
       }),

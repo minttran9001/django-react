@@ -12,7 +12,7 @@ export type TimeSlot = {
   end: string;
 };
 
-/** Map JS Date (0=Sun) to app day_of_week (0=Mon, 6=Sun). */
+/** Map JS Date (0=Sun) to app dayOfWeek (0=Mon, 6=Sun). */
 export function dateToDayOfWeek(date: Date): number {
   const jsDay = date.getDay();
   return jsDay === 0 ? 6 : jsDay - 1;
@@ -25,14 +25,14 @@ export function getAvailableSlots(
 ): TimeSlot[] {
   const dayOfWeek = dateToDayOfWeek(date);
   const daySchedules = schedules.filter(
-    (schedule) => schedule.day_of_week === dayOfWeek,
+    (schedule) => schedule.dayOfWeek === dayOfWeek,
   );
 
   const slots: TimeSlot[] = [];
 
   for (const schedule of daySchedules) {
-    const startMinutes = timeToMinutes(schedule.start_time);
-    const endMinutes = timeToMinutes(schedule.end_time);
+    const startMinutes = timeToMinutes(schedule.startTime);
+    const endMinutes = timeToMinutes(schedule.endTime);
 
     for (
       let cursor = startMinutes;

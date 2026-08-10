@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   CalendarDays,
   ExternalLink,
+  MessageCircleIcon,
   Pencil,
   Trophy,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
 import BookingPanel from "../booking/BookingPanel";
 import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
+import { useSetChatWidgetOpen } from "@/lib/slices/ui/actions";
 
 type CourtCenterDetailsViewProps = {
   id: string;
@@ -139,6 +141,7 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
   );
   const mapsUrl = courtCenter ? getMapsUrl(courtCenter) : null;
   const courtCount = courtCenter?.courts?.length ?? 0;
+  const setChatWidgetOpen = useSetChatWidgetOpen();
 
   if (isLoading) {
     return <CourtCenterDetailsSkeleton />;
@@ -213,7 +216,7 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <CalendarDays className="size-4" />
-          <span>Listed {formatDate(courtCenter.created_at)}</span>
+          <span>Listed {formatDate(courtCenter.createdAt)}</span>
         </div>
       </div>
 
@@ -227,6 +230,10 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
                 {courtCenter.title}
               </h1>
             </div>
+            <Button variant="outline" onClick={() => setChatWidgetOpen(true)}>
+              Chat with owner
+              <MessageCircleIcon />
+            </Button>
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium">

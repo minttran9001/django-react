@@ -20,9 +20,9 @@ const ProfilePage = () => {
     const initialValues = useMemo(() => ({
         name: me?.name ?? "",
         email: me?.email ?? "",
-        phone_number: me?.phone_number ?? "",
+        phoneNumber: me?.phoneNumber ?? "",
         address: me?.address ?? "",
-        date_of_birth: me?.date_of_birth ?? "",
+        dateOfBirth: me?.dateOfBirth ?? "",
         avatar: me?.avatar ?? undefined,
     }), [me]);
 
@@ -39,15 +39,15 @@ const ProfilePage = () => {
             const result = await editProfile({
                 name: values.name,
                 email: values.email,
-                phone_number: values.phone_number,
+                phoneNumber: values.phoneNumber,
                 address: values.address,
-                date_of_birth: values.date_of_birth || undefined,
-                avatar_id: values.avatar?.id ?? null,
+                dateOfBirth: values.dateOfBirth || undefined,
+                avatarId: values.avatar?.id ?? null,
             }).unwrap();
 
             toast.success(result.message);
 
-            if (result.email_verification_required) {
+            if (result.emailVerificationRequired) {
                 await logout().unwrap();
                 router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
             }

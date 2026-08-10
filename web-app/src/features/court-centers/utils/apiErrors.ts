@@ -29,8 +29,8 @@ export function getCourtCenterErrorMessage(error: unknown): string {
       "address",
       "courts",
       "schedules",
-      "logo_id",
-      "image_ids",
+      "logoId",
+      "imageIds",
     ],
     getApiErrorMessage(error),
   );

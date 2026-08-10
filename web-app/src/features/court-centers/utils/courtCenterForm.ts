@@ -13,7 +13,7 @@ export function courtCenterToFormValues(
     courts:
       center.courts?.map((court) => ({
         id: court.id,
-        sport_id: court.sport.id,
+        sportId: court.sport.id,
         title: court.title,
         description: court.description ?? "",
       })) ?? [],

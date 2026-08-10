@@ -10,10 +10,10 @@ export type TransactionBooking = {
   id: number;
   court: number;
   status: ETransactionBookingStatus;
-  status_display: string;
+  statusDisplay: string;
   date: string;
-  start_time: string;
-  end_time: string;
+  startTime: string;
+  endTime: string;
 };
 
 export enum ETransactionBookingStatus {
@@ -25,18 +25,18 @@ export enum ETransactionBookingStatus {
 
 export type Transaction = {
   id: number;
-  current_state: ETransactionState;
-  current_state_display: string;
-  process_name: string;
+  currentState: ETransactionState;
+  currentStateDisplay: string;
+  processName: string;
   customer: PublicOwner;
   provider: PublicOwner;
   court: CourtSummary;
-  line_items: LineItem[];
-  pay_in_total: Money;
-  last_transition_at: string;
-  last_transition: string;
+  lineItems: LineItem[];
+  payInTotal: Money;
+  lastTransitionAt: string;
+  lastTransition: string;
   bookings: TransactionBooking[];
-  created_at: string;
+  createdAt: string;
   review: Review;
 };
 
@@ -50,11 +50,11 @@ export enum ETransactionState {
 }
 
 export function toLineItemsResponse(
-  transaction: Pick<Transaction, "line_items" | "pay_in_total">,
+  transaction: Pick<Transaction, "lineItems" | "payInTotal">,
 ): SpeculatedLineItemsResponse {
   return {
-    line_items: transaction.line_items,
-    pay_in_total: transaction.pay_in_total,
+    lineItems: transaction.lineItems,
+    payInTotal: transaction.payInTotal,
   };
 }
 

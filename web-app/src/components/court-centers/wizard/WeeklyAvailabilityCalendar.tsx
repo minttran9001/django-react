@@ -108,7 +108,7 @@ export function WeeklyAvailabilityCalendar({
 
   const clearAllSlots = (dayOfWeek: number) => {
     const nextSchedules = schedules.filter(
-      (slot) => slot.day_of_week !== dayOfWeek,
+      (slot) => slot.dayOfWeek !== dayOfWeek,
     );
     onChange(nextSchedules);
   };
@@ -149,13 +149,13 @@ export function WeeklyAvailabilityCalendar({
         schedules,
         drag.slotIndex,
       );
-      const slotStart = timeToMinutes(slot.start_time);
-      const slotEnd = timeToMinutes(slot.end_time);
+      const slotStart = timeToMinutes(slot.startTime);
+      const slotEnd = timeToMinutes(slot.endTime);
 
       const nextPreview =
         drag.mode === "resize-top"
           ? buildSlotFromMinuteRange(
-            slot.day_of_week,
+            slot.dayOfWeek,
             Math.min(
               Math.max(currentMinutes, minStartMinutes),
               slotEnd - MIN_SLOT_DURATION_MINUTES,
@@ -163,7 +163,7 @@ export function WeeklyAvailabilityCalendar({
             slotEnd,
           )
           : buildSlotFromMinuteRange(
-            slot.day_of_week,
+            slot.dayOfWeek,
             slotStart,
             Math.max(
               Math.min(currentMinutes, maxEndMinutes),
@@ -173,8 +173,8 @@ export function WeeklyAvailabilityCalendar({
 
       if (
         !slotWouldOverlap(schedules, nextPreview, drag.slotIndex) &&
-        timeToMinutes(nextPreview.end_time) >
-        timeToMinutes(nextPreview.start_time)
+        timeToMinutes(nextPreview.endTime) >
+        timeToMinutes(nextPreview.startTime)
       ) {
         setPreview(nextPreview);
       }
@@ -224,15 +224,15 @@ export function WeeklyAvailabilityCalendar({
 
     if (
       !slotWouldOverlap(schedules, preview, drag.slotIndex) &&
-      timeToMinutes(preview.end_time) > timeToMinutes(preview.start_time)
+      timeToMinutes(preview.endTime) > timeToMinutes(preview.startTime)
     ) {
       onChange(
         schedules.map((schedule, index) =>
           index === drag.slotIndex
             ? {
               ...schedule,
-              start_time: preview.start_time,
-              end_time: preview.end_time,
+              startTime: preview.startTime,
+              endTime: preview.endTime,
             }
             : schedule,
         ),
@@ -287,16 +287,16 @@ export function WeeklyAvailabilityCalendar({
     const rect = column.getBoundingClientRect();
     dragRef.current = {
       mode,
-      dayOfWeek: slot.day_of_week,
+      dayOfWeek: slot.dayOfWeek,
       slotIndex,
       anchorMinutes:
         mode === "resize-top"
-          ? timeToMinutes(slot.start_time)
-          : timeToMinutes(slot.end_time),
+          ? timeToMinutes(slot.startTime)
+          : timeToMinutes(slot.endTime),
       columnTop: rect.top,
       moved: false,
     };
-    setActiveDrag({ mode, dayOfWeek: slot.day_of_week, slotIndex });
+    setActiveDrag({ mode, dayOfWeek: slot.dayOfWeek, slotIndex });
     setSelectedIndex(slotIndex);
     setPreview(slot);
 
@@ -386,14 +386,14 @@ export function WeeklyAvailabilityCalendar({
       slotIndex?: number;
     },
   ) => {
-    const { top, height } = getBlockStyle(slot.start_time, slot.end_time);
+    const { top, height } = getBlockStyle(slot.startTime, slot.endTime);
 
     return (
       <div
         key={
           options.isPreview
-            ? `preview-${slot.day_of_week}-${slot.start_time}-${slot.end_time}`
-            : `${slot.index}-${slot.start_time}-${slot.end_time}`
+            ? `preview-${slot.dayOfWeek}-${slot.startTime}-${slot.endTime}`
+            : `${slot.index}-${slot.startTime}-${slot.endTime}`
         }
         ref={
           options.isSelected && !options.isPreview
@@ -460,7 +460,7 @@ export function WeeklyAvailabilityCalendar({
           </>
         ) : null}
         <span className="relative z-10 block truncate pt-3 pb-3">
-          {formatTimeRange(slot.start_time, slot.end_time)}
+          {formatTimeRange(slot.startTime, slot.endTime)}
         </span>
       </div>
     );
@@ -582,7 +582,7 @@ export function WeeklyAvailabilityCalendar({
                   });
                 })}
 
-                {dragPreview?.day_of_week === day.value &&
+                {dragPreview?.dayOfWeek === day.value &&
                   activeDrag?.mode === "create"
                   ? renderSlotBlock(dragPreview, {
                     isSelected: false,
@@ -590,7 +590,7 @@ export function WeeklyAvailabilityCalendar({
                   })
                   : null}
 
-                {dragPreview?.day_of_week === day.value &&
+                {dragPreview?.dayOfWeek === day.value &&
                   activeDrag?.slotIndex !== undefined &&
                   activeDrag.mode !== "create"
                   ? renderSlotBlock(dragPreview, {
@@ -618,7 +618,7 @@ export function WeeklyAvailabilityCalendar({
             <div>
               <p className="text-sm font-medium">Edit time slot</p>
               <p className="text-xs text-muted-foreground">
-                {getDayLabel(selectedSlot.day_of_week)}
+                {getDayLabel(selectedSlot.dayOfWeek)}
               </p>
             </div>
             <Button
@@ -641,14 +641,14 @@ export function WeeklyAvailabilityCalendar({
                 type="time"
                 className={fieldClassName}
                 disabled={disabled}
-                value={normalizeTime(selectedSlot.start_time)}
+                value={normalizeTime(selectedSlot.startTime)}
                 onChange={(event) => {
                   const startMinutes = timeToMinutes(event.target.value);
                   if (startMinutes < 5 * 60 || startMinutes > 23 * 60) {
                     return;
                   }
                   updateSlot(selectedIndex, {
-                    start_time: event.target.value,
+                    startTime: event.target.value,
                   })
                 }
                 }
@@ -662,18 +662,18 @@ export function WeeklyAvailabilityCalendar({
                 type="time"
                 className={fieldClassName}
                 disabled={disabled}
-                value={normalizeTime(selectedSlot.end_time)}
+                value={normalizeTime(selectedSlot.endTime)}
                 onChange={(event) =>
                   updateSlot(selectedIndex, {
-                    end_time: event.target.value,
+                    endTime: event.target.value,
                   })
                 }
               />
             </div>
           </div>
 
-          {timeToMinutes(selectedSlot.end_time) <=
-            timeToMinutes(selectedSlot.start_time) ? (
+          {timeToMinutes(selectedSlot.endTime) <=
+            timeToMinutes(selectedSlot.startTime) ? (
             <p className="mt-3 text-sm text-destructive">
               End time must be after start time.
             </p>

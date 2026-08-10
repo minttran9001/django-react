@@ -36,7 +36,8 @@ from .transaction import (
     MyTransactionCountsResponseSerializer,
 )
 
-from .message import SendMessageSerializer, ConversationBriefSerializer, ReadMessageSerializer
+from .message import SendMessageSerializer, ReadMessageSerializer, ReadMessageListSerializer, MessageListQuerySerializer
+from .conversation import ConversationReadSerializer
 
 __all__ = [
     "BookingSerializer",
@@ -75,6 +76,8 @@ __all__ = [
     "InitiateTransactionSerializer",
     "MyTransactionCountsResponseSerializer",
     "SendMessageSerializer",
-    "ConversationBriefSerializer",
+    "ConversationReadSerializer",
     "ReadMessageSerializer",
+    "ReadMessageListSerializer",
+    "MessageListQuerySerializer",
 ]

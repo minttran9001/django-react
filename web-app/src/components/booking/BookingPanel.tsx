@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
     Card,
     CardContent,
@@ -7,8 +9,11 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import type { CourtSummary } from "@/features/court-centers/types";
 import { BookingFormValues } from "@/features/booking/schemas/bookingSchema";
+import { BookingSeriesFormValues } from "@/features/booking/schemas/bookingSeriesSchema";
+import { expandSeriesToSlots } from "@/features/booking/utils/expandSeriesToSlots";
 import { serializeLineItemSlots } from "@/lib/api/lineItem";
 import {
     CHECKOUT_PATH,
@@ -18,6 +23,9 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 import BookingForm from "./BookingForm";
+import BookingSeriesForm from "./BookingSeriesForm";
+
+type BookingMode = "single" | "monthly";
 
 type BookingPanelProps = {
     courtCenterId: string;
@@ -29,6 +37,7 @@ type BookingPanelProps = {
 
 const BookingPanel = ({ courtCenterId, courts, className, courtCenterStatus, isOwnListing }: BookingPanelProps) => {
     const router = useRouter();
+    const [bookingMode, setBookingMode] = useState<BookingMode>("single");
 
     if (courtCenterStatus !== "published") {
         return (
@@ -73,11 +82,27 @@ const BookingPanel = ({ courtCenterId, courts, className, courtCenterStatus, isO
         );
     }
 
-    const onSubmit = (data: BookingFormValues) => {
+    const onSingleSubmit = (data: BookingFormValues) => {
         saveCheckoutDraft({
-            court_center_id: courtCenterId,
-            court_id: Number(data.court_id),
+            courtCenterId,
+            courtId: Number(data.courtId),
             slots: serializeLineItemSlots(data.slots),
+        });
+        router.push(CHECKOUT_PATH);
+    };
+
+    const onMonthlySubmit = (data: BookingSeriesFormValues) => {
+        const expandedSlots = expandSeriesToSlots(
+            data.recurrenceRules,
+            data.timeSlots,
+            data.startDate,
+            data.endDate,
+        );
+
+        saveCheckoutDraft({
+            courtCenterId,
+            courtId: Number(data.courtId),
+            slots: serializeLineItemSlots(expandedSlots),
         });
         router.push(CHECKOUT_PATH);
     };
@@ -87,12 +112,37 @@ const BookingPanel = ({ courtCenterId, courts, className, courtCenterStatus, isO
             <CardHeader>
                 <CardTitle>Book a court</CardTitle>
                 <CardDescription>
-                    Pick a date, court, and time slot to reserve.
+                    {bookingMode === "single"
+                        ? "Pick a date, court, and time slot to reserve."
+                        : "Set a monthly pattern, court, and time for recurring sessions."}
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-5">
-                <BookingForm courtCenterId={courtCenterId} onSubmit={onSubmit} />
+                <div className="grid grid-cols-2 gap-2">
+                    <Button
+                        type="button"
+                        variant={bookingMode === "single" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBookingMode("single")}
+                    >
+                        One-time
+                    </Button>
+                    <Button
+                        type="button"
+                        variant={bookingMode === "monthly" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setBookingMode("monthly")}
+                    >
+                        Monthly
+                    </Button>
+                </div>
+
+                {bookingMode === "single" ? (
+                    <BookingForm courtCenterId={courtCenterId} onSubmit={onSingleSubmit} />
+                ) : (
+                    <BookingSeriesForm courtCenterId={courtCenterId} onSubmit={onMonthlySubmit} />
+                )}
             </CardContent>
         </Card>
     );

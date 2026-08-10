@@ -2,8 +2,8 @@ import type { LineItemSlotInput } from "@/lib/api/lineItem";
 import type { Transaction } from "../types/transaction";
 
 export type CheckoutDraft = {
-  court_center_id: string;
-  court_id: number;
+  courtCenterId: string;
+  courtId: number;
   slots: LineItemSlotInput[];
 };
 
@@ -28,10 +28,10 @@ export function isCheckoutDraft(value: unknown): value is CheckoutDraft {
 
   const draft = value as CheckoutDraft;
   return (
-    typeof draft.court_center_id === "string" &&
-    draft.court_center_id.length > 0 &&
-    Number.isFinite(draft.court_id) &&
-    draft.court_id > 0 &&
+    typeof draft.courtCenterId === "string" &&
+    draft.courtCenterId.length > 0 &&
+    Number.isFinite(draft.courtId) &&
+    draft.courtId > 0 &&
     Array.isArray(draft.slots) &&
     draft.slots.length > 0 &&
     draft.slots.every(isValidSlot)
@@ -114,30 +114,32 @@ export function buildCheckoutUrl(draft: CheckoutDraft): string {
 export function parseCheckoutDraft(
   searchParams: URLSearchParams,
 ): CheckoutDraft | null {
-  const courtCenterIdRaw = searchParams.get("court_center_id");
-  const courtIdRaw = searchParams.get("court_id");
+  const courtCenterIdRaw =
+    searchParams.get("courtCenterId") ?? searchParams.get("court_center_id");
+  const courtIdRaw =
+    searchParams.get("courtId") ?? searchParams.get("court_id");
   const slotsRaw = searchParams.get("slots");
 
   if (!courtCenterIdRaw || !courtIdRaw || !slotsRaw) {
     return null;
   }
 
-  const court_center_id = courtCenterIdRaw;
-  if (typeof court_center_id !== "string" || court_center_id.length === 0) {
+  const courtCenterId = courtCenterIdRaw;
+  if (typeof courtCenterId !== "string" || courtCenterId.length === 0) {
     return null;
   }
 
-  const court_id = Number(courtIdRaw);
-  if (!Number.isFinite(court_id) || court_id <= 0) {
+  const courtId = Number(courtIdRaw);
+  if (!Number.isFinite(courtId) || courtId <= 0) {
     return null;
   }
 
   try {
     const parsed: unknown = JSON.parse(slotsRaw);
-    if (!isCheckoutDraft({ court_center_id, court_id, slots: parsed })) {
+    if (!isCheckoutDraft({ courtCenterId, courtId, slots: parsed })) {
       return null;
     }
-    return { court_center_id, court_id, slots: parsed as LineItemSlotInput[] };
+    return { courtCenterId, courtId, slots: parsed as LineItemSlotInput[] };
   } catch {
     return null;
   }

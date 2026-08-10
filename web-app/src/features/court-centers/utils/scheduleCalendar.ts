@@ -13,9 +13,9 @@ export const GRID_END_MINUTES = CALENDAR_END_HOUR * 60;
 
 export type ScheduleSlotValue = {
   id?: number;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
 };
 
 export function timeToMinutes(time: string): number {
@@ -50,18 +50,18 @@ export function slotWouldOverlap(
   candidate: ScheduleSlotValue,
   excludeIndex?: number,
 ): boolean {
-  const candidateStart = timeToMinutes(candidate.start_time);
-  const candidateEnd = timeToMinutes(candidate.end_time);
+  const candidateStart = timeToMinutes(candidate.startTime);
+  const candidateEnd = timeToMinutes(candidate.endTime);
 
   return schedules.some((schedule, index) => {
     if (excludeIndex !== undefined && index === excludeIndex) {
       return false;
     }
-    if (schedule.day_of_week !== candidate.day_of_week) {
+    if (schedule.dayOfWeek !== candidate.dayOfWeek) {
       return false;
     }
-    const start = timeToMinutes(schedule.start_time);
-    const end = timeToMinutes(schedule.end_time);
+    const start = timeToMinutes(schedule.startTime);
+    const end = timeToMinutes(schedule.endTime);
     return candidateStart < end && candidateEnd > start;
   });
 }
@@ -71,18 +71,18 @@ export function getSlotResizeLimits(
   slotIndex: number,
 ): { minStartMinutes: number; maxEndMinutes: number } {
   const slot = schedules[slotIndex];
-  const slotStart = timeToMinutes(slot.start_time);
-  const slotEnd = timeToMinutes(slot.end_time);
+  const slotStart = timeToMinutes(slot.startTime);
+  const slotEnd = timeToMinutes(slot.endTime);
 
   let minStartMinutes = GRID_START_MINUTES;
   let maxEndMinutes = GRID_END_MINUTES;
 
   schedules.forEach((other, index) => {
-    if (index === slotIndex || other.day_of_week !== slot.day_of_week) {
+    if (index === slotIndex || other.dayOfWeek !== slot.dayOfWeek) {
       return;
     }
-    const otherStart = timeToMinutes(other.start_time);
-    const otherEnd = timeToMinutes(other.end_time);
+    const otherStart = timeToMinutes(other.startTime);
+    const otherEnd = timeToMinutes(other.endTime);
     if (otherEnd <= slotStart) {
       minStartMinutes = Math.max(minStartMinutes, otherEnd);
     }
@@ -108,11 +108,11 @@ export function buildSlotFromMinuteRange(
   );
 
   return {
-    day_of_week: dayOfWeek,
-    start_time: minutesToTime(
+    dayOfWeek: dayOfWeek,
+    startTime: minutesToTime(
       Math.max(GRID_START_MINUTES, normalizedStart),
     ),
-    end_time: minutesToTime(
+    endTime: minutesToTime(
       Math.min(GRID_END_MINUTES, normalizedEnd),
     ),
   };
@@ -182,28 +182,28 @@ export function combineAdjacentSchedules(
 
   //sort schedules by day of week and start time
   const sorted = [...schedules].sort((a, b) => {
-    if (a.day_of_week !== b.day_of_week) {
-      return a.day_of_week - b.day_of_week;
+    if (a.dayOfWeek !== b.dayOfWeek) {
+      return a.dayOfWeek - b.dayOfWeek;
     }
-    return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+    return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
   });
 
   const combined: ScheduleSlotValue[] = [];
 
   for (const schedule of sorted) {
     const last = combined[combined.length - 1];
-    const scheduleStart = timeToMinutes(schedule.start_time);
-    const scheduleEnd = timeToMinutes(schedule.end_time);
+    const scheduleStart = timeToMinutes(schedule.startTime);
+    const scheduleEnd = timeToMinutes(schedule.endTime);
 
     if (
       last &&
-      last.day_of_week === schedule.day_of_week &&
-      timeToMinutes(last.end_time) >= scheduleStart
+      last.dayOfWeek === schedule.dayOfWeek &&
+      timeToMinutes(last.endTime) >= scheduleStart
     ) {
       combined[combined.length - 1] = {
         ...last,
-        end_time: minutesToTime(
-          Math.max(timeToMinutes(last.end_time), scheduleEnd),
+        endTime: minutesToTime(
+          Math.max(timeToMinutes(last.endTime), scheduleEnd),
         ),
       };
       continue;
@@ -232,12 +232,12 @@ export function groupSchedulesByDay(
   };
 
   schedules.forEach((schedule, index) => {
-    grouped[schedule.day_of_week]?.push({ ...schedule, index });
+    grouped[schedule.dayOfWeek]?.push({ ...schedule, index });
   });
 
   for (const day of Object.keys(grouped)) {
     grouped[Number(day)].sort(
-      (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time),
+      (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime),
     );
   }
 

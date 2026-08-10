@@ -21,9 +21,9 @@ const currentUserNormalizer = (user: CurrentUser) => {
     email: user.email,
     avatar: user.avatar,
     name: user.name,
-    phone_number: user.phone_number,
+    phoneNumber: user.phoneNumber,
     address: user.address,
-    date_of_birth: user.date_of_birth,
+    dateOfBirth: user.dateOfBirth,
   };
 };
 
@@ -80,9 +80,9 @@ export function userFromAccessToken(token: string): CurrentUser | null {
     email: "",
     avatar: null,
     name: "",
-    phone_number: "",
+    phoneNumber: "",
     address: "",
-    date_of_birth: null,
+    dateOfBirth: null,
   } as CurrentUser);
 }
 

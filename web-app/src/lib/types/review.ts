@@ -8,7 +8,7 @@ export type Review = {
   reviewer: PublicOwner;
   rating: number;
   comment: string | null;
-  created_at: string;
-  updated_at: string;
-  court_center: CourtCenter;
+  createdAt: string;
+  updatedAt: string;
+  courtCenter: CourtCenter;
 };

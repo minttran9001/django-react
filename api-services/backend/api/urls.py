@@ -26,6 +26,8 @@ from .views import (
     RequestReviewView,
     MyTransactionCountsView,
     SendMessageView,
+    ConversationReadView,
+    ReadMessageListAPIView,
 )
 
 
@@ -65,4 +67,6 @@ urlpatterns = [
 
     #conversation
     path('messages/send', SendMessageView.as_view(), name='send_message'),
+    path('messages/<int:conversation_id>', ReadMessageListAPIView.as_view(), name='read_message_list'),
+    path('conversations', ConversationReadView.as_view(), name='conversation_read'),
 ]

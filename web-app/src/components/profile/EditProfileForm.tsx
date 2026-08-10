@@ -62,7 +62,7 @@ const EditProfileForm = ({
               />
 
               <FieldTextInput
-                name="phone_number"
+                name="phoneNumber"
                 label="Phone Number"
                 placeholder="Enter your mobile number"
                 className="bg-white"
@@ -84,7 +84,7 @@ const EditProfileForm = ({
             />
 
             <FieldDatePicker
-              name="date_of_birth"
+              name="dateOfBirth"
               label="Date of Birth"
               placeholder="Enter your date of birth"
               className="bg-white"

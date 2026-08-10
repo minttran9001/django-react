@@ -3,14 +3,14 @@ import { z } from "zod";
 export const editProfileSchema = z.object({
   name: z.string().optional(),
   email: z.email("Invalid email address"),
-  phone_number: z.string().optional(),
+  phoneNumber: z.string().optional(),
   address: z.string().optional(),
-  date_of_birth: z.string().optional(),
+  dateOfBirth: z.string().optional(),
   avatar: z
     .object({
       id: z.number().optional(),
       url: z.string().optional(),
-      public_id: z.string().optional(),
+      publicId: z.string().optional(),
     })
     .optional(),
 });

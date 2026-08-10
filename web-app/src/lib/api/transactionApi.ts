@@ -11,7 +11,7 @@ import { getUserTimezone } from "@/lib/dates";
 import { isEmpty } from "lodash";
 
 interface InitiateTransactionBody {
-  court_id: number;
+  courtId: number;
   slots: LineItemSlotInput[];
 }
 
@@ -49,7 +49,7 @@ export const transactionApi = baseApi.injectEndpoints({
       async onQueryStarted(id, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          if (data.id && data.current_state === ETransactionState.CONFIRMED) {
+          if (data.id && data.currentState === ETransactionState.CONFIRMED) {
             //add to confirmed transactions
             dispatch(
               transactionApi.util.updateQueryData(
@@ -94,7 +94,7 @@ export const transactionApi = baseApi.injectEndpoints({
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          if (data.id && data.current_state === ETransactionState.REVIEWED) {
+          if (data.id && data.currentState === ETransactionState.REVIEWED) {
             dispatch(
               transactionApi.util.updateQueryData(
                 "getTransaction",
@@ -111,7 +111,7 @@ export const transactionApi = baseApi.injectEndpoints({
     }),
     getMyTransactions: builder.query<
       Transaction[],
-      { states?: number[]; date_from?: Date; date_to?: Date }
+      { states?: number[]; dateFrom?: Date; dateTo?: Date }
     >({
       query: (queryParams) =>
         `/transactions/mine${
@@ -120,11 +120,11 @@ export const transactionApi = baseApi.injectEndpoints({
                 ...(queryParams.states && {
                   states: queryParams.states.join(","),
                 }),
-                ...(queryParams.date_from && {
-                  date_from: queryParams.date_from.toISOString(),
+                ...(queryParams.dateFrom && {
+                  dateFrom: queryParams.dateFrom.toISOString(),
                 }),
-                ...(queryParams.date_to && {
-                  date_to: queryParams.date_to.toISOString(),
+                ...(queryParams.dateTo && {
+                  dateTo: queryParams.dateTo.toISOString(),
                 }),
               }).toString()}`
             : ""

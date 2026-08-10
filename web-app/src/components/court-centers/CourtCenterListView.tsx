@@ -13,24 +13,24 @@ export function CourtCenterListView() {
   const searchParams = useSearchParams();
   const lat = searchParams.get("lat") ? Number(searchParams.get("lat")) : undefined;
   const lng = searchParams.get("lng") ? Number(searchParams.get("lng")) : undefined;
-  const sport_ids = searchParams.get("sport_ids")
-    ? searchParams.get("sport_ids")?.split(",")
+  const sportIds = searchParams.get("sportIds")
+    ? searchParams.get("sportIds")?.split(",")
     : undefined;
   const date = searchParams.get("date")
     ? formatApiDate(new Date(searchParams.get("date") ?? ""))
     : undefined;
-  const radius_km = searchParams.get("radius_km")
-    ? Number(searchParams.get("radius_km"))
+  const radiusKm = searchParams.get("radiusKm")
+    ? Number(searchParams.get("radiusKm"))
     : undefined;
 
   const filters = useMemo(() => {
     return {
       ...(lat && lng && { lat, lng }),
-      ...(sport_ids && { sport_ids }),
+      ...(sportIds && { sportIds }),
       ...(date && { date }),
-      ...(radius_km && { radius_km }),
+      ...(radiusKm && { radiusKm }),
     };
-  }, [date, lat, lng, sport_ids, radius_km]);
+  }, [date, lat, lng, sportIds, radiusKm]);
 
   const { data: courtCenters = [], isLoading, isError, isFetching } =
     useGetCourtCentersQuery(filters);

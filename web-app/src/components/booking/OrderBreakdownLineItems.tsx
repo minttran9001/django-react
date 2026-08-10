@@ -6,7 +6,7 @@ type OrderBreakdownLineItemsProps = {
   includeFor: ("customer" | "provider")[];
 };
 
-function formatMoney({ amount, currency }: LineItem["unit_price"]): string {
+function formatMoney({ amount, currency }: LineItem["unitPrice"]): string {
   const value = typeof amount === "number" ? amount : Number(amount);
   if (Number.isNaN(value)) {
     return "";
@@ -31,8 +31,8 @@ const formatDate = (date: string) => {
 };
 
 const OrderBreakdownLineItems = ({ speculatedLineItemsData, includeFor }: OrderBreakdownLineItemsProps) => {
-  const lineItems = speculatedLineItemsData.line_items;
-  const filteredLineItems = lineItems.filter((lineItem) => includeFor.some((include) => lineItem.include_for.includes(include) && lineItem.line_total.amount > 0));
+  const lineItems = speculatedLineItemsData.lineItems;
+  const filteredLineItems = lineItems.filter((lineItem) => includeFor.some((include) => lineItem.includeFor.includes(include) && lineItem.lineTotal.amount > 0));
   const slotLineItems = filteredLineItems.filter((lineItem) => lineItem.type === "booking_slot");
   const otherLineItems = filteredLineItems.filter((lineItem) => lineItem.type !== "booking_slot");
   return (
@@ -49,11 +49,11 @@ const OrderBreakdownLineItems = ({ speculatedLineItemsData, includeFor }: OrderB
             </p>
             {lineItem.metadata ? (
               <p className="text-muted-foreground">
-                Court {lineItem.metadata.court_name} · {formatDate(lineItem.metadata.date)} · {lineItem.metadata.start} – {lineItem.metadata.end}
+                Court {lineItem.metadata.courtName} · {formatDate(lineItem.metadata.date)} · {lineItem.metadata.start} – {lineItem.metadata.end}
               </p>
             ) : null}
           </div>
-          <p className="font-medium">{formatMoney(lineItem.line_total)}</p>
+          <p className="font-medium">{formatMoney(lineItem.lineTotal)}</p>
         </div>
       ))}
       <Separator />
@@ -63,13 +63,13 @@ const OrderBreakdownLineItems = ({ speculatedLineItemsData, includeFor }: OrderB
           className="flex items-start justify-between gap-3"
         >
           <p className="font-medium">{lineItem.label}</p>
-          <p className="font-medium">{formatMoney(lineItem.line_total)}</p>
+          <p className="font-medium">{formatMoney(lineItem.lineTotal)}</p>
         </div>
       ))}
       <Separator />
       <div className="flex items-start justify-between gap-3">
         <p className="font-medium">Total</p>
-        <p className="font-medium">{formatMoney(speculatedLineItemsData.pay_in_total)}</p>
+        <p className="font-medium">{formatMoney(speculatedLineItemsData.payInTotal)}</p>
       </div>
     </div>
   );

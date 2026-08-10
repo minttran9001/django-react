@@ -9,13 +9,13 @@ export type MeResponse = {
 export type EditProfileRequest = {
   name?: string;
   email: string;
-  phone_number?: string;
+  phoneNumber?: string;
   address?: string;
-  date_of_birth?: string;
-  avatar_id?: number | null;
+  dateOfBirth?: string;
+  avatarId?: number | null;
 };
 
 export type EditProfileResponse = {
   message: string;
-  email_verification_required?: boolean;
+  emailVerificationRequired?: boolean;
 };

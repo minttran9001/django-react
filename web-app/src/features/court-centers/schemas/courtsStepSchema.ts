@@ -3,10 +3,10 @@ import MoneySchema from "./moneySchema";
 
 const courtInputSchema = z.object({
   id: z.number().int().positive().optional(),
-  sport_id: z.number().int().positive("Select a sport"),
+  sportId: z.number().int().positive("Select a sport"),
   title: z.string().min(1, "Court title is required"),
   description: z.string().optional(),
-  price_per_hour: MoneySchema,
+  pricePerHour: MoneySchema,
 });
 
 export const courtsStepSchema = z.object({

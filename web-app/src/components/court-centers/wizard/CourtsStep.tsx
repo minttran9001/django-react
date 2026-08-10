@@ -81,9 +81,9 @@ const CourtsStepForm = ({ form, sports, isLoadingSports, courtImages, onCourtIma
     }
 
     fields.forEach((_, index) => {
-      const sportId = watch(`courts.${index}.sport_id`);
+      const sportId = watch(`courts.${index}.sportId`);
       if (!sportId || sportId === 0) {
-        setValue(`courts.${index}.sport_id`, sports[0].id, {
+        setValue(`courts.${index}.sportId`, sports[0].id, {
           shouldValidate: false,
         });
       }
@@ -127,7 +127,7 @@ const CourtsStepForm = ({ form, sports, isLoadingSports, courtImages, onCourtIma
             ) : null}
 
             <FieldSelect<CourtsStepValues>
-              name={`courts.${index}.sport_id`}
+              name={`courts.${index}.sportId`}
               label="Sport"
               items={sportItems}
               placeholder={
@@ -154,10 +154,10 @@ const CourtsStepForm = ({ form, sports, isLoadingSports, courtImages, onCourtIma
             />
 
             <FieldCurrencyInput<CourtsStepValues>
-              name={`courts.${index}.price_per_hour`}
+              name={`courts.${index}.pricePerHour`}
               label="Price per hour"
               currency={
-                watchedCourts[index]?.price_per_hour?.currency || "VND"
+                watchedCourts[index]?.pricePerHour?.currency || "VND"
               }
               disabled={disabled}
             />
@@ -190,10 +190,10 @@ const CourtsStepForm = ({ form, sports, isLoadingSports, courtImages, onCourtIma
           disabled={disabled || sports.length === 0}
           onClick={() =>
             append({
-              sport_id: sports[0]?.id ?? 0,
+              sportId: sports[0]?.id ?? 0,
               title: "",
               description: "",
-              price_per_hour: {
+              pricePerHour: {
                 amount: "",
                 currency: "",
               },
