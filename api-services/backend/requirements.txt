@@ -13,3 +13,6 @@ dj-database-url
 django-anymail
 Pillow
 cloudinary
+channels
+channels-redis
+daphne

@@ -67,6 +67,8 @@ JWT_COOKIE_SAMESITE = 'Lax'
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',  # must be before django.contrib.staticfiles / django apps for ASGI
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -77,6 +79,15 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 ]
+
+ASGI_APPLICATION = "backend.asgi.application"
+
+CHANNEL_LAYERS = {
+  "default": {
+    "BACKEND": "channels_redis.core.RedisChannelLayer",
+    "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
+  }
+}
 
 RESEND_SECRET = os.getenv('RESEND_SECRET')
 
