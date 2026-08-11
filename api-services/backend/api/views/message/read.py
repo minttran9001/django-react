@@ -47,10 +47,13 @@ class ReadMessageListAPIView(ListAPIView):
         # UI usually wants chronological (old → new)
         if not after_id:
             rows = list(reversed(rows))
+
+        # Cursor for the next older page = oldest id in this page
+        next_before_id = rows[0].id if has_more and rows else None
         
         return Response({
             "results": ReadMessageListSerializer(rows, many=True).data,
             "has_more": has_more,
-            "next_before_id": rows[-1].id if has_more else None,
+            "next_before_id": next_before_id,
         })
         

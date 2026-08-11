@@ -1,7 +1,12 @@
 import { ImageResource } from "@/features/court-centers/types";
 import { Conversation } from "./conversation";
 
-export type MessageStatus = "pending" | "sent" | "acked" | "failed";
+export enum EMessageStatus {
+  PENDING = "pending",
+  SENT = "sent",
+  ACKED = "acked",
+  FAILED = "failed",
+}
 
 export interface MessageAttachment {
   name: string;
@@ -14,31 +19,31 @@ export interface MessageAttachment {
 }
 
 export interface ChatMessage {
-  id: string;
+  id: number;
   clientId: string;
-  conversationId: string;
+  conversationId: Conversation["id"];
   body: string;
   createdAt: number;
-  status: MessageStatus;
+  status: EMessageStatus;
   sender: {
     id: number;
-    name: string;
-    avatar: ImageResource | null;
+    name?: string;
+    avatar?: ImageResource | null;
   };
 }
 
 export interface OutboxItem {
-  id: string;
+  id: number;
   clientId: string;
-  conversationId: string;
-  toJid: string;
+  conversationId: Conversation["id"];
   body: string;
-  /** Encrypted wire payload; if set, XMPP sends this instead of body */
-  wireBody?: string;
   createdAt: number;
-  attempts: number;
-  lastAttemptAt?: number;
-  error?: string;
+  status: EMessageStatus;
+  sender: {
+    id: number;
+    name?: string;
+    avatar?: ImageResource | null;
+  };
 }
 
 export interface SendMessageInput {

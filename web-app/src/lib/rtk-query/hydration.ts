@@ -1,8 +1,13 @@
 import type { AppDispatch } from "@/lib/store";
 
-import type { RtkQueryApiId } from "./registry";
+import type {
+  RtkQueryApiId,
+  RtkQueryDataType,
+  RtkQueryEndpointName,
+} from "./registry";
 import { rtkQueryRegistry } from "./registry";
 
+/** Erased storage shape used by collect/apply (endpoint names are checked at create time). */
 export type QueryHydrationEntry = {
   apiId: RtkQueryApiId;
   endpointName: string;
@@ -10,25 +15,32 @@ export type QueryHydrationEntry = {
   data: unknown;
 };
 
-export function createQueryHydrationEntry(
-  apiId: RtkQueryApiId,
-  endpointName: string,
+/**
+ * Create a hydration entry with API-scoped endpoint autocomplete.
+ * Pass `"conversationApi"` → second arg offers only that API's endpoints.
+ */
+export function createQueryHydrationEntry<ApiId extends RtkQueryApiId>(
+  apiId: ApiId,
+  endpointName: RtkQueryEndpointName<ApiId>,
   arg: unknown,
-  data: unknown,
+  data: RtkQueryDataType<ApiId, RtkQueryEndpointName<ApiId>>,
 ): QueryHydrationEntry | null {
   if (data == null) {
     return null;
   }
 
-  return { apiId, endpointName, arg, data };
+  return {
+    apiId,
+    endpointName: endpointName as string,
+    arg,
+    data,
+  };
 }
 
 export function collectQueryHydrations(
   ...entries: Array<QueryHydrationEntry | null | undefined>
 ) {
-  return entries.filter(
-    (entry): entry is QueryHydrationEntry => entry != null,
-  );
+  return entries.filter((entry): entry is QueryHydrationEntry => entry != null);
 }
 
 export function applyQueryHydrations(

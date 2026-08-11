@@ -15,7 +15,7 @@ const Conversations = () => {
     };
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col px-4 pb-4">
             {isLoading && <div className="flex items-center justify-center h-full gap-2">
                 <Loader2 className="size-4 animate-spin" />
                 <span className="text-sm text-gray-500">Loading conversations...</span>

@@ -1,6 +1,22 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { Conversation } from "../../types/conversation";
 import { env } from "../../env";
+import { getChatLocalDb } from "@/lib/localDb";
+
+function conversationsById(
+  conversations: Conversation[],
+): Record<string, Conversation> {
+  const sorted = [...conversations].sort(
+    (a, b) => (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0),
+  );
+  return sorted.reduce(
+    (acc, conversation) => {
+      acc[String(conversation.id)] = conversation;
+      return acc;
+    },
+    {} as Record<string, Conversation>,
+  );
+}
 
 export const conversationApi = createApi({
   reducerPath: "conversationApi",
@@ -11,24 +27,23 @@ export const conversationApi = createApi({
   tagTypes: ["Conversations"],
   endpoints: (builder) => ({
     getConversations: builder.query<Record<string, Conversation>, void>({
-      query: () => "/conversations",
-      providesTags: ["Conversations"],
-      transformResponse: (response: Conversation[]) => {
-        const byIds: Record<string, Conversation> = {};
-        for (const conversation of response) {
-          byIds[conversation.id] = conversation;
+      async queryFn(_arg, _api, _extraOptions, baseQuery) {
+        const response = await baseQuery({
+          url: "/conversations",
+        });
+
+        if (response.error) {
+          return { error: response.error };
         }
-        const sortedByIds = Object.values(byIds).sort(
-          (a, b) => (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0),
-        );
-        return sortedByIds.reduce(
-          (acc, conversation) => {
-            acc[conversation.id] = conversation;
-            return acc;
-          },
-          {} as Record<string, Conversation>,
-        );
+
+        const list = response.data as Conversation[];
+        const db = getChatLocalDb();
+        await db.conversations.bulkPut(list);
+
+        // queryFn skips transformResponse — normalize here to match cache shape.
+        return { data: conversationsById(list) };
       },
+      providesTags: ["Conversations"],
     }),
   }),
 });
