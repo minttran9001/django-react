@@ -12,7 +12,10 @@ from api.utils.app_timezone import (
     today_in_tz,
 )
 
-ACTIVE_BOOKING_STATUSES = [BookingStatus.PENDING]
+# PENDING soft-holds and CONFIRMED paid bookings both block a slot.
+# Omitting CONFIRMED lets a second customer initiate (and pay for) an
+# already-paid slot because reserve_bookings only consults this list.
+ACTIVE_BOOKING_STATUSES = [BookingStatus.PENDING, BookingStatus.CONFIRMED]
 ALLOWED_SLOT_DURATION_MINUTES = 60
 
 def slot_duration_minutes(start, end) -> int:
