@@ -97,19 +97,22 @@ def regenerate_slots_for_court(court: Court, from_date: date | None = None) -> N
     if to_create:
         CourtSlot.objects.bulk_create(to_create)
 
-    # Re-apply any active bookings that fall inside the rebuilt range
-    active = list(
-        Booking.objects.filter(
-            court=court,
-            date__gte=start,
-            date__lte=horizon,
-            status__in=ACTIVE_BOOKING_STATUSES,
-        ).values_list("date", "start_time")
+    # Re-apply any active bookings that fall inside the rebuilt range.
+    # Multi-hour bookings are stored as one row (merged start/end); expand to
+    # hourly CourtSlot specs so middle hours stay unavailable after regen.
+    from api.utils.booking_slots import bookings_to_slot_specs
+
+    active = Booking.objects.filter(
+        court=court,
+        date__gte=start,
+        date__lte=horizon,
+        status__in=ACTIVE_BOOKING_STATUSES,
     )
-    if active:
+    specs = bookings_to_slot_specs(active)
+    if specs:
         q = Q()
-        for booking_date, start_t in active:
-            q |= Q(date=booking_date, start_time=start_t)
+        for spec in specs:
+            q |= Q(date=spec["date"], start_time=spec["start"])
         CourtSlot.objects.filter(court=court).filter(q).update(is_available=False)
 
 

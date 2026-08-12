@@ -103,6 +103,8 @@ def create_payment(transaction: "Transaction", context: dict) -> None:
 
 def confirm_bookings(transaction: "Transaction", context: dict) -> None:
     pending = list(transaction.bookings.filter(status=BookingStatus.PENDING))
+    if not pending:
+        raise ActionError("No pending bookings to confirm.")
     transaction.bookings.filter(status=BookingStatus.PENDING).update(
         status=BookingStatus.CONFIRMED
     )
