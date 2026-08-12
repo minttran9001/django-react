@@ -129,14 +129,22 @@ class TransactionEngine:
         actor: str | TRANSACTION_ACTORS,
         context: dict[str, Any] | None = None,
     ) -> Transaction:
+        from api.models.transaction import Transaction
+
         transition_key = self._normalize_name(transition_name)
-        config = self._validate_transition(transition_key, actor=self._normalize_name(actor))
+        actor_name = self._normalize_name(actor)
 
         if context:
             self.context.update(context)
 
         with db_transaction.atomic():
             self._ensure_persisted()
+            # Lock the row before re-validating state so concurrent transitions
+            # (e.g. confirm-payment vs expire-payment) cannot interleave actions.
+            locked = Transaction.objects.select_for_update().get(pk=self.transaction.pk)
+            self.transaction = locked
+            config = self._validate_transition(transition_key, actor=actor_name)
+
             for action in config["actions"]:
                 run_action(self._normalize_name(action), self.transaction, self.context)
 
