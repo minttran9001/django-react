@@ -165,6 +165,8 @@ def sync_court_images(
 
 
 def sync_courts(center: CourtCenter, courts_data: list[dict], owner) -> None:
+    from api.models import Booking, Transaction
+
     submitted_ids: set[int] = set()
 
     for court_data in courts_data:
@@ -182,4 +184,23 @@ def sync_courts(center: CourtCenter, courts_data: list[dict], owner) -> None:
         submitted_ids.add(court.id)
         sync_court_images(court, owner, image_ids=court_image_ids)
 
-    center.courts.exclude(id__in=submitted_ids).delete()
+    to_remove = center.courts.exclude(id__in=submitted_ids)
+    if not to_remove.exists():
+        return
+
+    # Booking/Transaction FKs use CASCADE — deleting a court would silently
+    # destroy paid bookings and transaction history.
+    if (
+        Booking.objects.filter(court__in=to_remove).exists()
+        or Transaction.objects.filter(court__in=to_remove).exists()
+    ):
+        raise serializers.ValidationError(
+            {
+                "courts": (
+                    "Cannot remove a court that has bookings or transactions. "
+                    "Archive the listing or keep the court."
+                )
+            }
+        )
+
+    to_remove.delete()
