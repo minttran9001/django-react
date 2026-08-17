@@ -148,6 +148,28 @@ def mark_slots_available_from_bookings(court_id: int, booking_queryset) -> None:
 # Horizon extension (run daily)
 # ---------------------------------------------------------------------------
 
+def _reapply_active_bookings_to_slots(
+    court: Court,
+    range_start: date,
+    range_end: date,
+) -> None:
+    """
+    Mark CourtSlot rows unavailable for active bookings in [range_start, range_end].
+
+    Bookings may exist before CourtSlot rows do (e.g. far-future initiate, then
+    horizon extension). Always expand multi-hour bookings into hourly specs.
+    """
+    from api.utils.booking_slots import bookings_to_slot_specs
+
+    active = Booking.objects.filter(
+        court=court,
+        date__gte=range_start,
+        date__lte=range_end,
+        status__in=ACTIVE_BOOKING_STATUSES,
+    )
+    mark_slots_unavailable(court.pk, bookings_to_slot_specs(active))
+
+
 def extend_slots_horizon(
     courts: list[Court] | None = None,
     days: int = SLOT_GENERATION_DAYS,
@@ -156,6 +178,9 @@ def extend_slots_horizon(
     Extend slot coverage so every court has rows up to today + days.
     Idempotent — only adds rows for dates not yet present.
     Returns the number of new CourtSlot rows inserted.
+
+    After inserting, re-applies active bookings so far-future reservations are
+    not left incorrectly available in the search index.
     """
     from api.models.court_center import CourtCenter  # avoid circular at module level
 
@@ -201,6 +226,9 @@ def extend_slots_horizon(
         if to_create:
             CourtSlot.objects.bulk_create(to_create, ignore_conflicts=True)
             total_created += len(to_create)
+            # Newly created rows default to available; re-lock any active bookings
+            # that already exist in this newly covered range.
+            _reapply_active_bookings_to_slots(court, start, horizon)
 
     return total_created
 
