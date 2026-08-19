@@ -69,6 +69,9 @@ def reserve_bookings(transaction: "Transaction", context: dict) -> None:
         for slot in merged_slots
     ]
     Booking.objects.bulk_create(bookings)
+    # Lock the slot index immediately on reserve so search/listing hide the
+    # pending hold. cancel_bookings releases these rows on expire/cancel.
+    mark_slots_unavailable(court.id, bookings_to_slot_specs(bookings))
 
 
 def snapshot_line_items(transaction: "Transaction", context: dict) -> None:
