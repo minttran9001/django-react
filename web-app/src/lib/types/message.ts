@@ -32,18 +32,10 @@ export interface ChatMessage {
   };
 }
 
-export interface OutboxItem {
-  id: number;
-  clientId: string;
-  conversationId: Conversation["id"];
-  body: string;
-  createdAt: number;
-  status: EMessageStatus;
-  sender: {
-    id: number;
-    name?: string;
-    avatar?: ImageResource | null;
-  };
+export interface OutboxItem extends ChatMessage {
+  lastAttemptAt?: number;
+  attempts?: number;
+  errorMessage?: string;
 }
 
 export interface SendMessageInput {

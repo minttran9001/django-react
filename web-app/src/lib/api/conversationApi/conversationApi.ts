@@ -1,7 +1,7 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import { Conversation } from "../../types/conversation";
-import { env } from "../../env";
 import { getChatLocalDb } from "@/lib/localDb";
+import { baseQueryWithReauth } from "@/lib/api/baseApi";
 
 function conversationsById(
   conversations: Conversation[],
@@ -20,10 +20,7 @@ function conversationsById(
 
 export const conversationApi = createApi({
   reducerPath: "conversationApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: `${env.NEXT_PUBLIC_API_URL}/api`,
-    credentials: "include",
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Conversations"],
   endpoints: (builder) => ({
     getConversations: builder.query<Record<string, Conversation>, void>({

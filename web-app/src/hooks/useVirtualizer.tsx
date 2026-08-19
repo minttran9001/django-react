@@ -15,8 +15,12 @@ export type VirtualItem = {
   key: string | number;
   start: number;
   size: number;
-  end: number;
+end: number;
 };
+
+function toMeasuredKey(key: string | number) {
+  return String(key);
+}
 
 export default function useVirtualizer({
   getScrollElement,
@@ -27,11 +31,12 @@ export default function useVirtualizer({
 }: TUseVirtualizerProps) {
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const [measured, setMeasured] = useState<Record<number, number>>({});
+  const [measured, setMeasured] = useState<Record<string, number>>({});
 
   const getSize = useCallback(
-    (index: number) => measured[index] ?? estimateSize(index),
-    [measured, estimateSize],
+    (index: number) =>
+      measured[toMeasuredKey(getItemKey(index))] ?? estimateSize(index),
+    [measured, estimateSize, getItemKey],
   );
 
   const { offsets, totalSize } = useMemo(() => {
@@ -56,6 +61,25 @@ export default function useVirtualizer({
       return Math.min(lo, Math.max(0, count - 1));
     },
     [count, offsets],
+  );
+
+  const getOffsetForIndex = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= count) return 0;
+      return offsets[index] ?? 0;
+    },
+    [count, offsets],
+  );
+
+  const findIndexByKey = useCallback(
+    (key: string | number) => {
+      const target = toMeasuredKey(key);
+      for (let i = 0; i < count; i++) {
+        if (toMeasuredKey(getItemKey(i)) === target) return i;
+      }
+      return -1;
+    },
+    [count, getItemKey],
   );
 
   const virtualItems = useMemo((): VirtualItem[] => {
@@ -117,12 +141,12 @@ export default function useVirtualizer({
 
   const measureElement = useCallback((node: HTMLElement | null) => {
     if (!node) return;
-    const index = Number(node.dataset.index);
-    if (Number.isNaN(index)) return;
+    const key = node.dataset.key;
+    if (key == null || key === "") return;
     const height = node.getBoundingClientRect().height;
     if (height <= 0) return;
     setMeasured((prev) =>
-      prev[index] === height ? prev : { ...prev, [index]: height },
+      prev[key] === height ? prev : { ...prev, [key]: height },
     );
   }, []);
 
@@ -148,10 +172,30 @@ export default function useVirtualizer({
     [getScrollElement, count, offsets, getSize, totalSize],
   );
 
+  const scrollToOffset = useCallback(
+    (offset: number) => {
+      const el = getScrollElement();
+      if (!el) return;
+      el.scrollTop = Math.max(0, offset);
+      setScrollTop(el.scrollTop);
+    },
+    [getScrollElement],
+  );
+
+  const translateY = useMemo(() => {
+    const startIndex = Math.max(0, findStartIndex(scrollTop) - overscan);
+    return offsets[startIndex];
+  }, [scrollTop, offsets, findStartIndex, overscan]);
+
   return {
     virtualItems,
     totalSize,
     measureElement,
     scrollToIndex,
+    scrollToOffset,
+    getOffsetForIndex,
+    findIndexByKey,
+    findStartIndex,
+    translateY,
   };
 }

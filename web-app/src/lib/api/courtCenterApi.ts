@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 
 import type {
   CourtCenter,
@@ -10,7 +10,7 @@ import type {
   Sport,
   UploadImagesResponse,
 } from "@/features/court-centers/types";
-import { env } from "@/lib/env";
+import { baseQueryWithReauth } from "@/lib/api/baseApi";
 import { getUserTimezone } from "@/lib/dates";
 
 export type CourtCenterQueryArgs = {
@@ -29,10 +29,7 @@ function serializeCourtCenterArgs({ id, date, timezone }: CourtCenterQueryArgs) 
 
 export const courtCenterApi = createApi({
   reducerPath: "courtCenterApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: `${env.NEXT_PUBLIC_API_URL}/api`,
-    credentials: "include",
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Sports", "CourtCenters", "MyCourtCenters"],
   endpoints: (builder) => ({
     getCourtCenters: builder.query<

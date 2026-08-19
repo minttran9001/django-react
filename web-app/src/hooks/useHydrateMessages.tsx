@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { getChatLocalDb } from "@/lib/localDb";
 import { useAppDispatch } from "@/lib/hooks";
 import { Conversation } from "@/lib/types/conversation";
-
+const DEFAULT_PAGE_SIZE = 40;
 const db = getChatLocalDb();
 
 const useHydrateMessages = ({
@@ -19,13 +19,8 @@ const useHydrateMessages = ({
     useEffect(() => {
         if (!conversationId || conversationHydrated) return;
         const hydrate = async () => {
-            const messages = await db.getMessagesByConversationId(conversationId);
-            const metadata = await db.getConversationMetadata(conversationId);
-            const hasMore = metadata?.hasMore ?? true;
-            const nextBeforeId = metadata?.nextBeforeId ?? null;
+            const messages = await db.getMessagesByConversationIdAndPage(conversationId, undefined, DEFAULT_PAGE_SIZE);
             if (messages.length === 0) return;
-
-
             dispatch(
                 messageApi.util.upsertQueryData(
                     "getMessages",
@@ -33,10 +28,11 @@ const useHydrateMessages = ({
                     {
                         pages: [
                             {
-                                results: messages.slice(-40),
+                                // get the latest 40 messages
+                                results: messages.slice(-DEFAULT_PAGE_SIZE),
                                 // Assume more may exist until network confirms
-                                hasMore: hasMore,
-                                nextBeforeId: nextBeforeId,
+                                hasMore: true,
+                                nextBeforeId: messages[0].id,
                             },
                         ],
                         pageParams: [null],

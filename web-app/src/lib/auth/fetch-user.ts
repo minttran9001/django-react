@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 import type { CurrentUser } from "@/lib/auth/types";
 import { env } from "@/lib/env";
@@ -131,21 +131,43 @@ export interface PrefetchResult {
 export async function prefetchUser(
   request: NextRequest,
 ): Promise<PrefetchResult> {
-  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-  if (!accessToken) return { user: null, setCookies: [] };
-
-  const user = await getMe(accessToken);
-  if (user) return { user, setCookies: [] };
-
+  let useRefresh = false;
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
-  if (!refreshToken) return { user: null, setCookies: [] };
+  try {
+    const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+    if (!accessToken && !refreshToken) return { user: null, setCookies: [] };
 
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const refreshResult = await refreshAccessToken(cookieHeader);
-  if (!refreshResult) return { user: null, setCookies: [] };
+    if (accessToken) {
+      const user = await getMe(accessToken);
+      if (user) return { user, setCookies: [] };
+    }
 
-  const newUser = await getMe(refreshResult.access);
-  if (newUser) return { user: newUser, setCookies: refreshResult.setCookies };
+    useRefresh = true;
+    const cookieHeader = request.headers.get("cookie") ?? "";
+    const refreshResult = await refreshAccessToken(cookieHeader);
+    if (!refreshResult) return { user: null, setCookies: [] };
+
+    const newUser = await getMe(refreshResult.access);
+    if (newUser) {
+      return { user: newUser, setCookies: refreshResult.setCookies };
+    }
+  } catch (error) {
+    if (
+      !useRefresh &&
+      error instanceof AxiosError &&
+      error.response?.status === 401 &&
+      refreshToken
+    ) {
+      const cookieHeader = request.headers.get("cookie") ?? "";
+      const refreshResult = await refreshAccessToken(cookieHeader);
+      if (!refreshResult) return { user: null, setCookies: [] };
+      const newUser = await getMe(refreshResult.access);
+      if (newUser) {
+        return { user: newUser, setCookies: refreshResult.setCookies };
+      }
+    }
+    return { user: null, setCookies: [] };
+  }
 
   return { user: null, setCookies: [] };
 }

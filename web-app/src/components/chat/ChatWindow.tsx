@@ -1,6 +1,6 @@
 "use client";
 import { useGetMessagesInfiniteQuery } from "@/lib/api/messageApi/messageApi";
-import { Conversation } from "@/lib/types/conversation";
+import { Conversation, ConversationMember } from "@/lib/types/conversation";
 import Composer from "./Composer";
 import { useCallback, useMemo } from "react";
 import { ArrowLeftIcon } from "lucide-react";
@@ -9,6 +9,7 @@ import { useGetConversationsQuery } from "@/lib/api/conversationApi/conversation
 import { useSetActiveConversation } from "@/lib/slices/chat/actions";
 import MessageList from "./MessageList";
 import type { ChatMessage } from "@/lib/types/message";
+import { useTyping } from "@/lib/slices/chat/selectors";
 
 const ChatWindow = ({
     conversationId,
@@ -24,12 +25,18 @@ const ChatWindow = ({
     } = useGetMessagesInfiniteQuery({ conversationId });
     const setActiveConversation = useSetActiveConversation();
     const { data: conversationData = {} } = useGetConversationsQuery();
+    const typingStates = useTyping(conversationId);
     const conversations = Object.values(conversationData);
     const conversation =
         conversations.find(
             (c: Conversation) => c.id === conversationId,
         ) ?? null;
 
+    const typingMembers = useMemo(() => {
+        return Object.keys(typingStates).map(userId => {
+            return typingStates[Number(userId)] ? conversation?.members.find(member => member.user.id === Number(userId)) : null;
+        }).filter(Boolean) as ConversationMember[];
+    }, [typingStates, conversation]);
     // pages[0] = newest chunk; later pages = older → reverse then flatten
     // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const messages = useMemo(() => {
@@ -39,6 +46,7 @@ const ChatWindow = ({
             return acc;
         }, []);
     }, [data?.pages]);
+
 
     const onLoadOlder = useCallback(() => {
         if (!hasNextPage || isFetchingNextPage) return;
@@ -58,6 +66,7 @@ const ChatWindow = ({
                 <h2 className="text-lg font-bold">{conversation?.name || ""}</h2>
             </div>
             <MessageList
+                typingStates={{ typingMembers }}
                 key={conversationId}
                 messages={messages}
                 isLoading={messages.length === 0 && isLoading}

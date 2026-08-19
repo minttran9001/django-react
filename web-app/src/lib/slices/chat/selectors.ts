@@ -10,3 +10,9 @@ export const useDraftMessage = (conversationId: Conversation["id"]) => {
     (state) => state.chat.draftMessageByConversationId[conversationId],
   );
 };
+
+export const useTyping = (conversationId: Conversation["id"]) => {
+  return useAppSelector(
+    (state) => state.chat.typingByConversationId[conversationId] ?? {},
+  );
+};

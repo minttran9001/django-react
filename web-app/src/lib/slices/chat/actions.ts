@@ -4,6 +4,8 @@ import {
   clearDraftMessage,
   setActiveConversation,
   setDraftMessage,
+  setTyping,
+  clearTyping,
 } from "./slice";
 
 export const useSetActiveConversation = () => {
@@ -24,5 +26,23 @@ export const useClearDraftMessage = () => {
   const dispatch = useAppDispatch();
   return (conversationId: Conversation["id"]) => {
     dispatch(clearDraftMessage({ conversationId }));
+  };
+};
+
+export const useSetTyping = () => {
+  const dispatch = useAppDispatch();
+  return (
+    conversationId: Conversation["id"],
+    userId: number,
+    typing?: boolean,
+  ) => {
+    dispatch(setTyping({ conversationId, userId, typing }));
+  };
+};
+
+export const useClearTyping = () => {
+  const dispatch = useAppDispatch();
+  return (conversationId: Conversation["id"], userId: number) => {
+    dispatch(clearTyping({ conversationId, userId }));
   };
 };

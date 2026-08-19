@@ -1,18 +1,11 @@
 import Dexie, { Table } from "dexie";
 import { Conversation } from "../types/conversation";
-import { ChatMessage, OutboxItem } from "../types/message";
-
-export type ConversationMetadata = {
-  conversationId: Conversation["id"];
-  nextBeforeId: number | null;
-  hasMore: boolean;
-};
+import { ChatMessage, EMessageStatus, OutboxItem } from "../types/message";
 
 export class LocalDb extends Dexie {
   conversations!: Table<Conversation>;
   messages!: Table<ChatMessage>;
   outbox!: Table<OutboxItem>;
-  conversationMetadata!: Table<ConversationMetadata>;
   constructor(dbName: string) {
     super(dbName);
     this.version(1).stores({
@@ -24,6 +17,18 @@ export class LocalDb extends Dexie {
     this.version(2).stores({
       conversationMetadata: "conversationId, nextBeforeId, hasMore",
     });
+    this.version(3).stores({
+      outbox:
+        "id, clientId, conversationId, body, status, sender, createdAt, lastAttemptAt, attempts, errorMessage",
+    });
+    this.version(4).stores({
+      conversations:
+        "++id, type, name, unread, mentionUnread, lastMessageAt, lastMessagePreview, lastMessageSender, members",
+      messages:
+        "++id, clientId, conversationId, body, status, sender, createdAt",
+      outbox:
+        "id, clientId, conversationId, body, status, sender, createdAt, lastAttemptAt, attempts, errorMessage",
+    });
   }
 
   getMessagesByConversationId(
@@ -33,22 +38,58 @@ export class LocalDb extends Dexie {
       .where("conversationId")
       .equals(conversationId)
       .toArray()
-      .then((messages) => messages.sort((a, b) => a.createdAt - b.createdAt));
+      .then((messages) =>
+        messages.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+      );
   }
+
+  async getMessagesByConversationIdAndPage(
+    conversationId: Conversation["id"],
+    beforeId?: number,
+    limit?: number,
+  ): Promise<ChatMessage[]> {
+    let messages = await this.messages
+      .where("conversationId")
+      .equals(conversationId)
+      .toArray()
+      .then((messages) =>
+        messages.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+      );
+    if (beforeId) {
+      messages = messages.filter((message) => message.id < beforeId);
+    }
+    messages = messages.slice(-(limit ?? 40));
+    return messages;
+  }
+
+  getPendingMessages(): Promise<OutboxItem[]> {
+    return this.messages
+      .where("status")
+      .equals(EMessageStatus.PENDING)
+      .toArray()
+      .then((messages) =>
+        messages.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+      );
+  }
+
   getConversations(): Promise<Conversation[]> {
     return this.conversations.toArray();
   }
 
-  getConversationMetadata(
-    conversationId: Conversation["id"],
-  ): Promise<ConversationMetadata | undefined> {
-    return this.conversationMetadata.get(conversationId);
-  }
-
-  setConversationMetadata(metadata: ConversationMetadata): Promise<void> {
-    return this.conversationMetadata.put({
-      ...metadata,
-    });
+  deleteOutboxByClientId(clientId?: string) {
+    if (!clientId) {
+      return Promise.resolve();
+    }
+    return this.outbox.where("clientId").equals(clientId).delete();
   }
 }
 

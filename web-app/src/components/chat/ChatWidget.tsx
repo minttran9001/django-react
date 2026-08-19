@@ -3,6 +3,7 @@ import ChatLauncher from "./ChatLauncher";
 import YourMessages from "./YourMessages";
 import { useChatWidgetOpen } from "@/lib/slices/ui/selectors";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { ChatProvider } from "@/providers/ChatContext";
 const ChatWidget = () => {
     const auth = useAuth();
 
@@ -11,12 +12,12 @@ const ChatWidget = () => {
     }
 
     return (
-        <>
+        <ChatProvider>
             <ChatLauncher />
             <ChatWidgetWrapper>
                 <YourMessages />
             </ChatWidgetWrapper>
-        </>
+        </ChatProvider>
     );
 };
 

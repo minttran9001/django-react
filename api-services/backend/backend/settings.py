@@ -82,12 +82,22 @@ INSTALLED_APPS = [
 
 ASGI_APPLICATION = "backend.asgi.application"
 
-CHANNEL_LAYERS = {
-  "default": {
-    "BACKEND": "channels_redis.core.RedisChannelLayer",
-    "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
-  }
-}
+# Local/dev: InMemory avoids redis-py 8 + channels-redis asyncio timeouts.
+# Set REDIS_URL (e.g. redis://127.0.0.1:6379/0) for multi-process / prod.
+REDIS_URL = os.getenv("REDIS_URL")
+if REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [REDIS_URL]},
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 RESEND_SECRET = os.getenv('RESEND_SECRET')
 

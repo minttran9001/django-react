@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 
 import type {
   CurrentUser,
@@ -6,7 +6,7 @@ import type {
   EditProfileResponse,
   MeResponse,
 } from "@/lib/auth/types";
-import { env } from "@/lib/env";
+import { baseQueryWithReauth } from "./baseApi";
 
 export type { CurrentUser, MeResponse };
 
@@ -22,10 +22,7 @@ export interface RegisterRequest {
 
 export const authApi = createApi({
   reducerPath: "authApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: `${env.NEXT_PUBLIC_API_URL}/api`,
-    credentials: "include",
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Me", "UserProfile"],
   endpoints: (builder) => ({
     getMe: builder.query<CurrentUser | null, void>({

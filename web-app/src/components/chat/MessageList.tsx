@@ -1,24 +1,35 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef } from "react";
-import { ChatMessage } from "@/lib/types/message";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { ChatMessage, EMessageStatus } from "@/lib/types/message";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import useVirtualizer from "@/hooks/useVirtualizer";
+import { format, isSameDay } from "date-fns";
+import { ConversationMember } from "@/lib/types/conversation";
+import { getChatLocalDb } from "@/lib/localDb";
 
 const isOutgoingMessage = (message: ChatMessage, currentUserId: number) => {
     return message.sender.id === currentUserId;
 };
 
 const Message = ({
+    showAvatar,
     message,
     currentUserId,
+    onRemeasure,
+    showStatus: showStatusProp,
 }: {
+    showAvatar: boolean;
     message: ChatMessage;
     currentUserId: number;
+    onRemeasure?: () => void;
+    showStatus?: boolean;
 }) => {
+    const [showStatus, setShowStatus] = useState(showStatusProp);
+
     const isOutgoing = isOutgoingMessage(message, currentUserId);
     const rootClasses = cn("w-fit flex gap-2 text-sm flex-col pb-2", {
         "self-end": isOutgoing,
@@ -31,17 +42,31 @@ const Message = ({
 
     return (
         <div className={rootClasses}>
-            <div className="flex gap-2 items-end">
-                {!isOutgoing && (
-                    <Avatar size="sm">
+            <div className="flex gap-2 items-center">
+                {!isOutgoing ? (
+                    <Avatar
+                        size="sm"
+                        className={cn({
+                            "opacity-0": !showAvatar,
+                        })}
+                    >
                         <AvatarImage src={message.sender.avatar?.url} />
                         <AvatarFallback>
                             {message.sender.name?.charAt(0) ?? ""}
                         </AvatarFallback>
                     </Avatar>
-                )}
-                <div className="flex flex-col gap-2">
-                    {!isOutgoing && (
+                ) : null}
+                <div
+                    className={cn("flex flex-col gap-2", {
+                        "items-end": isOutgoing,
+                        "items-start": !isOutgoing,
+                    })}
+                    onClick={() => {
+                        setShowStatus(true);
+                        onRemeasure?.();
+                    }}
+                >
+                    {!isOutgoing && showAvatar && (
                         <p className="text-xs text-gray-500">{message.sender.name}</p>
                     )}
                     <div className="flex items-center gap-2">
@@ -49,15 +74,50 @@ const Message = ({
                             <p>{message.body}</p>
                         </div>
                     </div>
+                    {isOutgoing && showStatus && (
+                        <span className="text-xs text-gray-500 w-fit">
+                            {message.status === "pending" ? "Pending" : "Sent"}
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-const ESTIMATED_ROW_SIZE = 72;
+const ESTIMATED_ROW_SIZE = 30;
 const NEAR_BOTTOM_PX = 80;
 const LOAD_OLDER_TOP_PX = 80;
+
+function messageKey(message: ChatMessage | undefined, index: number) {
+    return message?.id ?? message?.clientId ?? index;
+}
+
+function isGroupMessagesStart(messages: ChatMessage[], index: number) {
+    const MAX_WINDOW_MS = 1000 * 60 * 10;
+    const curr = messages[index];
+    const prev = messages[index - 1];
+    if (!prev || !curr) return true;
+    const currDate = new Date(curr.createdAt);
+    const prevDate = new Date(prev.createdAt);
+    if (curr.sender.id !== prev.sender.id) return true;
+    if (currDate.getTime() - prevDate.getTime() > MAX_WINDOW_MS) return true;
+    return false;
+}
+
+function showTimeSeparator(messages: ChatMessage[], index: number) {
+    const TIME_GAP_MS = 1000 * 60 * 30;
+    const curr = messages[index];
+    const prev = messages[index - 1];
+    if (!prev || !curr) return false;
+    const currDate = new Date(curr.createdAt);
+    const prevDate = new Date(prev.createdAt);
+    return (
+        currDate.getTime() - prevDate.getTime() > TIME_GAP_MS ||
+        new Date(prev.createdAt).toDateString() !==
+        new Date(curr.createdAt).toDateString()
+    );
+}
 
 const MessageList = ({
     messages = [],
@@ -65,80 +125,152 @@ const MessageList = ({
     isFetchingOlder = false,
     hasOlder = false,
     onLoadOlder,
+    typingStates,
 }: {
     messages: ChatMessage[];
     isLoading: boolean;
     isFetchingOlder?: boolean;
     hasOlder?: boolean;
     onLoadOlder?: () => void;
+    typingStates?: { typingMembers?: ConversationMember[] };
 }) => {
     const { user: currentUser } = useAuth();
     const containerRef = useRef<HTMLDivElement>(null);
     const prevLengthRef = useRef(0);
     const stickToBottomRef = useRef(true);
-    const pendingPrependRef = useRef(false);
-    const prevScrollHeightRef = useRef(0);
+    const suppressScrollEventsRef = useRef(0);
+    const lastRestoredScrollTopRef = useRef(0);
+    const prevTotalSizeRef = useRef(0);
+    const prependAnchorRef = useRef<{
+        key: string | number;
+        offsetInViewport: number;
+        lengthBefore: number;
+    } | null>(null);
     const threadKey = messages[0]?.conversationId;
 
     const getScrollElement = useCallback(() => containerRef.current, []);
     const estimateSize = useCallback(() => ESTIMATED_ROW_SIZE, []);
     const getItemKey = useCallback(
-        (index: number) =>
-            messages[index]?.id ?? messages[index]?.clientId ?? index,
+        (index: number) => messageKey(messages[index], index),
         [messages],
     );
 
-    const { virtualItems, totalSize, measureElement, scrollToIndex } =
-        useVirtualizer({
-            getScrollElement,
-            estimateSize,
-            overscan: 5,
-            getItemKey,
-            count: messages.length,
-        });
+    const {
+        virtualItems,
+        totalSize,
+        measureElement,
+        scrollToIndex,
+        scrollToOffset,
+        getOffsetForIndex,
+        findStartIndex,
+        translateY,
+    } = useVirtualizer({
+        getScrollElement,
+        estimateSize,
+        overscan: 2,
+        getItemKey,
+        count: messages.length,
+    });
 
     // New conversation → stick to bottom again
     useLayoutEffect(() => {
         prevLengthRef.current = 0;
         stickToBottomRef.current = true;
-        pendingPrependRef.current = false;
+        prependAnchorRef.current = null;
+        suppressScrollEventsRef.current = 0;
+        prevTotalSizeRef.current = 0;
     }, [threadKey]);
 
     const onScroll = useCallback(() => {
         const el = containerRef.current;
         if (!el) return;
+
+        if (suppressScrollEventsRef.current > 0) {
+            suppressScrollEventsRef.current -= 1;
+            return;
+        }
+
         const distanceFromBottom =
             el.scrollHeight - el.scrollTop - el.clientHeight;
         stickToBottomRef.current = distanceFromBottom <= NEAR_BOTTOM_PX;
+
+        const anchor = prependAnchorRef.current;
+        if (anchor && messages.length > anchor.lengthBefore) {
+            const drift = Math.abs(el.scrollTop - lastRestoredScrollTopRef.current);
+            // Stay pinned through minor drift/noise; only drop when user moves away.
+            if (drift <= 80) {
+                if (
+                    el.scrollTop <= LOAD_OLDER_TOP_PX &&
+                    hasOlder &&
+                    !isFetchingOlder &&
+                    onLoadOlder
+                ) {
+                    const anchorIndex = findStartIndex(el.scrollTop);
+                    const key = messageKey(messages[anchorIndex], anchorIndex);
+                    prependAnchorRef.current = {
+                        key,
+                        offsetInViewport: getOffsetForIndex(anchorIndex) - el.scrollTop,
+                        lengthBefore: messages.length,
+                    };
+                    onLoadOlder();
+                }
+                return;
+            }
+            prependAnchorRef.current = null;
+        }
 
         if (
             el.scrollTop <= LOAD_OLDER_TOP_PX &&
             hasOlder &&
             !isFetchingOlder &&
-            onLoadOlder
+            !prependAnchorRef.current &&
+            onLoadOlder &&
+            messages.length > 0
         ) {
-            prevScrollHeightRef.current = el.scrollHeight;
-            pendingPrependRef.current = true;
+            const anchorIndex = findStartIndex(el.scrollTop);
+            const key = messageKey(messages[anchorIndex], anchorIndex);
+            prependAnchorRef.current = {
+                key,
+                offsetInViewport: getOffsetForIndex(anchorIndex) - el.scrollTop,
+                lengthBefore: messages.length,
+            };
             onLoadOlder();
         }
-    }, [hasOlder, isFetchingOlder, onLoadOlder]);
+    }, [
+        hasOlder,
+        isFetchingOlder,
+        onLoadOlder,
+        messages,
+        findStartIndex,
+        getOffsetForIndex,
+    ]);
 
-    // After older pages prepend, keep the same messages under the viewport
+    // Keep visual position by compensating totalSize growth while prepend anchor is held.
     useLayoutEffect(() => {
-        if (!pendingPrependRef.current) return;
         const el = containerRef.current;
-        if (!el) return;
-        const delta = el.scrollHeight - prevScrollHeightRef.current;
-        if (delta > 0) {
-            el.scrollTop += delta;
-        }
-        pendingPrependRef.current = false;
-    }, [messages.length, totalSize]);
+        const prevTotal = prevTotalSizeRef.current;
+        prevTotalSizeRef.current = totalSize;
+
+        const anchor = prependAnchorRef.current;
+        if (!el || !anchor) return;
+        if (messages.length <= anchor.lengthBefore) return;
+
+        const delta = totalSize - prevTotal;
+        if (delta === 0) return;
+
+        const before = el.scrollTop;
+        const target = Math.max(0, before + delta);
+        scrollToOffset(target);
+        lastRestoredScrollTopRef.current = el.scrollTop;
+        // Budget extra browser scroll events per correction (stale echoes).
+        suppressScrollEventsRef.current += 3;
+    }, [messages.length, totalSize, scrollToOffset, messages]);
 
     // Pin to bottom while sticking: first load uses estimates, then
     // measureElement grows totalSize — re-scroll so we don't land mid-list.
     useLayoutEffect(() => {
         if (messages.length === 0) return;
+        if (prependAnchorRef.current) return;
 
         const prevLength = prevLengthRef.current;
         const grew = messages.length > prevLength;
@@ -156,55 +288,87 @@ const MessageList = ({
         scrollToIndex(messages.length - 1, { align: "end" });
     }, [messages.length, totalSize, scrollToIndex]);
 
+    const typingLabel = typingStates?.typingMembers?.length
+        ? typingStates.typingMembers.length === 1
+            ? `${typingStates.typingMembers[0].user.name} is typing...`
+            : "Several people are typing..."
+        : null;
+
     return (
-        <div
-            ref={containerRef}
-            className="overflow-y-auto max-h-100 mb-4 px-4"
-            onScroll={onScroll}
-        >
-            {isFetchingOlder && (
-                <div className="flex items-center justify-center py-2 gap-2">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-xs text-gray-500">Loading older...</span>
-                </div>
-            )}
-            {isLoading && (
-                <div className="flex items-center justify-center h-full gap-2">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-sm text-gray-500">Loading messages...</span>
-                </div>
-            )}
-            <div
-                style={{
-                    height: totalSize,
-                    width: "100%",
-                    position: "relative",
-                }}
-            >
-                {virtualItems.map((virtualRow) => {
-                    const message = messages[virtualRow.index];
-                    if (!message) return null;
-                    return (
-                        <div
-                            key={virtualRow.key}
-                            data-index={virtualRow.index}
-                            ref={measureElement}
-                            className="flex flex-col"
-                            style={{
-                                position: "absolute",
-                                top: 0,
-                                left: 0,
-                                width: "100%",
-                                transform: `translateY(${virtualRow.start}px)`,
-                            }}
-                        >
-                            <Message
-                                message={message}
-                                currentUserId={currentUser?.id ?? 0}
-                            />
+        <div className="flex flex-col max-h-100">
+            <div className="relative min-h-0 flex-1">
+                {isFetchingOlder && (
+                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-center gap-2 bg-background/80 py-2">
+                        <Loader2 className="size-4 animate-spin" />
+                        <span className="text-xs text-gray-500">Loading older...</span>
+                    </div>
+                )}
+                <div
+                    ref={containerRef}
+                    className="h-100 overflow-y-auto px-4 mb-2"
+                    onScroll={onScroll}
+                >
+                    {isLoading && (
+                        <div className="flex h-full min-h-full items-center justify-center gap-2">
+                            <Loader2 className="size-4 animate-spin" />
+                            <span className="text-sm text-gray-500">Loading messages...</span>
                         </div>
-                    );
-                })}
+                    )}
+                    <div
+                        style={{
+                            height: totalSize,
+                            width: "100%",
+                            position: "relative",
+                        }}
+                    >
+                        <div style={{ transform: `translateY(${translateY}px)` }}>
+                            {virtualItems.map((virtualRow) => {
+                                const message = messages[virtualRow.index];
+                                if (!message) return null;
+                                return (
+                                    <div
+                                        key={virtualRow.key}
+                                        data-index={virtualRow.index}
+                                        data-key={String(virtualRow.key)}
+                                        ref={measureElement}
+                                        className="flex flex-col"
+                                    >
+                                        {showTimeSeparator(messages, virtualRow.index) ? (
+                                            <time
+                                                className="py-2 text-center text-xs text-gray-500"
+                                                dateTime={new Date(message.createdAt).toISOString()}
+                                            >
+                                                {isSameDay(new Date(message.createdAt), new Date())
+                                                    ? format(new Date(message.createdAt), "HH:mm")
+                                                    : format(
+                                                        new Date(message.createdAt),
+                                                        "MM/dd/yyyy HH:mm",
+                                                    )}
+                                            </time>
+                                        ) : null}
+
+                                        <Message
+                                            showStatus={message.status === EMessageStatus.PENDING}
+                                            showAvatar={isGroupMessagesStart(
+                                                messages,
+                                                virtualRow.index,
+                                            )}
+                                            message={message}
+                                            currentUserId={currentUser?.id ?? 0}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div className="flex h-5 shrink-0 items-center gap-2 px-4 pt-1">
+                {typingLabel ? (
+                    <p className="text-xs text-gray-500">{typingLabel}</p>
+                ) : (
+                    <p className="text-xs text-gray-500 opacity-0">No one is typing...</p>
+                )}
             </div>
         </div>
     );
