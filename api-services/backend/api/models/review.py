@@ -22,4 +22,5 @@ class Review(models.Model):
 
     @property
     def court_center(self):
-        return self.transaction.court_center
+        return self.transaction.court.center
+
