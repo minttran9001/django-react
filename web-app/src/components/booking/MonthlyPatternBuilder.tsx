@@ -1,28 +1,33 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
 import type { FieldValues, Path } from "react-hook-form";
 
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldShell } from "@/components/form/FieldShell";
 import { useFormField } from "@/components/form/hooks/useFormField";
 import type { BaseFieldProps } from "@/components/form/types";
 import type { RecurrenceRule } from "@/features/booking/schemas/bookingSeriesSchema";
-import { endOfMonth, startOfMonth, WEEK_OF_MONTH_OPTIONS } from "@/features/booking/utils/expandSeriesToSlots";
-import { DAY_OPTIONS } from "@/features/court-centers/utils/wizard";
-import { getDayLabel } from "@/features/court-centers/utils/scheduleCalendar";
+import { endOfMonth, startOfMonth } from "@/features/booking/utils/expandSeriesToSlots";
 import { cn } from "@/lib/utils";
 import { Fragment } from "react/jsx-runtime";
-import { format, isSameMonth } from "date-fns";
+import { addDays, format, isBefore, isAfter, min, max, startOfWeek, addMonths, getDay, isSameDay, isSameMonth } from "date-fns";
+import { VariantProps } from "class-variance-authority";
+import { AvailableSlot } from "@/features/court-centers/types";
 
-const DEFAULT_RULE: RecurrenceRule = { month: new Date(), weeks: [], days: [] };
+const DEFAULT_RULE: RecurrenceRule = { month: new Date(), weeks: [{ week: 1, days: [] }] };
+
+type ToggleChipGroupOption<T extends number> = { value: T; label: string; hint?: string, children?: React.ReactNode, disabled?: boolean };
+type ToggleChipGroupOptionWithDisabledFn<T extends number> = ToggleChipGroupOption<T> & { disabledFn?: (option: ToggleChipGroupOption<T>) => boolean };
+
 
 type ToggleChipGroupProps<T extends number> = {
-  options: { value: T; label: string; hint?: string }[];
+  options: ToggleChipGroupOptionWithDisabledFn<T>[];
   value: T[];
   onChange: (value: T[]) => void;
   disabled?: boolean;
+  selectedColorVariants?: VariantProps<typeof buttonVariants>["variant"];
+  className?: string;
+  itemClassName?: string;
 };
 
 function ToggleChipGroup<T extends number>({
@@ -30,6 +35,9 @@ function ToggleChipGroup<T extends number>({
   value,
   onChange,
   disabled,
+  selectedColorVariants = "default",
+  className,
+  itemClassName,
 }: ToggleChipGroupProps<T>) {
   const toggle = (optionValue: T) => {
     if (value.includes(optionValue)) {
@@ -41,28 +49,45 @@ function ToggleChipGroup<T extends number>({
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={cn("flex flex-wrap gap-2", className)}>
       {options.map((option) => {
         const isSelected = value.includes(option.value);
 
         return (
-          <Button
-            key={option.value}
-            type="button"
-            variant={isSelected ? "default" : "outline"}
-            size="sm"
-            disabled={disabled}
-            className="h-auto min-w-0 px-2.5 py-1.5 text-xs"
-            onClick={() => toggle(option.value)}
-            title={option.hint}
-          >
-            {option.label}
-          </Button>
+          <div key={option.value} className={itemClassName}>
+            <Button
+              type="button"
+              variant={isSelected ? selectedColorVariants : "outline"}
+              size="sm"
+              disabled={option.disabledFn ? option.disabledFn(option) : option.disabled ?? disabled}
+              className="h-auto min-w-0 px-2.5 py-1.5 text-xs"
+              onClick={() => toggle(option.value)}
+              title={option.hint}
+            >
+              {option.label}
+            </Button>
+            {option.children}
+          </div>
         );
       })}
     </div>
   );
 }
+
+const DayToggleChipGroup = ({ className, options, onChange, value, selectedColorVariants = "default", disabled }: { className?: string, options: ToggleChipGroupOptionWithDisabledFn<number>[], onChange: (days: number[]) => void, value: number[], selectedColorVariants?: VariantProps<typeof buttonVariants>["variant"], disabled?: boolean }) => {
+
+  return (
+    <div className={cn("space-y-2 mt-2", className)}>
+      <ToggleChipGroup
+        options={options}
+        value={value || []}
+        onChange={onChange}
+        selectedColorVariants={selectedColorVariants}
+        disabled={disabled}
+      />
+    </div>
+  );
+};
 
 type MonthlyPatternBuilderProps = {
   value: RecurrenceRule[];
@@ -73,6 +98,7 @@ type MonthlyPatternBuilderProps = {
   id?: string;
   startDate: Date;
   endDate: Date;
+  availableSlots: AvailableSlot[];
 };
 
 export function MonthlyPatternBuilder({
@@ -84,53 +110,127 @@ export function MonthlyPatternBuilder({
   id,
   startDate,
   endDate,
+  availableSlots,
 }: MonthlyPatternBuilderProps) {
   const rules = value.length > 0 ? value : [DEFAULT_RULE];
-
-  const updateRule = (month: Date, patch: Partial<RecurrenceRule>) => {
+  const onToggleWeek = (month: Date, weeks: number[]) => {
     const existingRule = rules.find((rule) => rule.month.getTime() === month.getTime());
     if (existingRule) {
-      onChange(rules.map((rule) =>
-        rule.month.getTime() === month.getTime() ? { ...rule, ...patch } : rule,
-      ));
+      const newRules = rules.map((rule) =>
+        rule.month.getTime() === month.getTime() ? { ...rule, weeks: weeks.map((week) => ({ week, days: getSelectedDays(month, { value: week, label: `Week ${week}`, hint: `Week ${week}` }) })) } : rule,
+      );
+      onChange(newRules);
     } else {
-      onChange([...rules, { month, ...patch }]);
+      const newRules = [...rules, { month, weeks: weeks.map((week) => ({ week, days: [] })) }];
+      onChange(newRules);
     }
   };
 
   function getMonthsBetween(startDate: Date, endDate: Date): Date[] {
     const months = [];
-    const currentDate = new Date(startDate);
+    let currentDate = startDate;
     while (currentDate <= endDate) {
       months.push(new Date(currentDate));
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      currentDate = startOfMonth(addMonths(currentDate, 1));
     }
     return months;
   }
   const months = getMonthsBetween(startDate, endDate);
+
   const getWeekOptions = (month: Date) => {
-    return WEEK_OF_MONTH_OPTIONS.filter((week) => {
-      const weekDate = startOfMonth(month);
-      weekDate.setDate(weekDate.getDate() + (week.value - 1) * 7);
-      const isValid = weekDate.getTime() >= startDate.getTime() && weekDate.getTime() <= endDate.getTime();
-      return isValid;
-    });
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+
+    // First Sunday of the calendar week containing the first day of month
+    let weekStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+
+    const weeks: {
+      value: number;
+      label: string;
+      hint: string;
+      days: { value: number; label: string }[];
+      weekStart: Date;
+      weekEnd: Date;
+    }[] = [];
+
+    let weekIndex = 1;
+
+    while (weekStart <= monthEnd) {
+      const weekEnd = addDays(weekStart, 6);
+
+      // Clip the week to the selected booking range
+      const visibleStart = max([max([weekStart, monthStart]), startDate]);
+      const visibleEnd = min([min([weekEnd, monthEnd]), endDate]);
+      // Does this calendar week overlap the selected range?
+      const isValid =
+        !isAfter(visibleStart, visibleEnd) &&
+        !isAfter(weekStart, endDate) &&
+        !isBefore(weekEnd, startDate);
+
+      if (isValid) {
+        const hint = visibleStart.getTime() === visibleEnd.getTime() ? `Day ${format(visibleStart, "d")}` : `Days ${format(visibleStart, "d")}–${format(
+          visibleEnd,
+          "d",
+        )}`;
+
+        const days: { value: number; label: string }[] = [];
+        let currentDate = visibleStart;
+        while (currentDate <= visibleEnd) {
+          const day = getDay(currentDate);
+          if (!days.find((d) => d.value === day)) {
+            days.push({
+              value: day,
+              label: format(currentDate, "EEE"),
+            });
+          }
+          currentDate = addDays(currentDate, 1);
+        }
+
+        weeks.push({
+          value: weekIndex,
+          label: `Week ${weekIndex} (${hint})`,
+          hint,
+          days,
+          weekStart,
+          weekEnd,
+        });
+      }
+
+      weekStart = addDays(weekStart, 7);
+      weekIndex++;
+    }
+    return weeks;
   };
 
-  const getDayOptions = (month: Date) => {
-    const today = new Date();
-    return DAY_OPTIONS.filter((day) => {
-      const monthIsSame = isSameMonth(today, month);
-      const startOfMonthDate = monthIsSame ? today : startOfMonth(month);
-      const endOfMonthDate = endOfMonth(month);
-      const isValid = startOfMonthDate.getDay() <= day.value && endOfMonthDate.getDay() >= day.value;
-      return isValid;
-    });
-  };
 
-  const isWeekSelected = (month: Date) => {
+  const getSelectedDays = (month: Date, week: { value: number; label: string; hint: string }) => {
     const rule = value.find((rule) => rule.month.getTime() === month.getTime());
-    return (rule?.weeks.length ?? 0) > 0;
+    const weekRule = rule?.weeks.find((ruleWeek) => ruleWeek.week === week.value)
+    return weekRule?.days ?? [];
+  };
+
+
+  const isWeekSelected = (month: Date, week: { value: number; label: string; hint: string }) => {
+    const rule = value.find((rule) => rule.month.getTime() === month.getTime());
+    return rule?.weeks.find((ruleWeek) => ruleWeek.week === week.value) ? true : false;
+  };
+
+  const onUpdateWeekDays = (month: Date, week: { value: number; label: string; hint: string }, days: number[]) => {
+    const existingRule = rules.find((rule) => rule.month.getTime() === month.getTime());
+    let newRules: RecurrenceRule[] = rules;
+    if (existingRule) {
+      newRules = newRules.map((rule) => rule.month.getTime() === month.getTime() ? { ...rule, weeks: rule.weeks.map((ruleWeek) => ruleWeek.week === week.value ? { ...ruleWeek, days } : ruleWeek) } : rule);
+    } else {
+      newRules = [...rules, { month, weeks: [{ week: week.value, days }] }];
+    }
+    onChange(newRules);
+  };
+
+
+  const isDayOfWeekDisabled = (week: { value: number; label: string; hint: string; weekStart: Date; weekEnd: Date }, day: { value: number; label: string }) => {
+    return !availableSlots.some((slot) => {
+      return isSameDay(slot.date, addDays(week.weekStart, day.value))
+    });
   };
 
   return (
@@ -157,28 +257,26 @@ export function MonthlyPatternBuilder({
               <div>
                 <p className="text-md font-medium text-muted-foreground">{format(month, "MMMM yyyy")}</p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <ToggleChipGroup
+                  disabled={disabled || !availableSlots.some((slot) => {
+                    return isSameDay(slot.date, month)
+                  })}
+                  itemClassName="border-b py-3 w-full"
                   options={getWeekOptions(month).map((week) => ({
                     value: week.value,
                     label: week.label,
                     hint: week.hint,
+                    children: <DayToggleChipGroup disabled={disabled} options={week.days.map((day) => ({
+                      value: day.value,
+                      label: day.label,
+                      disabledFn: (day) => isDayOfWeekDisabled(week, day),
+                    }))} value={getSelectedDays(month, week)} onChange={(days) => onUpdateWeekDays(month, week, days)} selectedColorVariants={'secondary'} />,
                   }))}
                   value={value.find((rule) => rule.month.getTime() === month.getTime())?.weeks.map((week) => week.week) ?? []}
-                  onChange={(weeks) => updateRule(month, { weeks: weeks.map((week) => ({ week, days: [] })) })}
-                  disabled={disabled}
+                  onChange={(weeks) => onToggleWeek(month, weeks)}
                 />
               </div>
-              {isWeekSelected(month) && <div className="space-y-2 mt-2">
-                <p className="text-xs font-medium text-muted-foreground">Days</p>
-                <ToggleChipGroup
-                  options={getDayOptions(month).map((day) => ({
-                    value: day.value,
-                    label: getDayLabel(day.value, true),
-                  }))}
-                />
-              </div>}
-              {monthIndex < months.length - 1 && <hr className="my-2" />}
             </Fragment>
           })}
 
@@ -194,6 +292,7 @@ type FieldMonthlyPatternBuilderProps<TFieldValues extends FieldValues> =
     disabled?: boolean;
     startDate: Date;
     endDate: Date;
+    availableSlots: AvailableSlot[];
   };
 
 export function FieldMonthlyPatternBuilder<
@@ -203,6 +302,7 @@ export function FieldMonthlyPatternBuilder<
   disabled,
   startDate,
   endDate,
+  ...props
 }: FieldMonthlyPatternBuilderProps<TFieldValues>) {
   const { field, errorMessage, invalid, id } = useFormField<
     TFieldValues,
@@ -219,6 +319,7 @@ export function FieldMonthlyPatternBuilder<
       disabled={disabled}
       startDate={startDate}
       endDate={endDate}
+      {...props}
     />
   );
 }

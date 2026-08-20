@@ -17,7 +17,7 @@ export const WEEK_OF_MONTH_OPTIONS = [
   { value: 3, label: "Week 3", hint: "Days 15–21" },
   { value: 4, label: "Week 4", hint: "Days 22–28" },
   { value: 5, label: "Week 5", hint: "Days 29–31" },
-] as const;
+];
 
 function dateToDayOfWeek(date: Date): number {
   const jsDay = date.getDay();

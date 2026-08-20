@@ -1,31 +1,26 @@
-from datetime import date
-
 from django.db.models import Prefetch
-from rest_framework.exceptions import ValidationError
 
 from api.models import Court, CourtCenter
-from api.utils.app_timezone import today_in_tz, timezone_from_query_params
+from api.utils.app_timezone import timezone_from_query_params
 from api.utils.booking_slots import build_available_slots_by_court
-
-
-def resolve_slot_date(query_params, tz) -> date:
-    date_str = query_params.get("date")
-    if date_str:
-        try:
-            return date.fromisoformat(date_str)
-        except ValueError as exc:
-            raise ValidationError({"date": "Use YYYY-MM-DD format."}) from exc
-    return today_in_tz(tz)
+from api.utils.court_center_search import parse_slot_range
 
 
 def build_slot_context(request, center: CourtCenter) -> dict:
     tz = timezone_from_query_params(request.query_params)
-    slot_date = resolve_slot_date(request.query_params, tz)
+    date_from, date_to = parse_slot_range(request.query_params, tz)
     courts = list(center.courts.all())
     return {
         "owner_visibility": "public",
-        "slot_date": slot_date,
-        "available_slots_by_court": build_available_slots_by_court(courts, slot_date, tz),
+        "slot_date": date_from,
+        "date_from": date_from,
+        "date_to": date_to,
+        "available_slots_by_court": build_available_slots_by_court(
+            courts,
+            tz=tz,
+            date_from=date_from,
+            date_to=date_to,
+        ),
     }
 
 

@@ -156,31 +156,40 @@ def get_available_slots_for_court(
 
 def build_available_slots_by_court(
     courts: list[Court],
-    slot_date: date,
+    slot_date: date | None = None,
     tz: ZoneInfo = DEFAULT_TIMEZONE,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> dict[int, list[dict]]:
     """Read available slots from the precomputed CourtSlot index. O(1) queries."""
     if not courts:
         return {}
 
+    if date_from is None:
+        if slot_date is None:
+            raise ValueError("slot_date or date_from is required")
+        date_from = slot_date
+    if date_to is None:
+        date_to = date_from
+
     from api.models.court_slot import CourtSlot  # avoid circular at module level
 
-    court_ids = [court.id for court in courts]
-    rows = CourtSlot.objects.filter(
-        court_id__in=court_ids,
-        date=slot_date,
-        is_available=True,
-    ).values("court_id", "date", "start_time", "end_time").order_by("start_time")
-
     today = today_in_tz(tz)
-
     result: dict[int, list[dict]] = {court.id: [] for court in courts}
-    if slot_date < today:
+    if date_to < today:
         return result
+
+    effective_from = max(date_from, today)
+    rows = CourtSlot.objects.filter(
+        court_id__in=[court.id for court in courts],
+        date__gte=effective_from,
+        date__lte=date_to,
+        is_available=True,
+    ).values("court_id", "date", "start_time", "end_time").order_by("date", "start_time")
 
     for row in rows:
         start = row["start_time"]
-        if is_slot_start_in_past(slot_date, start, tz):
+        if is_slot_start_in_past(row["date"], start, tz):
             continue
         result[row["court_id"]].append({
             "date": row["date"],

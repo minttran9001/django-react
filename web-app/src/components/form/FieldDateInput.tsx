@@ -2,8 +2,8 @@
 
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { useState } from "react";
-import type { Matcher } from "react-day-picker";
+import { useEffect, useState } from "react";
+import type { DayPickerProps, Matcher } from "react-day-picker";
 import type { FieldValues } from "react-hook-form";
 
 import { Calendar } from "@/components/ui/calendar";
@@ -39,6 +39,7 @@ export type FieldDateInputComponentProps = {
   placeholder?: string;
   disabled?: boolean;
   dateFormat?: string;
+  calendarProps?: DayPickerProps;
 };
 
 function InlineDateInput({
@@ -93,6 +94,7 @@ function PopoverDateInput({
   placeholder = "Pick a date",
   disabled,
   dateFormat = "PPP",
+  calendarProps,
 }: Pick<
   FieldDateInputComponentProps,
   | "id"
@@ -106,13 +108,25 @@ function PopoverDateInput({
   | "placeholder"
   | "disabled"
   | "dateFormat"
->) {
+> & {
+  calendarProps?: DayPickerProps;
+}) {
   const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState<Date | undefined>(value);
+
   const errorId = getFieldErrorId(id, error);
   const displayValue = value ? format(value, dateFormat) : "";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) {
+          setMonth(value ?? new Date());
+        }
+      }}
+    >
       <PopoverTrigger asChild>
         <div className={cn("relative w-full", className)}>
           <Input
@@ -138,9 +152,12 @@ function PopoverDateInput({
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
+          {...calendarProps}
           mode="single"
           selected={value}
           disabled={disabledDays}
+          month={month}
+          onMonthChange={setMonth}
           dayLabels={dayLabels}
           onSelect={(date) => {
             if (!date) {
@@ -172,7 +189,10 @@ export function FieldDateInputComponent({
   placeholder,
   disabled,
   dateFormat,
-}: FieldDateInputComponentProps) {
+  calendarProps,
+}: FieldDateInputComponentProps & {
+  calendarProps?: DayPickerProps;
+}) {
   const dateInput =
     variant === "popover" ? (
       <PopoverDateInput
@@ -187,6 +207,7 @@ export function FieldDateInputComponent({
         placeholder={placeholder}
         disabled={disabled}
         dateFormat={dateFormat}
+        calendarProps={calendarProps}
       />
     ) : (
       <InlineDateInput
@@ -226,6 +247,7 @@ type FieldDateInputProps<TFieldValues extends FieldValues> = BaseFieldProps<TFie
     | "containerClassName"
   > & {
     onValueChange?: (date: Date | undefined) => void;
+    calendarProps?: DayPickerProps;
   };
 
 export function FieldDateInput<TFieldValues extends FieldValues>({
@@ -235,6 +257,7 @@ export function FieldDateInput<TFieldValues extends FieldValues>({
   containerClassName,
   disabled,
   onValueChange,
+  calendarProps,
   ...props
 }: FieldDateInputProps<TFieldValues>) {
   const { field, errorMessage, invalid, id } = useFormField<
@@ -260,6 +283,7 @@ export function FieldDateInput<TFieldValues extends FieldValues>({
       invalid={invalid}
       disabled={disabled}
       containerClassName={containerClassName}
+      calendarProps={calendarProps}
       {...props}
     />
   );

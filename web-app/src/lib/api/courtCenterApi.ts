@@ -17,14 +17,22 @@ export type CourtCenterQueryArgs = {
   id: string;
   date?: string;
   timezone?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 function withTimezone(timezone?: string) {
   return timezone ?? getUserTimezone();
 }
 
-function serializeCourtCenterArgs({ id, date, timezone }: CourtCenterQueryArgs) {
-  return `${id}|${date ?? ""}|${withTimezone(timezone)}`;
+function serializeCourtCenterArgs({
+  id,
+  date,
+  dateFrom,
+  dateTo,
+  timezone,
+}: CourtCenterQueryArgs) {
+  return `${id}|${date ?? ""}|${dateFrom ?? ""}|${dateTo ?? ""}|${withTimezone(timezone)}`;
 }
 
 export const courtCenterApi = createApi({
@@ -66,10 +74,12 @@ export const courtCenterApi = createApi({
           : [{ type: "CourtCenters", id: "LIST" }],
     }),
     getCourtCenter: builder.query<CourtCenter, CourtCenterQueryArgs>({
-      query: ({ id, date, timezone }) => ({
+      query: ({ id, date, dateFrom, dateTo, timezone }) => ({
         url: `/court-centers/${id}`,
         params: {
           ...(date ? { date } : {}),
+          ...(dateFrom ? { dateFrom } : {}),
+          ...(dateTo ? { dateTo } : {}),
           timezone: withTimezone(timezone),
         },
       }),

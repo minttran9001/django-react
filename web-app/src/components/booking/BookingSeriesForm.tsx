@@ -203,40 +203,13 @@ const BookingSeriesFormContent = ({
     [courts, courtId],
   );
 
-  const referenceDate = useMemo(() => {
-    if (!startDate || !endDate) {
-      return undefined;
-    }
 
-    return (
-      findFirstMatchingDate(recurrenceRules, startDate, endDate) ??
-      startOfMonth(startDate)
-    );
-  }, [recurrenceRules, startDate, endDate]);
+  const availableSlots = selectedCourt?.availableSlots ?? [];
 
-  const timeOptions = useMemo(
-    () => toSeriesTimeOptions(selectedCourt?.availableSlots ?? []),
-    [selectedCourt],
-  );
-
-  useEffect(() => {
-    if (!selectedCourt || timeSlots.length === 0) {
-      return;
-    }
-
-    const allowedKeys = new Set(timeOptions.map(seriesSlotKey));
-    const nextSlots = timeSlots.filter((slot) =>
-      allowedKeys.has(seriesSlotKey(slot)),
-    );
-
-    if (nextSlots.length !== timeSlots.length) {
-      form.setValue("timeSlots", nextSlots);
-    }
-  }, [form, selectedCourt, timeOptions, timeSlots]);
 
   const hasPattern =
     recurrenceRules.some(
-      (rule) => rule.weeks.length > 0 && rule.days.length > 0,
+      (rule) => rule.weeks.length > 0,
     );
   const canBook =
     selectedCourt &&
@@ -311,25 +284,9 @@ const BookingSeriesFormContent = ({
             name="recurrenceRules"
             startDate={startDate}
             endDate={endDate}
+            availableSlots={availableSlots}
           />
 
-          {courtItems.length > 0 ? (
-            <FieldSeriesTimeSlots
-              options={timeOptions}
-              disabled={!referenceDate || !selectedCourt}
-              emptyMessage={
-                !selectedCourt
-                  ? "Select a court to see available times."
-                  : !hasPattern
-                    ? "Complete your monthly pattern to see available times."
-                    : isLoadingCourts
-                      ? "Loading available times..."
-                      : referenceDate
-                        ? `No available times on ${format(referenceDate, "MMM d")} (sample day).`
-                        : "No available times for this pattern."
-              }
-            />
-          ) : null}
         </>
       )}
 
@@ -357,7 +314,7 @@ const BookingSeriesFormContent = ({
         type="button"
         onClick={() => {
           form.setValue("timeSlots", []);
-          form.setValue("recurrenceRules", [{ weeks: [], days: [] }]);
+          form.setValue("recurrenceRules", [{ month: today, weeks: [] }]);
           form.setValue("startDate", startOfMonth(today));
           form.setValue("endDate", endOfMonth(today));
         }}
@@ -421,7 +378,7 @@ const BookingSeriesForm = ({
       defaultValues={{
         courtId: "",
         selectedSportId: "",
-        recurrenceRules: [{ month: today, weeks: [], days: [] }],
+        recurrenceRules: [{ month: today, weeks: [] }],
         timeSlots: [],
         startDate: today,
         endDate: endOfMonth(today),
@@ -447,20 +404,10 @@ function BookingSeriesFormWithCourtData({
 }: Omit<BookingSeriesFormContentProps, "courts" | "isLoadingCourts"> & {
   courtCenterId: string;
 }) {
-  const recurrenceRules = form.watch("recurrenceRules");
   const startDate = form.watch("startDate");
   const endDate = form.watch("endDate");
-
-  const referenceDate = useMemo(() => {
-    if (!startDate || !endDate) {
-      return undefined;
-    }
-
-    return (
-      findFirstMatchingDate(recurrenceRules, startDate, endDate) ??
-      startOfMonth(startDate)
-    );
-  }, [recurrenceRules, startDate, endDate]);
+  const dateFrom = useMemo(() => startDate ? formatApiDate(normalizeToDay(startDate)) : undefined, [startDate]);
+  const dateTo = useMemo(() => endDate ? formatApiDate(normalizeToDay(endDate)) : undefined, [endDate]);
 
   const {
     data: courtCenter,
@@ -469,9 +416,10 @@ function BookingSeriesFormWithCourtData({
   } = useGetCourtCenterQuery(
     {
       id: courtCenterId,
-      date: referenceDate ? formatApiDate(normalizeToDay(referenceDate)) : undefined,
+      dateFrom,
+      dateTo,
     },
-    { skip: !courtCenterId || !referenceDate },
+    { skip: !courtCenterId || !dateFrom || !dateTo, refetchOnMountOrArgChange: true },
   );
 
   const courts = useMemo(() => courtCenter?.courts ?? [], [courtCenter?.courts]);

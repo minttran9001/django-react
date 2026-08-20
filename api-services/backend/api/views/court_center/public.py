@@ -7,11 +7,15 @@ from rest_framework.views import APIView
 from api.models import CourtCenter, Sport
 from api.utils.app_timezone import timezone_from_query_params
 from api.utils.booking_slots import build_available_slots_by_court
-from api.utils.court_center_search import apply_search_filters, parse_search_params
+from api.utils.court_center_search import (
+    apply_search_filters,
+    parse_search_params,
+    parse_slot_range,
+)
 
 from ...serializers import CourtCenterPublicDetailSerializer, SportSerializer
 
-from ._base import build_slot_context, get_court_center_queryset, resolve_slot_date
+from ._base import build_slot_context, get_court_center_queryset
 
 
 class SportListView(generics.ListAPIView):
@@ -44,15 +48,18 @@ class CourtCenterCustomerListView(generics.ListAPIView):
         centers = list(page if page is not None else queryset)
         courts = [court for center in centers for court in center.courts.all()]
         tz = timezone_from_query_params(request.query_params)
-        slot_date = resolve_slot_date(request.query_params, tz)
+        date_from, date_to = parse_slot_range(request.query_params, tz)
         context = {
             **self.get_serializer_context(),
             "owner_visibility": "public",
-            "slot_date": slot_date,
+            "slot_date": date_from,
+            "date_from": date_from,
+            "date_to": date_to,
             "available_slots_by_court": build_available_slots_by_court(
                 courts,
-                slot_date,
-                tz,
+                tz=tz,
+                date_from=date_from,
+                date_to=date_to,
             ),
         }
         serializer = self.serializer_class(centers, many=True, context=context)

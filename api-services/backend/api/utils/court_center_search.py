@@ -41,6 +41,47 @@ def apply_location_filter(
         .order_by("distance_km")
     )
 
+def parse_optional_date(query_params, key: str) -> date | None:
+    raw = query_params.get(key)
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError as exc:
+        raise ValidationError({key: "Use YYYY-MM-DD format."}) from exc
+
+
+def parse_slot_range(
+    query_params,
+    tz: ZoneInfo = DEFAULT_TIMEZONE,
+) -> tuple[date, date]:
+    """Single `date`, or `date_from`+`date_to`. Defaults to today."""
+    search_date = parse_optional_date(query_params, "date")
+    date_from = parse_optional_date(query_params, "date_from")
+    date_to = parse_optional_date(query_params, "date_to")
+    validate_slot_range_params(search_date, date_from, date_to)
+
+    if search_date:
+        return search_date, search_date
+    if date_from and date_to:
+        return date_from, date_to
+    today = today_in_tz(tz)
+    return today, today
+
+
+def validate_slot_range_params(
+    search_date: date | None,
+    date_from: date | None,
+    date_to: date | None,
+) -> None:
+    if search_date and (date_from or date_to):
+        raise ValidationError("Use either date or date_from/date_to, not both.")
+    if (date_from is None) != (date_to is None):
+        raise ValidationError("Both date_from and date_to are required.")
+    if date_from and date_to and date_from > date_to:
+        raise ValidationError({"date_from": "Must be on or before date_to."})
+
+
 def parse_search_params(query_params) -> dict:
     """Read and validate ?lat=&lng=&radius_km=&sport_id=&q=&date="""
     params = {}
@@ -66,12 +107,15 @@ def parse_search_params(query_params) -> dict:
     q = query_params.get("q", "").strip()
     if q:
         params["q"] = q
-    date_str = query_params.get("date")
-    if date_str:
-        try:
-            params["date"] = date.fromisoformat(date_str)
-        except ValueError as exc:
-            raise ValidationError({"date": "Use YYYY-MM-DD format."}) from exc
+    search_date = parse_optional_date(query_params, "date")
+    date_from = parse_optional_date(query_params, "date_from")
+    date_to = parse_optional_date(query_params, "date_to")
+    validate_slot_range_params(search_date, date_from, date_to)
+    if search_date:
+        params["date"] = search_date
+    if date_from and date_to:
+        params["date_from"] = date_from
+        params["date_to"] = date_to
     return params
 
 
@@ -120,4 +164,31 @@ def apply_search_filters(qs, search_params: dict, tz: ZoneInfo = DEFAULT_TIMEZON
         qs = apply_keyword_filter(qs, q)
     if search_date := search_params.get("date"):
         qs = apply_date_filter(qs, search_date, tz)
+    elif search_params.get("date_from") and search_params.get("date_to"):
+        qs = apply_date_range_filter(
+            qs,
+            search_params["date_from"],
+            search_params["date_to"],
+            tz,
+        )
     return qs
+
+def apply_date_range_filter(qs, date_from, date_to, tz=DEFAULT_TIMEZONE):
+    if date_from > date_to:
+        raise ValidationError({"date_from": "Must be on or before date_to."})
+    today = today_in_tz(tz)
+    if date_to < today:
+        return qs.none()
+    date_from = max(date_from, today)
+    filters = Q(
+        courts__slots__date__gte=date_from,
+        courts__slots__date__lte=date_to,
+        courts__slots__is_available=True,
+    )
+    if date_from == today:
+        filters &= (
+            Q(courts__slots__date__gt=today)
+            | Q(courts__slots__start_time__gt=now_time_in_tz(tz))
+        )
+    return qs.filter(filters).distinct()
+
