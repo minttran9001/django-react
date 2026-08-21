@@ -87,10 +87,10 @@ class CourtCenterWriteSerializer(serializers.Serializer):
     )
     address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     logo_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    # Omit on update to leave the gallery unchanged; send [] to clear it.
     image_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         required=False,
-        default=list,
     )
     courts = CourtUpdateInputSerializer(many=True, required=False)
 

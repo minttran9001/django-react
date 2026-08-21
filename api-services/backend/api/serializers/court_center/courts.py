@@ -13,10 +13,10 @@ class CourtCreateInputSerializer(serializers.Serializer):
     )
     title = serializers.CharField(max_length=255)
     description = serializers.CharField(required=False, allow_blank=True)
+    # Omit on update to leave the gallery unchanged; send [] to clear it.
     image_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         required=False,
-        default=list,
     )
     price_per_hour = MoneySerializer(required=False)
 

@@ -168,7 +168,8 @@ def sync_courts(center: CourtCenter, courts_data: list[dict], owner) -> None:
     submitted_ids: set[int] = set()
 
     for court_data in courts_data:
-        court_image_ids = court_data.pop("image_ids", [])
+        # None = leave existing gallery untouched; [] = clear gallery.
+        court_image_ids = court_data.pop("image_ids", None)
         court_id = court_data.pop("id", None)
 
         if court_id:
