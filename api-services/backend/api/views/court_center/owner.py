@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.models import CourtCenter
+from api.models import Booking, CourtCenter, Transaction
 from api.utils.court_center_sync import validate_publish
 from api.utils.exceptions import validation_error_response
 
@@ -103,6 +103,23 @@ class MyCourtCenterDetailsView(APIView):
 
     def delete(self, request, pk, *args, **kwargs):
         center = self.get_object(request, pk)
+        courts = center.courts.all()
+
+        # Booking/Transaction FKs use CASCADE — deleting a center would
+        # silently destroy paid bookings and transaction history.
+        if (
+            Booking.objects.filter(court__in=courts).exists()
+            or Transaction.objects.filter(court__in=courts).exists()
+        ):
+            return validation_error_response(
+                {
+                    "detail": [
+                        "Cannot delete a court center that has bookings or "
+                        "transactions. Archive the listing instead."
+                    ]
+                }
+            )
+
         center.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
