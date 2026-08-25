@@ -132,14 +132,44 @@ def mark_slots_available_from_bookings(court_id: int, booking_queryset) -> None:
     Release slots back to available when bookings are cancelled or expired.
     booking_queryset should be filtered to only the bookings being released
     BEFORE their status is updated.
-    """
-    from api.utils.booking_slots import bookings_to_slot_specs
 
-    specs = bookings_to_slot_specs(booking_queryset)
+    Does not free a slot still covered by another PENDING/CONFIRMED booking
+    (e.g. overlapping holds from a concurrent initiate race).
+    """
+    from api.utils.booking_slots import bookings_to_slot_specs, expand_slot_to_hourly_specs
+
+    releasing = list(booking_queryset)
+    specs = bookings_to_slot_specs(releasing)
     if not specs:
         return
+
+    releasing_ids = [b.pk for b in releasing if b.pk is not None]
+    dates = {spec["date"] for spec in specs}
+    other_active = Booking.objects.filter(
+        court_id=court_id,
+        date__in=dates,
+        status__in=ACTIVE_BOOKING_STATUSES,
+    ).exclude(pk__in=releasing_ids)
+
+    still_held: set[tuple[date, time]] = set()
+    for booking in other_active:
+        for spec in expand_slot_to_hourly_specs(
+            {
+                "date": booking.date,
+                "start": booking.start_time,
+                "end": booking.end_time,
+            }
+        ):
+            still_held.add((spec["date"], spec["start"]))
+
+    to_free = [
+        spec for spec in specs if (spec["date"], spec["start"]) not in still_held
+    ]
+    if not to_free:
+        return
+
     q = Q()
-    for spec in specs:
+    for spec in to_free:
         q |= Q(date=spec["date"], start_time=spec["start"])
     CourtSlot.objects.filter(court_id=court_id).filter(q).update(is_available=True)
 
