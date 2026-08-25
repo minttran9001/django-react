@@ -1,5 +1,10 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
-import { SendMessageInput } from "@/lib/types/message";
+import {
+  BaseQueryFn,
+  createApi,
+  FetchArgs,
+  FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
+import { OutboxItem, SendMessageInput } from "@/lib/types/message";
 import {
   ChatMessage,
   EMessageStatus,
@@ -87,10 +92,42 @@ export function buildLocalMessagePages(
   return { pages, pageParams };
 }
 
+const MAX_ATTEMPTS = 3;
+const MAX_DELAY = 1000 * 60 * 5; // 5 minutes
+
+const LAST_ATTEMPT_AT_TOO_OLD = 1000 * 60 * 1; // 15 minutes
+
+const getDelay = (attempts: number) => {
+  return Math.min(MAX_DELAY, Math.pow(2, attempts) * 1000);
+};
+
+const handleSendMessage = async (
+  data: OutboxItem,
+  baseQuery: (
+    arg: Parameters<
+      BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError>
+    >[0],
+  ) => ReturnType<
+    BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError>
+  >,
+) => {
+  const { conversationId, ...rest } = data;
+
+  const response = await baseQuery({
+    url: "/messages/send",
+    method: "POST",
+    body: {
+      ...rest,
+      ...(conversationId === -1 ? {} : { conversationId }),
+    },
+  });
+  return response;
+};
+
 const createOptimisticMessage = (
-  data: { conversationId: Conversation["id"]; body: string; clientId: string },
+  data: SendMessageInput & { clientId: string },
   currentUserId: number,
-): ChatMessage => {
+): ChatMessage & { memberUserIds?: number[] } => {
   return {
     // Temporary until server assigns a real id
     id: -Date.now(),
@@ -102,6 +139,7 @@ const createOptimisticMessage = (
       id: currentUserId,
     },
     createdAt: Date.now(),
+    ...(data.memberUserIds ? { memberUserIds: data.memberUserIds } : {}),
   };
 };
 
@@ -177,15 +215,17 @@ export const messageApi = createApi({
         await db.messages.add(optimistic);
         await db.outbox.put(optimistic);
         try {
-          const response = await baseQuery({
-            url: "/messages/send",
-            method: "POST",
-            body: {
-              ...data,
-              clientId,
-            },
-          });
-
+          let response = await handleSendMessage(optimistic, baseQuery);
+          if (response.error) {
+            // update outbox attempt count
+            const outboxItem = await db.outbox.get(optimistic.clientId);
+            if (outboxItem) {
+              outboxItem.attempts = (outboxItem.attempts ?? 0) + 1;
+              outboxItem.lastAttemptAt = Date.now();
+              await db.outbox.put(outboxItem);
+            }
+            response = await handleSendMessage(optimistic, baseQuery);
+          }
           return response;
         } catch (error) {
           return { error };
@@ -279,11 +319,38 @@ export const messageApi = createApi({
         const outbox = await db.outbox.orderBy("createdAt").toArray();
         let count = 0;
         for (const item of outbox) {
-          await baseQuery({
-            url: "/messages/send",
-            method: "POST",
-            body: item,
-          });
+          let attempts = item.attempts ?? 0;
+          let delay = getDelay(attempts);
+          while (attempts < MAX_ATTEMPTS) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            const response = await handleSendMessage(item, baseQuery);
+            if (!response.error) {
+              break;
+            }
+            attempts++;
+            delay = getDelay(attempts);
+          }
+          // if still failed, update outbox error message
+          if (attempts === MAX_ATTEMPTS) {
+            console.log(
+              "Failed to send message after " + MAX_ATTEMPTS + " attempts",
+            );
+            item.errorMessage =
+              "Failed to send message after " + MAX_ATTEMPTS + " attempts";
+            await db.outbox.put(item);
+            if (
+              item.lastAttemptAt &&
+              Date.now() - item.lastAttemptAt > LAST_ATTEMPT_AT_TOO_OLD
+            ) {
+              console.log(
+                "Deleting outbox and messages because last attempt was too old",
+              );
+              await db.outbox.delete(item.clientId);
+              await db.messages.delete(item.clientId);
+              break;
+            }
+          }
+
           count++;
         }
 

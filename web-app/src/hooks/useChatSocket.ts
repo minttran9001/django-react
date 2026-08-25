@@ -343,11 +343,17 @@ export function useChatSocket() {
     [dispatch],
   );
 
-  const soundNotification = useCallback((data: ChatSocketData) => {
-    if (data.type === EChatSocketType.MESSAGE_CREATED) {
-      void notifySoundRef.current?.play();
-    }
-  }, []);
+  const soundNotification = useCallback(
+    (data: ChatSocketData) => {
+      if (
+        data.type === EChatSocketType.MESSAGE_CREATED &&
+        data.message?.sender.id !== user?.id
+      ) {
+        void notifySoundRef.current?.play();
+      }
+    },
+    [user],
+  );
 
   const handleTyping = useCallback((data: ChatSocketData) => {
     if (data.type === EChatSocketType.TYPING && data.userId) {

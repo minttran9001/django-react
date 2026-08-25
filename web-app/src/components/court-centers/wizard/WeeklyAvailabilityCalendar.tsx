@@ -85,6 +85,7 @@ export function WeeklyAvailabilityCalendar({
     () => groupSchedulesByDay(schedules),
     [schedules],
   );
+
   const hourLabels = useMemo(() => getHourLabels(), []);
   const calendarHeight = getCalendarHeight();
   const selectedSlot =

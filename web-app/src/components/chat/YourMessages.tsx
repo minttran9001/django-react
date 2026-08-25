@@ -26,4 +26,4 @@ const YourMessages = () => {
     )
 }
 
-export default YourMessages
+export default YourMessages;

@@ -1,9 +1,11 @@
 "use client";
 import ChatLauncher from "./ChatLauncher";
 import YourMessages from "./YourMessages";
-import { useChatWidgetOpen } from "@/lib/slices/ui/selectors";
+import { useChatWidgetOpen, useNewMessageOpen } from "@/lib/slices/ui/selectors";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { ChatProvider } from "@/providers/ChatContext";
+import NewMessage from "./NewMessage";
+
 const ChatWidget = () => {
     const auth = useAuth();
 
@@ -14,20 +16,19 @@ const ChatWidget = () => {
     return (
         <ChatProvider>
             <ChatLauncher />
-            <ChatWidgetWrapper>
-                <YourMessages />
-            </ChatWidgetWrapper>
+            <ChatWidgetPanel />
         </ChatProvider>
     );
 };
 
-export const ChatWidgetWrapper = ({
-    children,
-}: {
-    children: React.ReactNode;
-}) => {
+const ChatWidgetPanel = () => {
     const chatWidgetOpen = useChatWidgetOpen();
-    return chatWidgetOpen ? children : null;
+    const newMessageOpen = useNewMessageOpen();
+    if (!chatWidgetOpen) {
+        return null;
+    }
+
+    return newMessageOpen && Object.keys(newMessageOpen).length > 0 ? <NewMessage /> : <YourMessages />;
 };
 
 export default ChatWidget;

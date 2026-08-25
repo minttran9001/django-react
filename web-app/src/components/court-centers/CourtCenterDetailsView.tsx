@@ -34,7 +34,7 @@ import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
 import BookingPanel from "../booking/BookingPanel";
 import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
-import { useSetChatWidgetOpen } from "@/lib/slices/ui/actions";
+import { useSetChatWidgetOpen, useSetNewMessageOpen } from "@/lib/slices/ui/actions";
 
 type CourtCenterDetailsViewProps = {
   id: string;
@@ -142,7 +142,8 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
   const mapsUrl = courtCenter ? getMapsUrl(courtCenter) : null;
   const courtCount = courtCenter?.courts?.length ?? 0;
   const setChatWidgetOpen = useSetChatWidgetOpen();
-
+  const setNewMessageOpen = useSetNewMessageOpen();
+  const userId = courtCenter?.owner.id ?? 0;
   if (isLoading) {
     return <CourtCenterDetailsSkeleton />;
   }
@@ -230,7 +231,10 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
                 {courtCenter.title}
               </h1>
             </div>
-            <Button variant="outline" onClick={() => setChatWidgetOpen(true)}>
+            <Button variant="outline" onClick={() => {
+              setChatWidgetOpen(true);
+              setNewMessageOpen(userId, true);
+            }}>
               Chat with owner
               <MessageCircleIcon />
             </Button>

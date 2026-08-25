@@ -109,12 +109,8 @@ export function buildSlotFromMinuteRange(
 
   return {
     dayOfWeek: dayOfWeek,
-    startTime: minutesToTime(
-      Math.max(GRID_START_MINUTES, normalizedStart),
-    ),
-    endTime: minutesToTime(
-      Math.min(GRID_END_MINUTES, normalizedEnd),
-    ),
+    startTime: minutesToTime(Math.max(GRID_START_MINUTES, normalizedStart)),
+    endTime: minutesToTime(Math.min(GRID_END_MINUTES, normalizedEnd)),
   };
 }
 
@@ -222,7 +218,7 @@ export function groupSchedulesByDay(
     number,
     Array<ScheduleSlotValue & { index: number }>
   > = {
-    0: [],
+    7: [],
     1: [],
     2: [],
     3: [],

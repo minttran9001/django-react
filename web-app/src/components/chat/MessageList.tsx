@@ -9,7 +9,9 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import useVirtualizer from "@/hooks/useVirtualizer";
 import { format, isSameDay } from "date-fns";
 import { ConversationMember } from "@/lib/types/conversation";
-import { getChatLocalDb } from "@/lib/localDb";
+import { RichMessageText } from "../core/RichTextMessage";
+import StickerImage from "./StickerImage";
+import { parseStickerToken } from "@/utils/sticker";
 
 const isOutgoingMessage = (message: ChatMessage, currentUserId: number) => {
     return message.sender.id === currentUserId;
@@ -31,22 +33,23 @@ const Message = ({
     const [showStatus, setShowStatus] = useState(showStatusProp);
 
     const isOutgoing = isOutgoingMessage(message, currentUserId);
-    const rootClasses = cn("w-fit max-w-3/4 flex gap-2 text-sm flex-col pb-2", {
+    const sticker = parseStickerToken(message.body ?? "");
+    const rootClasses = cn("flex w-fit min-w-0 max-w-3/4 flex-col gap-2 pb-2 text-sm", {
         "self-end": isOutgoing,
         "self-start": !isOutgoing,
     });
-    const messageClasses = cn("text-sm p-2 rounded-md", {
+    const messageClasses = cn("min-w-0 max-w-full overflow-hidden rounded-md p-2 text-sm", {
         "text-white bg-blue-500": isOutgoing,
         "text-black bg-gray-200": !isOutgoing,
     });
 
     return (
         <div className={rootClasses}>
-            <div className="flex gap-2 items-center">
+            <div className="flex min-w-0 max-w-full items-start gap-2">
                 {!isOutgoing ? (
                     <Avatar
                         size="sm"
-                        className={cn('self-start mt-1', {
+                        className={cn('mt-1 shrink-0 self-start', {
                             "opacity-0": !showAvatar,
                         })}
                     >
@@ -57,7 +60,7 @@ const Message = ({
                     </Avatar>
                 ) : null}
                 <div
-                    className={cn("flex flex-col gap-2", {
+                    className={cn("flex min-w-0 max-w-full flex-col gap-2", {
                         "items-end": isOutgoing,
                         "items-start": !isOutgoing,
                     })}
@@ -69,10 +72,26 @@ const Message = ({
                     {!isOutgoing && showAvatar && (
                         <p className="text-xs text-gray-500">{message.sender.name}</p>
                     )}
-                    <div className="flex items-center gap-2">
-                        <div className={messageClasses}>
-                            <p>{message.body}</p>
-                        </div>
+                    <div className="flex min-w-0 max-w-full items-center gap-2">
+                        {sticker ? (
+                            <StickerImage
+                                codepoint={sticker.codepoint}
+                                name="Sticker"
+                                size={128}
+                                animated
+                                className="size-32"
+                            />
+                        ) : (
+                            <div className={messageClasses}>
+                                <div className="min-w-0 whitespace-pre-wrap wrap-anywhere">
+                                    <RichMessageText
+                                        text={message.body ?? ""}
+                                        variant={isOutgoing ? "outgoing" : "incoming"}
+                                        interactive
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                     {isOutgoing && showStatus && (
                         <span className="text-xs text-gray-500 w-fit">
@@ -306,60 +325,62 @@ const MessageList = ({
                     )}
                     <div
                         ref={containerRef}
-                        className="h-100 overflow-y-auto px-4 mb-2"
+                        className="h-100 overflow-y-auto px-4 mb-2 w-full"
                         onScroll={onScroll}
                     >
                         {isLoading && (
-                            <div className="flex h-full min-h-full items-center justify-center gap-2">
+                            <div className="flex absolute inset-0 h-full min-h-full items-center justify-center gap-2">
                                 <Loader2 className="size-4 animate-spin" />
                                 <span className="text-sm text-gray-500">Loading messages...</span>
                             </div>
                         )}
-                        <div
-                            style={{
-                                height: totalSize,
-                                width: "100%",
-                                position: "relative",
-                            }}
-                        >
-                            <div style={{ transform: `translateY(${translateY}px)` }}>
-                                {virtualItems.map((virtualRow) => {
-                                    const message = messages[virtualRow.index];
-                                    if (!message) return null;
-                                    return (
-                                        <div
-                                            key={virtualRow.key}
-                                            data-index={virtualRow.index}
-                                            data-key={String(virtualRow.key)}
-                                            ref={measureElement}
-                                            className="flex flex-col"
-                                        >
-                                            {showTimeSeparator(messages, virtualRow.index) ? (
-                                                <time
-                                                    className="py-2 text-center text-xs text-gray-500"
-                                                    dateTime={new Date(message.createdAt).toISOString()}
-                                                >
-                                                    {isSameDay(new Date(message.createdAt), new Date())
-                                                        ? format(new Date(message.createdAt), "HH:mm")
-                                                        : format(
-                                                            new Date(message.createdAt),
-                                                            "MM/dd/yyyy HH:mm",
-                                                        )}
-                                                </time>
-                                            ) : null}
+                        <div className="flex min-h-full flex-col justify-end">
+                            <div
+                                style={{
+                                    height: totalSize,
+                                    width: "100%",
+                                    position: "relative",
+                                }}
+                            >
+                                <div className="w-full" style={{ transform: `translateY(${translateY}px)` }}>
+                                    {virtualItems.map((virtualRow) => {
+                                        const message = messages[virtualRow.index];
+                                        if (!message) return null;
+                                        return (
+                                            <div
+                                                key={virtualRow.key}
+                                                data-index={virtualRow.index}
+                                                data-key={String(virtualRow.key)}
+                                                ref={measureElement}
+                                                className="flex w-full min-w-0 flex-col"
+                                            >
+                                                {showTimeSeparator(messages, virtualRow.index) ? (
+                                                    <time
+                                                        className="py-2 text-center text-xs text-gray-500"
+                                                        dateTime={new Date(message.createdAt).toISOString()}
+                                                    >
+                                                        {isSameDay(new Date(message.createdAt), new Date())
+                                                            ? format(new Date(message.createdAt), "HH:mm")
+                                                            : format(
+                                                                new Date(message.createdAt),
+                                                                "MM/dd/yyyy HH:mm",
+                                                            )}
+                                                    </time>
+                                                ) : null}
 
-                                            <Message
-                                                showStatus={message.status === EMessageStatus.PENDING}
-                                                showAvatar={isGroupMessagesStart(
-                                                    messages,
-                                                    virtualRow.index,
-                                                )}
-                                                message={message}
-                                                currentUserId={currentUser?.id ?? 0}
-                                            />
-                                        </div>
-                                    );
-                                })}
+                                                <Message
+                                                    showStatus={message.status === EMessageStatus.PENDING}
+                                                    showAvatar={isGroupMessagesStart(
+                                                        messages,
+                                                        virtualRow.index,
+                                                    )}
+                                                    message={message}
+                                                    currentUserId={currentUser?.id ?? 0}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -41,7 +41,7 @@ export interface OutboxItem extends ChatMessage {
 export interface SendMessageInput {
   conversationId: Conversation["id"];
   body: string;
-  memberUserIds?: string[];
+  memberUserIds?: number[];
   name?: string;
 }
 
