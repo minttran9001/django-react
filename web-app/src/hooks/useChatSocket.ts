@@ -1,22 +1,29 @@
 // hooks/useChatSocket.ts
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useAppDispatch, useAppSelector } from "@/lib/hooks";
+import { useCallback, useEffect, useRef } from "react";
+import { useAppDispatch } from "@/lib/hooks";
 import {
-  messageApi,
+  appendMessageClientId,
+  ingestMessages,
   useDrainOutboxMutation,
 } from "@/lib/api/messageApi/messageApi";
+import { appendConversationId } from "@/lib/api/conversationApi/conversationApi";
 import { getChatLocalDb } from "@/lib/localDb";
 import { env } from "@/lib/env";
 import type { ChatMessage } from "@/lib/types/message";
 import { EMessageStatus } from "@/lib/types/message";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { conversationApi } from "@/lib/api/conversationApi/conversationApi";
 import type { RootState } from "@/lib/store";
 import { authApi } from "@/lib/api/authApi";
-import { shallowEqual } from "react-redux";
+import { useStore } from "react-redux";
 import { useSetTyping } from "@/lib/slices/chat/actions";
+import {
+  marketplaceConversationSelectors,
+  marketplaceMessageSelectors,
+  marketplaceUserSelectors,
+  updateMarketplaceConversation,
+} from "@/lib/slices/marketplaceData/slice";
 import { MessageBatchQueue } from "@/utils/batchQueue";
 
 export function wsBase() {
@@ -42,49 +49,6 @@ function statusRank(status: EMessageStatus | string | undefined): number {
       return 2;
     default:
       return 0;
-  }
-}
-
-function upsertMessageInCache(
-  draft: { pages: { results: ChatMessage[] }[] },
-  message: ChatMessage,
-  mode: "append" | "replace" | "fail",
-) {
-  if (draft.pages.length === 0) {
-    if (mode === "fail") return;
-    draft.pages.push({
-      results: [message],
-      // @ts-expect-error infinite page shape
-      hasMore: true,
-      nextBeforeId: null,
-    });
-    return;
-  }
-
-  const page0 = draft.pages[0];
-  const idx = page0.results.findIndex((m) => m.clientId === message.clientId);
-
-  if (mode === "fail") {
-    if (idx >= 0) page0.results[idx].status = EMessageStatus.FAILED;
-    return;
-  }
-  if (idx >= 0) {
-    const prev = page0.results[idx];
-    // Keep real/server id when the WS payload still has id: null (early fan-out).
-    const id =
-      message.id != null && message.id > 0
-        ? message.id
-        : prev.id > 0
-          ? prev.id
-          : message.id;
-    // Never downgrade sent/acked ← pending from out-of-order events.
-    const status =
-      statusRank(message.status) >= statusRank(prev.status)
-        ? message.status
-        : prev.status;
-    page0.results[idx] = { ...prev, ...message, id, status };
-  } else if (mode === "append" || mode === "replace") {
-    page0.results.push(message);
   }
 }
 
@@ -152,9 +116,19 @@ const resolveSender = (
     };
   }
 
-  const convs = conversationApi.endpoints.getConversations.select()(state).data;
-  const conversation =
-    convs?.[conversationId] ?? convs?.[String(conversationId)];
+  const marketplaceUser = marketplaceUserSelectors.selectById(state, senderId);
+  if (marketplaceUser) {
+    return {
+      id: marketplaceUser.id,
+      name: marketplaceUser.name,
+      avatar: marketplaceUser.avatar,
+    };
+  }
+
+  const conversation = marketplaceConversationSelectors.selectById(
+    state,
+    conversationId,
+  );
   const member = conversation?.members.find((m) => m.user.id === senderId);
   if (member) {
     return {
@@ -173,37 +147,13 @@ const resolveSender = (
 
 export function useChatSocket() {
   const dispatch = useAppDispatch();
+  const reduxStore = useStore<RootState>();
   const { user } = useAuth();
   const [drainOutbox] = useDrainOutboxMutation();
   const notifySoundRef = useRef<HTMLAudioElement | null>(null);
-  const conversationStates = useAppSelector(
-    (state) => state.conversationApi,
-    shallowEqual,
-  );
   const wsRef = useRef<WebSocket | null>(null);
-  const messageStates = useAppSelector(
-    (state) => state.messageApi,
-    shallowEqual,
-  );
-  const authStates = useAppSelector((state) => state.authApi, shallowEqual);
   const batchQueueRef = useRef<MessageBatchQueue<ChatMessage> | null>(null);
   const setTyping = useSetTyping();
-
-  const store = useMemo(
-    () =>
-      ({
-        conversationApi: conversationStates,
-        messageApi: messageStates,
-        authApi: authStates,
-      }) as unknown as RootState,
-    [conversationStates, messageStates, authStates],
-  );
-
-  const storeRef = useRef<typeof store>(store);
-
-  useEffect(() => {
-    storeRef.current = store;
-  }, [store]);
 
   useEffect(() => {
     notifySoundRef.current = getNotifySound();
@@ -214,45 +164,47 @@ export function useChatSocket() {
       const { type, conversationId, message: messageData } = data;
       if (!messageData) return;
 
-      const existing = messageApi.endpoints.getMessages
-        .select({ conversationId })(storeRef.current)
-        .data?.pages?.flatMap((p) => p.results)
-        .find((m) => m.clientId === messageData.clientId);
+      const state = reduxStore.getState();
+      const existing = marketplaceMessageSelectors.selectById(
+        state,
+        messageData.clientId,
+      );
+
+      const nextStatus =
+        existing && statusRank(messageData.status) < statusRank(existing.status)
+          ? existing.status
+          : messageData.status;
 
       const message = toChatMessage(
-        messageData,
-        resolveSender(storeRef.current, conversationId, messageData.sender.id),
+        { ...messageData, status: nextStatus },
+        resolveSender(state, conversationId, messageData.sender.id),
         existing?.id,
       );
-      const db = getChatLocalDb();
+      const db = getChatLocalDb(user?.id);
 
       if (type === EChatSocketType.MESSAGE_CREATED) {
         batchQueueRef.current ??= new MessageBatchQueue<ChatMessage>(
           (allMessages) => {
+            ingestMessages(dispatch, allMessages);
             const messagesByConversationId = allMessages.reduce(
-              (acc, message) => {
-                acc[message.conversationId] = [
-                  ...(acc[message.conversationId] ?? []),
-                  message,
+              (acc, queued) => {
+                acc[queued.conversationId] = [
+                  ...(acc[queued.conversationId] ?? []),
+                  queued,
                 ];
                 return acc;
               },
               {} as Record<number, ChatMessage[]>,
             );
 
-            for (const conversationId of Object.keys(
-              messagesByConversationId,
-            )) {
-              const messages =
-                messagesByConversationId[parseInt(conversationId)];
-              for (const message of messages) {
-                dispatch(
-                  messageApi.util.updateQueryData(
-                    "getMessages",
-                    { conversationId: parseInt(conversationId) },
-                    (draft) =>
-                      upsertMessageInCache(draft as never, message, "append"),
-                  ),
+            for (const id of Object.keys(messagesByConversationId)) {
+              const messages = messagesByConversationId[parseInt(id)];
+              for (const queued of messages) {
+                appendMessageClientId(
+                  dispatch,
+                  reduxStore.getState,
+                  parseInt(id),
+                  queued.clientId,
                 );
               }
             }
@@ -267,12 +219,12 @@ export function useChatSocket() {
       }
 
       if (type === EChatSocketType.MESSAGE_ACKED) {
-        dispatch(
-          messageApi.util.updateQueryData(
-            "getMessages",
-            { conversationId },
-            (draft) => upsertMessageInCache(draft as never, message, "replace"),
-          ),
+        ingestMessages(dispatch, [message]);
+        appendMessageClientId(
+          dispatch,
+          reduxStore.getState,
+          conversationId,
+          message.clientId,
         );
         void db.messages
           .where("clientId")
@@ -283,21 +235,11 @@ export function useChatSocket() {
       }
 
       if (type === EChatSocketType.MESSAGE_FAILED) {
-        dispatch(
-          messageApi.util.updateQueryData(
-            "getMessages",
-            { conversationId },
-            (draft) =>
-              upsertMessageInCache(
-                draft as never,
-                { ...message, status: EMessageStatus.FAILED },
-                "fail",
-              ),
-          ),
-        );
+        const failed = { ...message, status: EMessageStatus.FAILED };
+        ingestMessages(dispatch, [failed]);
       }
     },
-    [dispatch],
+    [dispatch, reduxStore, user?.id],
   );
 
   const bumpConversationPreview = useCallback(
@@ -311,23 +253,18 @@ export function useChatSocket() {
         return;
 
       const sender = resolveSender(
-        storeRef.current,
+        reduxStore.getState(),
         conversationId,
         messageData.sender.id,
       );
 
       dispatch(
-        conversationApi.util.updateQueryData(
-          "getConversations",
-          undefined,
-          (draft) => {
-            const conversation =
-              draft[String(conversationId)] ??
-              Object.values(draft).find((c) => c.id === conversationId);
-            if (!conversation) return;
-            conversation.lastMessagePreview = messageData.body;
-            conversation.lastMessageAt = messageData.createdAt;
-            conversation.lastMessageSender = {
+        updateMarketplaceConversation({
+          id: conversationId,
+          changes: {
+            lastMessagePreview: messageData.body,
+            lastMessageAt: messageData.createdAt,
+            lastMessageSender: {
               user: {
                 id: sender.id,
                 name: sender.name ?? "",
@@ -335,12 +272,13 @@ export function useChatSocket() {
               },
               unread: 0,
               mentionUnread: 0,
-            };
+            },
           },
-        ),
+        }),
       );
+      appendConversationId(dispatch, reduxStore.getState, conversationId);
     },
-    [dispatch],
+    [dispatch, reduxStore],
   );
 
   const soundNotification = useCallback(

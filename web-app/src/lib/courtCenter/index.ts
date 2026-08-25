@@ -3,6 +3,8 @@ import axios from "axios";
 import { ACCESS_TOKEN_COOKIE } from "../auth/constants";
 import { env } from "../env";
 import { cookies } from "next/headers";
+import { unwrapDeep } from "@/lib/marketplace/typedResource";
+import type { CourtCenter } from "@/features/court-centers/types";
 
 export const prefetchPublicCourtCenter = async ({
   id,
@@ -18,7 +20,7 @@ export const prefetchPublicCourtCenter = async ({
         params: { date },
       },
     );
-    return response.data;
+    return unwrapDeep(response.data) as CourtCenter;
   } catch (error) {
     console.error(error);
     return null;

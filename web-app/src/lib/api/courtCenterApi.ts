@@ -10,7 +10,7 @@ import type {
   Sport,
   UploadImagesResponse,
 } from "@/features/court-centers/types";
-import { baseQueryWithReauth } from "@/lib/api/baseApi";
+import { marketplaceBaseQuery } from "@/lib/api/baseApi";
 import { getUserTimezone } from "@/lib/dates";
 
 export type CourtCenterQueryArgs = {
@@ -37,11 +37,11 @@ function serializeCourtCenterArgs({
 
 export const courtCenterApi = createApi({
   reducerPath: "courtCenterApi",
-  baseQuery: baseQueryWithReauth,
+  baseQuery: marketplaceBaseQuery,
   tagTypes: ["Sports", "CourtCenters", "MyCourtCenters"],
   endpoints: (builder) => ({
     getCourtCenters: builder.query<
-      CourtCenter[],
+      number[],
       {
         lat?: number;
         lng?: number;
@@ -62,10 +62,12 @@ export const courtCenterApi = createApi({
           ...(params.date && { date: params.date }),
           timezone: withTimezone(params.timezone),
         }).toString()}`,
+      transformResponse: (centers: CourtCenter[]) =>
+        centers.map((center) => center.id),
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({
+              ...result.map((id) => ({
                 type: "CourtCenters" as const,
                 id,
               })),
@@ -73,7 +75,7 @@ export const courtCenterApi = createApi({
             ]
           : [{ type: "CourtCenters", id: "LIST" }],
     }),
-    getCourtCenter: builder.query<CourtCenter, CourtCenterQueryArgs>({
+    getCourtCenter: builder.query<{ id: number }, CourtCenterQueryArgs>({
       query: ({ id, date, dateFrom, dateTo, timezone }) => ({
         url: `/court-centers/${id}`,
         params: {
@@ -83,6 +85,7 @@ export const courtCenterApi = createApi({
           timezone: withTimezone(timezone),
         },
       }),
+      transformResponse: (center: CourtCenter) => ({ id: center.id }),
       serializeQueryArgs: ({ queryArgs }) =>
         serializeCourtCenterArgs(queryArgs),
       providesTags: (_result, _error, { id }) => [{ type: "CourtCenters", id }],

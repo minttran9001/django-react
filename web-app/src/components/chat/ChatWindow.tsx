@@ -5,11 +5,13 @@ import Composer from "./Composer";
 import { useCallback, useMemo } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import { Button } from "../ui/button";
-import { useGetConversationsQuery } from "@/lib/api/conversationApi/conversationApi";
 import { useSetActiveConversation } from "@/lib/slices/chat/actions";
 import MessageList from "./MessageList";
-import type { ChatMessage } from "@/lib/types/message";
 import { useTyping } from "@/lib/slices/chat/selectors";
+import {
+  useMarketplaceConversation,
+  useMarketplaceMessagesForPages,
+} from "@/lib/slices/marketplaceData/actions";
 
 const ChatWindow = ({
     conversationId,
@@ -24,29 +26,15 @@ const ChatWindow = ({
         fetchNextPage,
     } = useGetMessagesInfiniteQuery({ conversationId });
     const setActiveConversation = useSetActiveConversation();
-    const { data: conversationData = {} } = useGetConversationsQuery();
+    const conversation = useMarketplaceConversation(conversationId);
     const typingStates = useTyping(conversationId);
-    const conversations = Object.values(conversationData);
-    const conversation =
-        conversations.find(
-            (c: Conversation) => c.id === conversationId,
-        ) ?? null;
 
     const typingMembers = useMemo(() => {
         return Object.keys(typingStates).map(userId => {
             return typingStates[Number(userId)] ? conversation?.members.find(member => member.user.id === Number(userId)) : null;
         }).filter(Boolean) as ConversationMember[];
     }, [typingStates, conversation]);
-    // pages[0] = newest chunk; later pages = older → reverse then flatten
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
-    const messages = useMemo(() => {
-        if (!data?.pages?.length) return [] as ChatMessage[];
-        return data.pages.reduceRight<ChatMessage[]>((acc, page) => {
-            acc.push(...page.results);
-            return acc;
-        }, []);
-    }, [data?.pages]);
-
+    const messages = useMarketplaceMessagesForPages(data?.pages);
 
     const onLoadOlder = useCallback(() => {
         if (!hasNextPage || isFetchingNextPage) return;

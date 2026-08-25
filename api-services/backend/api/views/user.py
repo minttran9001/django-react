@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -8,6 +9,7 @@ from api.models import UserProfile
 from api.utils import create_verification_token, send_verification_email
 
 from ..serializers import (
+    PublicOwnerSerializer,
     RegisterSerializer,
     UserProfileUpdateSerializer,
     UserReadSerializer,
@@ -34,6 +36,17 @@ class CreateUserView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class PublicUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk, *args, **kwargs):
+        user = get_object_or_404(
+            User.objects.select_related("profile", "profile__avatar"),
+            pk=pk,
+        )
+        return Response(PublicOwnerSerializer(user).data)
 
 
 class CurrentUserView(APIView):

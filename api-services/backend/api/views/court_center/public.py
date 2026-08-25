@@ -14,6 +14,7 @@ from api.utils.court_center_search import (
 )
 
 from ...serializers import CourtCenterPublicDetailSerializer, SportSerializer
+from api.utils.typed_resource import RESOURCE_COURT_CENTER, typed_resource
 
 from ._base import build_slot_context, get_court_center_queryset
 
@@ -63,9 +64,10 @@ class CourtCenterCustomerListView(generics.ListAPIView):
             ),
         }
         serializer = self.serializer_class(centers, many=True, context=context)
+        payload = typed_resource(RESOURCE_COURT_CENTER, serializer.data)
         if page is not None:
-            return self.get_paginated_response(serializer.data)
-        return Response(serializer.data)
+            return self.get_paginated_response(payload)
+        return Response(payload)
 
 
 class CourtCenterCustomerDetailView(APIView):
@@ -81,4 +83,7 @@ class CourtCenterCustomerDetailView(APIView):
             center,
             context=build_slot_context(request, center),
         )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            typed_resource(RESOURCE_COURT_CENTER, serializer.data),
+            status=status.HTTP_200_OK,
+        )

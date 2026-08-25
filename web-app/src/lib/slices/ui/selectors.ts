@@ -1,3 +1,5 @@
+"use client";
+
 import { useAppSelector } from "@/lib/hooks";
 
 export const useChatWidgetOpen = () => {

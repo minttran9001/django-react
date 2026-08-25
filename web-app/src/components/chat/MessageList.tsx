@@ -315,7 +315,7 @@ const MessageList = ({
 
     return (
         <>
-            <div className="flex flex-col max-h-100">
+            <div className="flex flex-col max-h-100 w-full">
                 <div className="relative min-h-0 flex-1">
                     {isFetchingOlder && (
                         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-center gap-2 bg-background/80 py-2">

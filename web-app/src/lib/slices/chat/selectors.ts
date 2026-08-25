@@ -1,3 +1,5 @@
+"use client";
+
 import { useAppSelector } from "@/lib/hooks";
 import { Conversation } from "@/lib/types/conversation";
 
@@ -13,6 +15,9 @@ export const useDraftMessage = (conversationId: Conversation["id"]) => {
 
 export const useTyping = (conversationId: Conversation["id"]) => {
   return useAppSelector(
-    (state) => state.chat.typingByConversationId[conversationId] ?? {},
+    (state) =>
+      state.chat.typingByConversationId[conversationId] ?? EMPTY_TYPING,
   );
 };
+
+const EMPTY_TYPING: Record<number, boolean> = {};

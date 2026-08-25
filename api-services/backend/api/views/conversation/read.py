@@ -1,8 +1,10 @@
 from django.db.models import F
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from api.models import Conversation
 from api.serializers.conversation import ConversationReadSerializer
+from api.utils.typed_resource import RESOURCE_CONVERSATION, typed_resource
 
 class ConversationReadView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -26,3 +28,8 @@ class ConversationReadView(generics.ListAPIView):
             )
             .select_related("last_message_sender__user")
         )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(typed_resource(RESOURCE_CONVERSATION, serializer.data))

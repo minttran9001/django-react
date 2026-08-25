@@ -7,6 +7,7 @@ import type {
   MeResponse,
 } from "@/lib/auth/types";
 import { baseQueryWithReauth } from "./baseApi";
+import { closeChatLocalDb } from "../localDb";
 
 export type { CurrentUser, MeResponse };
 
@@ -62,6 +63,7 @@ export const authApi = createApi({
         try {
           await queryFulfilled;
         } finally {
+          closeChatLocalDb();
           dispatch(authApi.util.upsertQueryData("getMe", undefined, null));
         }
       },

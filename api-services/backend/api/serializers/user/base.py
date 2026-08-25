@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 
 from api.models import UserProfile
+from api.utils.typed_resource import RESOURCE_USER, typed_resource
 
 from ..image import ImageResourceSerializer
 
@@ -40,4 +41,4 @@ class PublicOwnerSerializer(serializers.ModelSerializer):
             if profile and profile.avatar
             else None
         )
-        return representation
+        return typed_resource(RESOURCE_USER, representation)

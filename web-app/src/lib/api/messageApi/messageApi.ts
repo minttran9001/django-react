@@ -4,6 +4,7 @@ import {
   FetchArgs,
   FetchBaseQueryError,
 } from "@reduxjs/toolkit/query/react";
+import type { AppDispatch } from "@/lib/store";
 import { OutboxItem, SendMessageInput } from "@/lib/types/message";
 import {
   ChatMessage,
@@ -11,11 +12,14 @@ import {
   MessageListResponse,
   MessageResponse,
 } from "@/lib/types/message";
-import { Conversation } from "@/lib/types/conversation";
+import { Conversation, PublicUser } from "@/lib/types/conversation";
 import { getChatLocalDb } from "@/lib/localDb";
-import { baseQueryWithReauth } from "@/lib/api/baseApi";
+import { marketplaceBaseQuery } from "@/lib/api/baseApi";
 import { authApi } from "../authApi";
-import { conversationApi } from "../conversationApi/conversationApi";
+import { appendConversationId } from "../conversationApi/conversationApi";
+import { type MessagePage } from "@/lib/entities/messages";
+import { ingestTyped } from "@/lib/marketplace/ingest";
+import { updateMarketplaceConversation } from "@/lib/slices/marketplaceData/slice";
 
 const DEFAULT_PAGE_SIZE = 40;
 
@@ -26,6 +30,8 @@ type GetMessagesArg = {
   conversationId: Conversation["id"];
   limit?: number;
 };
+
+type AppThunkDispatch = AppDispatch;
 
 const STATUS_RANK: Record<string, number> = {
   [EMessageStatus.FAILED]: -1,
@@ -52,7 +58,6 @@ const mergeMessages = (
       merged.set(message.clientId, nextRank > prevRank ? message : prev);
       continue;
     }
-    // Prefer real server ids over temporary negative ids.
     if (message.id > 0 !== prev.id > 0) {
       merged.set(message.clientId, message.id > 0 ? message : prev);
       continue;
@@ -69,19 +74,19 @@ const mergeMessages = (
 export function buildLocalMessagePages(
   messages: ChatMessage[],
   pageSize = DEFAULT_PAGE_SIZE,
-): { pages: MessageListResponse[]; pageParams: MessagesPageParam[] } {
+): { pages: MessagePage[]; pageParams: MessagesPageParam[] } {
   if (messages.length === 0) {
     return { pages: [], pageParams: [] };
   }
 
-  const pages: MessageListResponse[] = [];
+  const pages: MessagePage[] = [];
   let end = messages.length;
   const pageParams: MessagesPageParam[] = [];
   while (end > 0) {
     const start = Math.max(0, end - pageSize);
     const results = messages.slice(start, end);
     pages.push({
-      results,
+      clientIds: results.map((m) => m.clientId),
       nextBeforeId: results[0].id,
       hasMore: true,
     });
@@ -93,9 +98,9 @@ export function buildLocalMessagePages(
 }
 
 const MAX_ATTEMPTS = 3;
-const MAX_DELAY = 1000 * 60 * 5; // 5 minutes
+const MAX_DELAY = 1000 * 60 * 5;
 
-const LAST_ATTEMPT_AT_TOO_OLD = 1000 * 60 * 1; // 15 minutes
+const LAST_ATTEMPT_AT_TOO_OLD = 1000 * 60 * 1;
 
 const getDelay = (attempts: number) => {
   return Math.min(MAX_DELAY, Math.pow(2, attempts) * 1000);
@@ -129,7 +134,6 @@ const createOptimisticMessage = (
   currentUserId: number,
 ): ChatMessage & { memberUserIds?: number[] } => {
   return {
-    // Temporary until server assigns a real id
     id: -Date.now(),
     clientId: data.clientId,
     conversationId: data.conversationId,
@@ -143,9 +147,86 @@ const createOptimisticMessage = (
   };
 };
 
+function usersFromMessages(messages: ChatMessage[]): PublicUser[] {
+  const byId = new Map<number, PublicUser>();
+  for (const message of messages) {
+    const sender = message.sender;
+    if (sender?.id == null) continue;
+    if (sender.name == null) continue;
+    byId.set(sender.id, {
+      id: sender.id,
+      name: sender.name,
+      avatar: sender.avatar ?? null,
+    });
+  }
+  return [...byId.values()];
+}
+
+export function ingestMessages(
+  dispatch: AppThunkDispatch,
+  messages: ChatMessage[],
+) {
+  if (messages.length === 0) return;
+  ingestTyped(dispatch, "message", messages);
+  const users = usersFromMessages(messages);
+  if (users.length > 0) {
+    ingestTyped(dispatch, "user", users);
+  }
+}
+
+export function appendMessageClientId(
+  dispatch: AppThunkDispatch,
+  getState: () => unknown,
+  conversationId: number,
+  clientId: string,
+) {
+  const current = messageApi.endpoints.getMessages.select({ conversationId })(
+    getState() as never,
+  ).data;
+  if (current) {
+    dispatch(
+      messageApi.util.updateQueryData(
+        "getMessages",
+        { conversationId },
+        (draft) => {
+          if (draft.pages.length === 0) {
+            draft.pages.push({
+              clientIds: [clientId],
+              hasMore: false,
+              nextBeforeId: null,
+            });
+            draft.pageParams.push(null);
+            return;
+          }
+          if (!draft.pages[0].clientIds.includes(clientId)) {
+            draft.pages[0].clientIds.push(clientId);
+          }
+        },
+      ),
+    );
+    return;
+  }
+  dispatch(
+    messageApi.util.upsertQueryData(
+      "getMessages",
+      { conversationId },
+      {
+        pages: [
+          {
+            clientIds: [clientId],
+            hasMore: false,
+            nextBeforeId: null,
+          },
+        ],
+        pageParams: [null],
+      },
+    ),
+  );
+}
+
 export const messageApi = createApi({
   reducerPath: "messageApi",
-  baseQuery: baseQueryWithReauth,
+  baseQuery: marketplaceBaseQuery,
   tagTypes: ["Messages"],
   endpoints: (builder) => ({
     sendMessage: builder.mutation<MessageResponse, SendMessageInput>({
@@ -156,7 +237,8 @@ export const messageApi = createApi({
         _extraOptions,
         baseQuery,
       ) => {
-        const db = getChatLocalDb();
+        const user = authApi.endpoints.getMe.select()(getState() as never);
+        const db = getChatLocalDb(user.data?.id);
         const { conversationId } = data;
         const currentUser = authApi.endpoints.getMe.select()(
           getState() as never,
@@ -171,53 +253,35 @@ export const messageApi = createApi({
           currentUserId,
         );
 
-        dispatch(
-          messageApi.util.updateQueryData(
-            "getMessages",
-            { conversationId },
-            (draft) => {
-              if (draft.pages.length === 0) {
-                draft.pages.push({
-                  results: [optimistic],
-                  hasMore: false,
-                  nextBeforeId: null,
-                });
-                draft.pageParams.push(null);
-                return;
-              }
-              // pages[0] is the newest chunk — append outgoing message there
-              draft.pages[0].results.push(optimistic);
-            },
-          ),
-        );
+        ingestMessages(dispatch, [optimistic]);
+        appendMessageClientId(dispatch, getState, conversationId, clientId);
 
-        // dispatch preview message for conversation list
-        dispatch(
-          conversationApi.util.updateQueryData(
-            "getConversations",
-            undefined,
-            (draft) => {
-              const conversation = Object.values(draft).find(
-                (c: Conversation) => c.id === conversationId,
-              );
-              if (!conversation) return;
-              conversation.lastMessageAt = optimistic.createdAt;
-              conversation.lastMessagePreview = optimistic.body;
-              conversation.lastMessageSender.user.name =
-                optimistic.sender.name ?? "";
-              conversation.lastMessageSender.user.id = optimistic.sender.id;
-              conversation.lastMessageSender.user.avatar =
-                currentUser.data?.avatar ?? null;
-            },
-          ),
-        );
+        if (conversationId !== -1) {
+          dispatch(
+            updateMarketplaceConversation({
+              id: conversationId,
+              changes: {
+                lastMessageAt: optimistic.createdAt,
+                lastMessagePreview: optimistic.body,
+                lastMessageSender: {
+                  user: {
+                    id: currentUserId,
+                    name: currentUser.data?.name ?? "",
+                    avatar: currentUser.data?.avatar ?? null,
+                  },
+                  unread: 0,
+                  mentionUnread: 0,
+                },
+              },
+            }),
+          );
+        }
 
         await db.messages.add(optimistic);
         await db.outbox.put(optimistic);
         try {
           let response = await handleSendMessage(optimistic, baseQuery);
           if (response.error) {
-            // update outbox attempt count
             const outboxItem = await db.outbox.get(optimistic.clientId);
             if (outboxItem) {
               outboxItem.attempts = (outboxItem.attempts ?? 0) + 1;
@@ -226,6 +290,16 @@ export const messageApi = createApi({
             }
             response = await handleSendMessage(optimistic, baseQuery);
           }
+          if (!response.error && response.data) {
+            const payload = response.data as MessageResponse;
+            if (payload.conversation) {
+              appendConversationId(dispatch, getState, payload.conversation.id);
+              await db.conversations.put(payload.conversation);
+            }
+            if (payload.message) {
+              ingestMessages(dispatch, [payload.message]);
+            }
+          }
           return response;
         } catch (error) {
           return { error };
@@ -233,7 +307,7 @@ export const messageApi = createApi({
       },
     }),
     getMessages: builder.infiniteQuery<
-      MessageListResponse,
+      MessagePage,
       GetMessagesArg,
       MessagesPageParam
     >({
@@ -241,20 +315,20 @@ export const messageApi = createApi({
         initialPageParam: null,
         getNextPageParam: (lastPage) => {
           if (!lastPage.hasMore) return undefined;
-          // Prefer server cursor; fall back to oldest id in the page
-          return lastPage.nextBeforeId ?? lastPage.results[0]?.id;
+          return lastPage.nextBeforeId ?? undefined;
         },
       },
       queryFn: async (
         { queryArg, pageParam },
-        _api,
+        { dispatch, getState },
         _extraOptions,
         baseQuery,
       ) => {
         const { conversationId, limit = DEFAULT_PAGE_SIZE } = queryArg;
         const beforeId = pageParam ?? undefined;
 
-        const db = getChatLocalDb();
+        const user = authApi.endpoints.getMe.select()(getState() as never);
+        const db = getChatLocalDb(user.data?.id);
 
         const response = await baseQuery({
           url: `/messages/${conversationId}`,
@@ -268,21 +342,16 @@ export const messageApi = createApi({
         if (data?.results?.length > 0) {
           await db.messages.bulkPut(data.results);
 
+          let results = data.results;
           if (!beforeId) {
             const pendingMessages = await db.getPendingMessages();
-            const mergedMessages = mergeMessages(pendingMessages, data.results);
-            return {
-              data: {
-                results: mergedMessages,
-                nextBeforeId: data.nextBeforeId,
-                hasMore: data.hasMore,
-              },
-            };
+            results = mergeMessages(pendingMessages, data.results);
+            ingestMessages(dispatch, pendingMessages);
           }
 
           return {
             data: {
-              results: data.results,
+              clientIds: results.map((m) => m.clientId),
               nextBeforeId: data.nextBeforeId,
               hasMore: data.hasMore,
             },
@@ -295,9 +364,10 @@ export const messageApi = createApi({
           limit,
         );
         if (local.length > 0) {
+          ingestMessages(dispatch, local);
           return {
             data: {
-              results: local,
+              clientIds: local.map((m) => m.clientId),
               nextBeforeId: local[0].id,
               hasMore: true,
             },
@@ -305,7 +375,7 @@ export const messageApi = createApi({
         }
         return {
           data: {
-            results: [],
+            clientIds: [],
             nextBeforeId: null,
             hasMore: false,
           },
@@ -314,8 +384,9 @@ export const messageApi = createApi({
       providesTags: ["Messages"],
     }),
     drainOutbox: builder.mutation<{ count: number }, void>({
-      queryFn: async (_arg, _api, _extraOptions, baseQuery) => {
-        const db = getChatLocalDb();
+      queryFn: async (_arg, { getState }, _extraOptions, baseQuery) => {
+        const user = authApi.endpoints.getMe.select()(getState() as never);
+        const db = getChatLocalDb(user.data?.id);
         const outbox = await db.outbox.orderBy("createdAt").toArray();
         let count = 0;
         for (const item of outbox) {
@@ -330,7 +401,6 @@ export const messageApi = createApi({
             attempts++;
             delay = getDelay(attempts);
           }
-          // if still failed, update outbox error message
           if (attempts === MAX_ATTEMPTS) {
             console.log(
               "Failed to send message after " + MAX_ATTEMPTS + " attempts",

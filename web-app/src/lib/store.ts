@@ -6,6 +6,7 @@ import { courtCenterApi } from "@/lib/api/courtCenterApi";
 import { conversationApi } from "@/lib/api/conversationApi/conversationApi";
 import reducers from "@/lib/slices";
 import { messageApi } from "@/lib/api/messageApi/messageApi";
+import "@/lib/api/usersApi";
 
 export function makeStore() {
   return configureStore({

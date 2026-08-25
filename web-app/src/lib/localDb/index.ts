@@ -94,10 +94,27 @@ export class LocalDb extends Dexie {
 }
 
 let chatLocalDb: LocalDb | null = null;
+let chatLocalDbByUserId: number | undefined | null = null;
 
-export const getChatLocalDb = () => {
-  if (!chatLocalDb) {
-    chatLocalDb = new LocalDb("chat-db");
+export const getChatLocalDb = (currentUserId?: number) => {
+  console.log({ currentUserId });
+  if (chatLocalDb && chatLocalDbByUserId !== currentUserId) {
+    chatLocalDb.close();
+    chatLocalDb = null;
   }
+
+  if (!chatLocalDb) {
+    chatLocalDb = new LocalDb(`${currentUserId}-chat-db`);
+    chatLocalDbByUserId = currentUserId;
+  }
+
   return chatLocalDb;
+};
+
+export const closeChatLocalDb = () => {
+  if (chatLocalDb) {
+    chatLocalDb.close();
+    chatLocalDb = null;
+    chatLocalDbByUserId = null;
+  }
 };

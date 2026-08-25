@@ -5,6 +5,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from api.models import Conversation, Member, Message
 from api.serializers.message import MessageListQuerySerializer, ReadMessageListSerializer
+from api.utils.typed_resource import RESOURCE_MESSAGE, typed_resource
 
 class ReadMessageListAPIView(ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -51,9 +52,14 @@ class ReadMessageListAPIView(ListAPIView):
         # Cursor for the next older page = oldest id in this page
         next_before_id = rows[0].id if has_more and rows else None
         
-        return Response({
-            "results": ReadMessageListSerializer(rows, many=True).data,
-            "has_more": has_more,
-            "next_before_id": next_before_id,
-        })
+        return Response(
+            typed_resource(
+                RESOURCE_MESSAGE,
+                {
+                    "results": ReadMessageListSerializer(rows, many=True).data,
+                    "has_more": has_more,
+                    "next_before_id": next_before_id,
+                },
+            )
+        )
         

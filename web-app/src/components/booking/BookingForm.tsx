@@ -17,7 +17,8 @@ import {
 } from "@/features/booking/schemas/bookingSchema";
 import { type TimeSlot } from "@/features/booking/utils/slots";
 import type { AvailableSlot, CourtSummary } from "@/features/court-centers/types";
-import { useGetCourtCenterQuery, useGetSportsQuery } from "@/lib/api/courtCenterApi";
+import { useGetSportsQuery } from "@/lib/api/courtCenterApi";
+import { usePublicCourtCenterQuery } from "@/lib/api/courtCenterPublicQueries";
 import { formatApiDate, getDayKey, normalizeToDay, type DayLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import OrderBreakdownLineItems from "./OrderBreakdownLineItems";
@@ -297,7 +298,7 @@ function BookingFormWithCourtData({
     data: courtCenter,
     isLoading: isCourtCenterLoading,
     isFetching: isCourtCenterFetching,
-  } = useGetCourtCenterQuery(
+  } = usePublicCourtCenterQuery(
     {
       id: courtCenterId,
       date: date ? formatApiDate(normalizeToDay(date)) : undefined,

@@ -21,8 +21,8 @@ def _find_dm_conversation(user: User, peer: User) -> Conversation | None:
         Conversation.objects.filter(type=Conversation.Type.DM)
         .filter(members__user=user)
         .filter(members__user_id=peer.id)
-        .annotate(member_count=Count("members", distinct=True))
-        .filter(member_count=2)
+        .distinct()
+        .order_by("-last_message_at", "-id")
         .first()
     )
 

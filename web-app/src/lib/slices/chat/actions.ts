@@ -1,3 +1,5 @@
+"use client";
+
 import { useAppDispatch } from "@/lib/hooks";
 import { Conversation } from "@/lib/types/conversation";
 import {

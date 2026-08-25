@@ -1,18 +1,15 @@
+"use client";
+
+import { useStore } from "react-redux";
 import { useAppDispatch } from "@/lib/hooks";
+import type { RootState } from "@/lib/store";
 import { Conversation } from "@/lib/types/conversation";
-import { conversationApi } from "./conversationApi";
+import { upsertConversationInCache } from "./conversationApi";
 
 export const useUpsertConversation = () => {
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   return (conversation: Conversation) => {
-    dispatch(
-      conversationApi.util.updateQueryData(
-        "getConversations",
-        undefined,
-        (draft) => {
-          draft[conversation.id] = conversation;
-        },
-      ),
-    );
+    upsertConversationInCache(dispatch, store.getState, conversation);
   };
 };

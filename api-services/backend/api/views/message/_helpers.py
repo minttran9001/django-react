@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db.models import Count, F
+from django.db.models import F
 from api.models import Conversation, Member, UserProfile, Message
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
@@ -23,12 +23,12 @@ def _ensure_member(conversation: Conversation, user_id: int) -> Member:
 
 
 def _find_dm_conversation(user: User, peer: User) -> Conversation | None:
-     return (
+    return (
         Conversation.objects.filter(type=Conversation.Type.DM)
         .filter(members__user=user)
         .filter(members__user_id=peer.id)
-        .annotate(member_count=Count("members", distinct=True))
-        .filter(member_count=2)
+        .distinct()
+        .order_by("-last_message_at", "-id")
         .first()
     )
 

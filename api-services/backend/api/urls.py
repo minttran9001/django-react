@@ -2,6 +2,7 @@ from django.urls import path, include
 from .views import (
     CreateUserView,
     CurrentUserView,
+    PublicUserView,
     CookieTokenRefreshView,
     LogoutView,
     EmailTokenObtainPairView,
@@ -28,6 +29,7 @@ from .views import (
     SendMessageView,
     ConversationReadView,
     ReadMessageListAPIView,
+    DirectConversationView,
 )
 
 
@@ -35,6 +37,7 @@ from .views import (
 urlpatterns = [
     path('register', CreateUserView.as_view(), name='register'),
     path('me', CurrentUserView.as_view(), name='current_user'),
+    path('users/<int:pk>', PublicUserView.as_view(), name='public_user'),
     path('token', EmailTokenObtainPairView.as_view(), name='get_token'),
     path('token/refresh', CookieTokenRefreshView.as_view(), name='refresh_token'),
     path('logout', LogoutView.as_view(), name='logout'),
@@ -69,4 +72,5 @@ urlpatterns = [
     path('messages/send', SendMessageView.as_view(), name='send_message'),
     path('messages/<int:conversation_id>', ReadMessageListAPIView.as_view(), name='read_message_list'),
     path('conversations', ConversationReadView.as_view(), name='conversation_read'),
+    path('conversations/dm', DirectConversationView.as_view(), name='dm_conversation'),
 ]

@@ -9,11 +9,14 @@ import { Conversation, ConversationMember } from "@/lib/types/conversation";
 import { forwardRef, useLayoutEffect, useMemo, useRef } from "react";
 import { stickerMessagePreview } from "@/utils/sticker";
 import { useTyping } from "@/lib/slices/chat/selectors";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useInboxConversations } from "@/lib/slices/marketplaceData/actions";
 
 const REORDER_MS = 220;
 
 const ConversationItem = forwardRef<HTMLDivElement, { conversation: Conversation, onConversationClick: (conversationId: Conversation["id"]) => () => void }>(({ conversation, onConversationClick }, ref) => {
     const typingStates = useTyping(conversation.id);
+    const { user: currentUser } = useAuth();
     const typingMembers = useMemo(() => {
         return Object.keys(typingStates).map(userId => {
             return typingStates[Number(userId)] ? conversation.members.find(member => member.user.id === Number(userId)) : null;
@@ -26,6 +29,33 @@ const ConversationItem = forwardRef<HTMLDivElement, { conversation: Conversation
             : "Several people are typing..."
         : null;
 
+    const recipient = useMemo(() => {
+        return conversation.members.find(member => member.user.id !== currentUser?.id);
+    }, [conversation.members, currentUser?.id]);
+
+    const isGroupConversation = useMemo(() => {
+        return conversation.type === 'muc';
+    }, [conversation.type]);
+
+    const avatar = useMemo(() => {
+        const dmAvatar = (
+            <Avatar>
+                <AvatarImage src={recipient?.user.avatar?.url} />
+                <AvatarFallback>{recipient?.user.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+        );
+
+
+        const groupAvatar = (
+            <Avatar>
+                <AvatarFallback>{conversation.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+        );
+
+        return isGroupConversation ? groupAvatar : dmAvatar;
+
+    }, [isGroupConversation, recipient, conversation.name]);
+
     return (
         <div
             ref={ref}
@@ -33,14 +63,7 @@ const ConversationItem = forwardRef<HTMLDivElement, { conversation: Conversation
             onClick={onConversationClick(conversation.id)}
         >
             <div className="flex flex-[0.5] items-center gap-2">
-                <Avatar>
-                    <AvatarImage
-                        src={conversation.lastMessageSender.user.avatar?.url}
-                    />
-                    <AvatarFallback>
-                        {conversation.lastMessageSender.user.name.charAt(0)}
-                    </AvatarFallback>
-                </Avatar>
+                {avatar}
                 <h2 className="text-sm font-medium">{conversation.name}</h2>
             </div>
             <p className="flex-[0.8] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-gray-500">
@@ -51,14 +74,9 @@ const ConversationItem = forwardRef<HTMLDivElement, { conversation: Conversation
 });
 ConversationItem.displayName = "ConversationItem";
 const Conversations = () => {
-    const { data: conversationByIds, isLoading } = useGetConversationsQuery();
-    const conversations = useMemo(
-        () =>
-            Object.values(conversationByIds || {}).sort(
-                (a, b) => (new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()),
-            ),
-        [conversationByIds],
-    );
+    const { data: inbox, isLoading } = useGetConversationsQuery();
+    const conversations = useInboxConversations(inbox?.ids);
+
     const setActiveConversation = useSetActiveConversation();
     const itemRefs = useRef(new Map<Conversation["id"], HTMLElement>());
     const prevTopsRef = useRef(new Map<Conversation["id"], number>());

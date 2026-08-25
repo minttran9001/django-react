@@ -28,13 +28,15 @@ import type {
   CourtSummary,
   ImageResource,
 } from "@/features/court-centers/types";
-import { useGetCourtCenterQuery } from "@/lib/api/courtCenterApi";
+import { usePublicCourtCenterQuery } from "@/lib/api/courtCenterPublicQueries";
 import { formatApiDate } from "@/lib/dates";
 import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
 import BookingPanel from "../booking/BookingPanel";
 import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
 import { useSetChatWidgetOpen, useSetNewMessageOpen } from "@/lib/slices/ui/actions";
+import { useGetDirectConversationQuery } from "@/lib/api/conversationApi/conversationApi";
+import { useSetActiveConversation } from "@/lib/slices/chat/actions";
 
 type CourtCenterDetailsViewProps = {
   id: string;
@@ -124,7 +126,7 @@ function CourtCard({ court }: { court: CourtSummary }) {
 }
 
 export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
-  const { data: courtCenter, isLoading, isError } = useGetCourtCenterQuery({
+  const { data: courtCenter, isLoading, isError } = usePublicCourtCenterQuery({
     id,
     date: formatApiDate(new Date()),
   });
@@ -144,6 +146,8 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
   const setChatWidgetOpen = useSetChatWidgetOpen();
   const setNewMessageOpen = useSetNewMessageOpen();
   const userId = courtCenter?.owner.id ?? 0;
+  const { data: directConversation } = useGetDirectConversationQuery({ userId }, { skip: !userId });
+  const setActiveConversation = useSetActiveConversation();
   if (isLoading) {
     return <CourtCenterDetailsSkeleton />;
   }
@@ -233,7 +237,11 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
             </div>
             <Button variant="outline" onClick={() => {
               setChatWidgetOpen(true);
-              setNewMessageOpen(userId, true);
+              if (directConversation) {
+                setActiveConversation(directConversation);
+              } else {
+                setNewMessageOpen(userId, true);
+              }
             }}>
               Chat with owner
               <MessageCircleIcon />

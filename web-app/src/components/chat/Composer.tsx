@@ -19,8 +19,7 @@ import { textareaBaseClassName } from "../ui/textarea";
 import { replaceEmojiAtCaret } from "@/utils/emoji";
 import { serializeSticker, type Sticker } from "@/utils/sticker";
 import { useNewMessageOpen } from "@/lib/slices/ui/selectors";
-import { useClearNewMessageOpen } from "@/lib/slices/ui/actions";
-import { setChatWidgetOpen } from "@/lib/slices/ui/slice";
+import { useClearNewMessageOpen, useSetChatWidgetOpen } from "@/lib/slices/ui/actions";
 
 const sendMessageSchema = z.object({
     body: z.string().min(1),
@@ -168,6 +167,7 @@ const Composer = ({ conversationId, className = "" }: ComposerProps) => {
     const newMessageOpen = useNewMessageOpen();
     const newMessageOpenUserId = Object.keys(newMessageOpen)[0];
     const clearNewMessageOpen = useClearNewMessageOpen();
+    const setChatWidgetOpen = useSetChatWidgetOpen();
     const setActiveConversation = useSetActiveConversation();
 
     const onSubmit = async (values: SendMessageFormValues) => {

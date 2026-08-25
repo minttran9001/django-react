@@ -1,8 +1,9 @@
 import type { AppDispatch } from "@/lib/store";
+import { ingestTyped } from "@/lib/marketplace/ingest";
+import type { CourtCenter } from "@/features/court-centers/types";
 
 import type {
   RtkQueryApiId,
-  RtkQueryDataType,
   RtkQueryEndpointName,
 } from "./registry";
 import { rtkQueryRegistry } from "./registry";
@@ -23,7 +24,7 @@ export function createQueryHydrationEntry<ApiId extends RtkQueryApiId>(
   apiId: ApiId,
   endpointName: RtkQueryEndpointName<ApiId>,
   arg: unknown,
-  data: RtkQueryDataType<ApiId, RtkQueryEndpointName<ApiId>>,
+  data: unknown,
 ): QueryHydrationEntry | null {
   if (data == null) {
     return null;
@@ -58,6 +59,41 @@ export function applyQueryHydrations(
       };
     };
 
-    dispatch(api.util.upsertQueryData(endpointName, arg, data));
+    const cacheData = toQueryCacheData(dispatch, apiId, endpointName, data);
+    dispatch(api.util.upsertQueryData(endpointName, arg, cacheData));
   });
+}
+
+function isCourtCenter(value: unknown): value is CourtCenter {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "id" in value &&
+      "title" in value &&
+      "owner" in value,
+  );
+}
+
+function toQueryCacheData(
+  dispatch: AppDispatch,
+  apiId: RtkQueryApiId,
+  endpointName: string,
+  data: unknown,
+) {
+  if (apiId === "courtCenterApi" && endpointName === "getCourtCenter") {
+    if (isCourtCenter(data)) {
+      ingestTyped(dispatch, "courtCenter", data);
+      if (data.owner && "name" in data.owner) {
+        ingestTyped(dispatch, "user", data.owner);
+      }
+      return { id: data.id };
+    }
+  }
+  if (apiId === "courtCenterApi" && endpointName === "getCourtCenters") {
+    if (Array.isArray(data) && data.some(isCourtCenter)) {
+      ingestTyped(dispatch, "courtCenter", data);
+      return (data as CourtCenter[]).map((center) => center.id);
+    }
+  }
+  return data;
 }

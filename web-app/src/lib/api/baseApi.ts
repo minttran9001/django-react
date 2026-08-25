@@ -7,6 +7,8 @@ import {
   fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
 
+import { unwrapDeep } from "@/lib/marketplace/typedResource";
+import { addMarketplaceData } from "@/lib/slices/marketplaceData/slice";
 import { env } from "@/lib/env";
 import { authApi } from "./authApi";
 
@@ -55,15 +57,28 @@ export const baseQueryWithReauth: BaseQueryFn<
   return rawBaseQuery(args, api, extraOptions);
 };
 
+/** Ingest `{ type, data }` envelopes into marketplace, then unwrap for RTK/UI. */
+export const marketplaceBaseQuery: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
+  const result = await baseQueryWithReauth(args, api, extraOptions);
+  if (result.error || result.data === undefined) return result;
+  api.dispatch(addMarketplaceData(result.data));
+  return { ...result, data: unwrapDeep(result.data) };
+};
+
 export const baseApi = createApi({
   reducerPath: "api",
-  baseQuery: baseQueryWithReauth,
+  baseQuery: marketplaceBaseQuery,
   tagTypes: [
     "Notes",
     "SpeculatedLineItems",
     "Transaction",
     "Me",
     "UserProfile",
+    "Users",
     "Conversations",
     "Messages",
   ],

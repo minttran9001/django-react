@@ -2,7 +2,7 @@
 
 import { CourtCenterCard } from "@/components/court-centers/CourtCenterCard";
 import { CourtCenterCardSkeleton } from "@/components/court-centers/CourtCenterCardSkeleton";
-import { useGetCourtCentersQuery } from "@/lib/api/courtCenterApi";
+import { usePublicCourtCentersQuery } from "@/lib/api/courtCenterPublicQueries";
 import { formatApiDate } from "@/lib/dates";
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
@@ -33,7 +33,7 @@ export function CourtCenterListView() {
   }, [date, lat, lng, sportIds, radiusKm]);
 
   const { data: courtCenters = [], isLoading, isError, isFetching } =
-    useGetCourtCentersQuery(filters);
+    usePublicCourtCentersQuery(filters);
 
   return (
     <div className="space-y-8">

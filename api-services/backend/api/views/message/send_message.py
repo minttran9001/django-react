@@ -4,7 +4,6 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from api.serializers import (
     ConversationReadSerializer,
-    PublicOwnerSerializer,
     ReadMessageListSerializer,
     ReadMessageSerializer,
     SendMessageSerializer,
@@ -13,6 +12,7 @@ from ._helpers import NotConversationMemberError, resolve_conversation_for_send_
 from rest_framework.response import Response
 from rest_framework import status
 from api.utils.exceptions import error_response
+from api.utils.typed_resource import RESOURCE_CONVERSATION, RESOURCE_MESSAGE, typed_resource
 from datetime import datetime
 from api.models import Member
 
@@ -99,8 +99,14 @@ class SendMessageView(APIView):
             )
 
         payload = {
-            "conversation": ConversationReadSerializer(conversation).data,
-            "message": ReadMessageSerializer(message).data,
+            "conversation": typed_resource(
+                RESOURCE_CONVERSATION,
+                ConversationReadSerializer(conversation).data,
+            ),
+            "message": typed_resource(
+                RESOURCE_MESSAGE,
+                ReadMessageSerializer(message).data,
+            ),
             "conversation_created": conv_created,
         }
         # 3) ack camelCase
