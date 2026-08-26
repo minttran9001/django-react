@@ -27,6 +27,7 @@ import {
   type CourtsStepValues,
 } from "@/features/court-centers/schemas/courtsStepSchema";
 import type { ImageResource, Sport } from "@/features/court-centers/types";
+import { reindexCourtImagesAfterRemove } from "@/features/court-centers/utils/wizard";
 import { cn } from "@/lib/utils";
 
 type CourtsStepProps = {
@@ -111,7 +112,12 @@ const CourtsStepForm = ({ form, sports, isLoadingSports, courtImages, onCourtIma
                   variant="outline"
                   size="sm"
                   disabled={disabled}
-                  onClick={() => remove(index)}
+                  onClick={() => {
+                    remove(index);
+                    onCourtImagesChange((current) =>
+                      reindexCourtImagesAfterRemove(current, index),
+                    );
+                  }}
                 >
                   <Trash2 className="size-4" />
                   Remove
