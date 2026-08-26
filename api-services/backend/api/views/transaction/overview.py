@@ -15,6 +15,7 @@ from api.utils import (
     parse_transaction_search_params,
 )
 from api.utils.transaction_search import LATEST_END_AT_ANNOTATION
+from api.utils.typed_resource import RESOURCE_TRANSACTION, typed_resource
 from api.views.transaction._helpers import transaction_queryset_for_serializer
 
 
@@ -28,6 +29,11 @@ class MyTransactionListView(ListAPIView):
         qs = annotate_latest_end_at(qs)
         qs = apply_transaction_search_filters(qs, search_params)
         return qs.order_by(f"-{LATEST_END_AT_ANNOTATION}")
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(typed_resource(RESOURCE_TRANSACTION, serializer.data))
 
 
 class MyTransactionCountsView(APIView):

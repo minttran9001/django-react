@@ -1,6 +1,7 @@
 "use client"
 
-import { useGetMyTransactionCountsQuery, useGetMyTransactionsQuery } from "@/lib/api/transactionApi";
+import { useGetMyTransactionCountsQuery } from "@/lib/api/transactionApi";
+import { useMyTransactionsQuery } from "@/lib/api/transactionQueries";
 import VerticalTabNavigation from "../ui/VertialTabNavigation";
 import { Calendar, CalendarIcon, CheckCircleIcon, HistoryIcon } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -43,15 +44,15 @@ const MyBookingsView = () => {
     const isBigCalendar = pathname.includes("/bookings/calendar");
     const activeTab = searchParams.get("tab") || "upcoming";
     const states = TAB_MAP_TO_STATES[activeTab as keyof typeof TAB_MAP_TO_STATES];
-    const { data: transactions = [], isLoading, isFetching } = useGetMyTransactionsQuery({ states }, { skip: isBigCalendar });
+    const { data: transactions = [], isLoading, isFetching } = useMyTransactionsQuery({ states }, { skip: isBigCalendar });
     const {
         data: calendarTransactions = [],
         isLoading: isCalendarLoading,
-    } = useGetMyTransactionsQuery(
+    } = useMyTransactionsQuery(
         { states: CALENDAR_STATES },
         { skip: !isBigCalendar },
     );
-    const { data: pendingPaymentsTransactions = [] } = useGetMyTransactionsQuery({ states: [ETransactionState.PENDING_PAYMENT] }, { skip: isBigCalendar });
+    const { data: pendingPaymentsTransactions = [] } = useMyTransactionsQuery({ states: [ETransactionState.PENDING_PAYMENT] }, { skip: isBigCalendar });
     const { data: transactionCounts } = useGetMyTransactionCountsQuery({ states: Object.values(TAB_MAP_TO_STATES).flat() });
     const counts = transactionCounts?.states
     const isInitialLoading = isLoading || isFetching;

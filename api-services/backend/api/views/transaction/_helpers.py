@@ -1,4 +1,13 @@
 from api.models import Transaction
+from api.serializers import TransactionSerializer
+from api.utils.typed_resource import RESOURCE_TRANSACTION, typed_resource
+
+
+def typed_transaction(transaction: Transaction) -> dict:
+    return typed_resource(
+        RESOURCE_TRANSACTION,
+        TransactionSerializer(transaction).data,
+    )
 
 
 def transaction_queryset_for_serializer():

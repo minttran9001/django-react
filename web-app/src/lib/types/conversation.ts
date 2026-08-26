@@ -12,6 +12,8 @@ export interface ConversationMember {
   user: PublicUser;
   unread: number;
   mentionUnread: number;
+  lastReadMessageId: number;
+  lastReadAt: string;
 }
 
 export interface Conversation {

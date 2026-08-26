@@ -1,3 +1,3 @@
 from .read import ConversationReadSerializer, LastMessageSenderSerializer
-
-__all__ = ["ConversationReadSerializer", "LastMessageSenderSerializer"]
+from .seen import ConversationSeenSerializer
+__all__ = ["ConversationReadSerializer", "LastMessageSenderSerializer", "ConversationSeenSerializer"]

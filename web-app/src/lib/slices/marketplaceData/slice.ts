@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, current, type PayloadAction } from "@reduxjs/toolkit";
 
 import type { CourtCenter } from "@/features/court-centers/types";
 import {
@@ -9,10 +9,7 @@ import {
   courtCentersAdapter,
   courtCentersInitialState,
 } from "@/lib/entities/courtCenters";
-import {
-  messagesAdapter,
-  messagesInitialState,
-} from "@/lib/entities/messages";
+import { messagesAdapter, messagesInitialState } from "@/lib/entities/messages";
 import { usersAdapter, usersInitialState } from "@/lib/entities/users";
 import {
   collectTypedResources,
@@ -22,12 +19,16 @@ import {
 } from "@/lib/marketplace/typedResource";
 import type { Conversation, PublicUser } from "@/lib/types/conversation";
 import type { ChatMessage } from "@/lib/types/message";
+import { transactionsAdapter } from "@/lib/entities/transaction";
+import { transactionsInitialState } from "@/lib/entities/transaction";
+import { Transaction } from "@/lib/types/transaction";
 
 type MarketplaceState = {
   user: ReturnType<typeof usersAdapter.getInitialState>;
   conversation: ReturnType<typeof conversationsAdapter.getInitialState>;
   courtCenter: ReturnType<typeof courtCentersAdapter.getInitialState>;
   message: ReturnType<typeof messagesAdapter.getInitialState>;
+  transaction: ReturnType<typeof transactionsAdapter.getInitialState>;
 };
 
 const initialState: MarketplaceState = {
@@ -35,6 +36,7 @@ const initialState: MarketplaceState = {
   conversation: conversationsInitialState,
   courtCenter: courtCentersInitialState,
   message: messagesInitialState,
+  transaction: transactionsInitialState,
 };
 
 function asArray<T>(value: T | T[] | null | undefined): T[] {
@@ -78,6 +80,14 @@ function upsertByType(
       }
       break;
     }
+    case "transaction":
+      transactionsAdapter.upsertMany(
+        state.transaction,
+        asArray(unwrapped as Transaction),
+      );
+      break;
+    default:
+      break;
   }
 }
 
@@ -102,11 +112,38 @@ const marketplaceDataSlice = createSlice({
     ) => {
       conversationsAdapter.updateOne(state.conversation, action.payload);
     },
+    updateMarketplaceConversationMember: (
+      state,
+      action: PayloadAction<{
+        conversationId: number;
+        memberId: number;
+        lastReadMessageId: number;
+        lastReadAt: string;
+      }>,
+    ) => {
+      const conversation = marketplaceConversationSelectors.selectById(
+        { marketplaceData: state },
+        action.payload.conversationId,
+      );
+      if (!conversation) return;
+      const member = conversation.members?.find(
+        (m) => m.user.id === action.payload.memberId,
+      );
+      if (!member) return;
+      if (action.payload.lastReadMessageId > member.lastReadMessageId) {
+        member.lastReadMessageId = action.payload.lastReadMessageId;
+        member.lastReadAt = action.payload.lastReadAt;
+        conversationsAdapter.upsertOne(state.conversation, conversation);
+      }
+    },
   },
 });
 
-export const { addMarketplaceData, updateMarketplaceConversation } =
-  marketplaceDataSlice.actions;
+export const {
+  addMarketplaceData,
+  updateMarketplaceConversation,
+  updateMarketplaceConversationMember,
+} = marketplaceDataSlice.actions;
 export default marketplaceDataSlice.reducer;
 
 export type { MarketplaceState };
@@ -126,4 +163,8 @@ export const marketplaceCourtCenterSelectors = courtCentersAdapter.getSelectors(
 export const marketplaceMessageSelectors = messagesAdapter.getSelectors(
   (state: { marketplaceData: MarketplaceState }) =>
     state.marketplaceData.message,
+);
+export const marketplaceTransactionSelectors = transactionsAdapter.getSelectors(
+  (state: { marketplaceData: MarketplaceState }) =>
+    state.marketplaceData.transaction,
 );

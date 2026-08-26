@@ -23,8 +23,10 @@ import {
   marketplaceMessageSelectors,
   marketplaceUserSelectors,
   updateMarketplaceConversation,
+  updateMarketplaceConversationMember,
 } from "@/lib/slices/marketplaceData/slice";
 import { MessageBatchQueue } from "@/utils/batchQueue";
+import { ConversationMember } from "@/lib/types/conversation";
 
 export function wsBase() {
   return env.NEXT_PUBLIC_API_URL.replace(/^http/, "ws");
@@ -68,6 +70,7 @@ enum EChatSocketType {
   MESSAGE_ACKED = "message.acked",
   MESSAGE_FAILED = "message.failed",
   TYPING = "typing",
+  SEEN = "seen",
 }
 
 type ChatSocketData = {
@@ -76,6 +79,7 @@ type ChatSocketData = {
   message?: ChatSocketMessage;
   userId?: number;
   typing?: boolean;
+  lastReadMessageId?: number;
 };
 
 function toChatMessage(
@@ -106,42 +110,58 @@ const resolveSender = (
   state: RootState,
   conversationId: number,
   senderId: number,
-): ChatMessage["sender"] => {
+): ConversationMember => {
   const me = authApi.endpoints.getMe.select()(state).data;
+  const conversation = marketplaceConversationSelectors.selectById(
+    state,
+    conversationId,
+  );
+  const member = (conversation?.members.find((m) => m.user.id === senderId) ??
+    {}) as ConversationMember;
   if (me?.id === senderId) {
     return {
-      id: me.id,
-      name: me.name,
-      avatar: me.avatar,
+      ...member,
+      user: {
+        id: me.id,
+        name: me.name,
+        avatar: me.avatar ?? null,
+      },
     };
   }
 
   const marketplaceUser = marketplaceUserSelectors.selectById(state, senderId);
   if (marketplaceUser) {
     return {
-      id: marketplaceUser.id,
-      name: marketplaceUser.name,
-      avatar: marketplaceUser.avatar,
+      ...member,
+      user: {
+        id: marketplaceUser.id,
+        name: marketplaceUser.name,
+        avatar: marketplaceUser.avatar,
+      },
     };
   }
 
-  const conversation = marketplaceConversationSelectors.selectById(
-    state,
-    conversationId,
-  );
-  const member = conversation?.members.find((m) => m.user.id === senderId);
   if (member) {
     return {
-      id: member.user.id,
-      name: member.user.name,
-      avatar: member.user.avatar,
+      ...member,
+      user: {
+        id: member.user.id,
+        name: member.user.name,
+        avatar: member.user.avatar ?? null,
+      },
     };
   }
 
   return {
-    id: senderId,
-    name: "Unknown",
-    avatar: null,
+    unread: 0,
+    mentionUnread: 0,
+    lastReadMessageId: 0,
+    lastReadAt: "",
+    user: {
+      id: senderId,
+      name: "Unknown",
+      avatar: null,
+    },
   };
 };
 
@@ -177,7 +197,7 @@ export function useChatSocket() {
 
       const message = toChatMessage(
         { ...messageData, status: nextStatus },
-        resolveSender(state, conversationId, messageData.sender.id),
+        resolveSender(state, conversationId, messageData.sender.id).user,
         existing?.id,
       );
       const db = getChatLocalDb(user?.id);
@@ -211,11 +231,7 @@ export function useChatSocket() {
           },
         );
         batchQueueRef.current.push(message);
-        void db.messages
-          .where("clientId")
-          .equals(message.clientId)
-          .delete()
-          .then(() => db.messages.put(message));
+        void db.putMessages([message]);
       }
 
       if (type === EChatSocketType.MESSAGE_ACKED) {
@@ -226,11 +242,7 @@ export function useChatSocket() {
           conversationId,
           message.clientId,
         );
-        void db.messages
-          .where("clientId")
-          .equals(message.clientId)
-          .delete()
-          .then(() => db.messages.put(message));
+        void db.putMessages([message]);
         void db.deleteOutboxByClientId(message.clientId);
       }
 
@@ -264,15 +276,7 @@ export function useChatSocket() {
           changes: {
             lastMessagePreview: messageData.body,
             lastMessageAt: messageData.createdAt,
-            lastMessageSender: {
-              user: {
-                id: sender.id,
-                name: sender.name ?? "",
-                avatar: sender.avatar ?? null,
-              },
-              unread: 0,
-              mentionUnread: 0,
-            },
+            lastMessageSender: sender,
           },
         }),
       );
@@ -299,32 +303,86 @@ export function useChatSocket() {
     }
   }, []);
 
+  const handleSeen = useCallback(
+    (data: ChatSocketData) => {
+      if (data.type === EChatSocketType.SEEN && data.userId) {
+        dispatch(
+          updateMarketplaceConversationMember({
+            conversationId: data.conversationId,
+            memberId: data.userId,
+            lastReadMessageId: data.lastReadMessageId ?? 0,
+            lastReadAt: new Date().toISOString(),
+          }),
+        );
+      }
+    },
+    [dispatch],
+  );
+
   useEffect(() => {
     if (!user) return;
 
-    wsRef.current = new WebSocket(`${wsBase()}/ws/chat/`);
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
-    wsRef.current.onmessage = (ev) => {
-      const data = JSON.parse(ev.data) as ChatSocketData;
-      console.log("[WebSocket] new event messages:", data);
-      soundNotification(data);
-      appendMessage(data);
-      bumpConversationPreview(data);
-      handleTyping(data);
+    const clearReconnectTimer = () => {
+      if (reconnectTimer === undefined) return;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
     };
 
-    wsRef.current.onopen = () => {
-      console.log("[WebSocket] connected");
-      void drainOutbox();
+    const teardownSocket = () => {
+      const existing = wsRef.current;
+      if (!existing) return;
+      existing.onclose = null;
+      existing.onerror = null;
+      existing.onmessage = null;
+      existing.onopen = null;
+      if (existing.readyState !== WebSocket.CLOSED) {
+        existing.close();
+      }
+      wsRef.current = null;
     };
 
-    wsRef.current.onclose = () => {
-      console.log("[WebSocket] disconnected");
+    const connect = () => {
+      if (disposed) return;
+      clearReconnectTimer();
+
+      const state = wsRef.current?.readyState;
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+
+      teardownSocket();
+      const ws = new WebSocket(`${wsBase()}/ws/chat/`);
+      wsRef.current = ws;
+
+      ws.onmessage = (ev) => {
+        const data = JSON.parse(ev.data) as ChatSocketData;
+        console.log("[WebSocket] new event messages:", data);
+        soundNotification(data);
+        appendMessage(data);
+        bumpConversationPreview(data);
+        handleTyping(data);
+        handleSeen(data);
+      };
+
+      ws.onopen = () => {
+        console.log("[WebSocket] connected");
+        void drainOutbox();
+      };
+
+      ws.onclose = () => {
+        console.log("[WebSocket] disconnected");
+        wsRef.current = null;
+        if (disposed) return;
+        reconnectTimer = setTimeout(connect, 1000);
+      };
+
+      ws.onerror = (ev) => {
+        console.error("[WebSocket] error", ev);
+      };
     };
 
-    wsRef.current.onerror = (ev) => {
-      console.error("[WebSocket] error", ev);
-    };
+    connect();
 
     const unlock = () => {
       const sound = notifySoundRef.current;
@@ -337,15 +395,27 @@ export function useChatSocket() {
     };
     window.addEventListener("pointerdown", unlock);
 
-    const drainOutboxFn = () => {
+    const reconnectIfNeeded = () => {
+      if (document.visibilityState !== "visible") return;
+      const state = wsRef.current?.readyState;
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+      console.log("[WebSocket] reconnecting");
+      connect();
+    };
+    const onOnline = () => {
+      reconnectIfNeeded();
       void drainOutbox();
     };
-    window.addEventListener("online", drainOutboxFn);
+    window.addEventListener("visibilitychange", reconnectIfNeeded);
+    window.addEventListener("online", onOnline);
 
     return () => {
-      wsRef.current?.close();
+      disposed = true;
+      clearReconnectTimer();
+      teardownSocket();
       window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("online", drainOutboxFn);
+      window.removeEventListener("visibilitychange", reconnectIfNeeded);
+      window.removeEventListener("online", onOnline);
     };
   }, [
     user,
@@ -355,25 +425,47 @@ export function useChatSocket() {
     drainOutbox,
     soundNotification,
     handleTyping,
+    handleSeen,
   ]);
 
-  const sendTyping = useCallback(
-    (conversationId: number, typing: boolean) => {
-      const userId = user?.id;
-      if (!userId) return;
+  const emitEvent = useCallback(
+    (data: ChatSocketData) => {
+      if (
+        !wsRef.current ||
+        (wsRef.current && wsRef.current.readyState !== WebSocket.OPEN) ||
+        !user?.id
+      )
+        return;
       wsRef.current?.send(
         JSON.stringify({
-          type: EChatSocketType.TYPING,
-          conversationId,
-          userId,
-          typing,
+          ...data,
+          userId: user?.id,
         }),
       );
     },
-    [user],
+    [user?.id],
+  );
+
+  const sendTyping = useCallback(
+    (conversationId: number, typing: boolean) => {
+      emitEvent({ type: EChatSocketType.TYPING, conversationId, typing });
+    },
+    [emitEvent],
+  );
+
+  const sendSeen = useCallback(
+    (conversationId: number, lastReadMessageId: number) => {
+      emitEvent({
+        type: EChatSocketType.SEEN,
+        conversationId,
+        lastReadMessageId,
+      });
+    },
+    [emitEvent],
   );
 
   return {
     sendTyping,
+    sendSeen,
   };
 }

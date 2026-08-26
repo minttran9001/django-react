@@ -1,5 +1,6 @@
 import { messageApi } from "@/lib/api/messageApi/messageApi";
 import { ingestMessages } from "@/lib/api/messageApi/messageApi";
+import { uniqueClientIds } from "@/lib/entities/messages";
 import { useEffect, useState } from "react";
 import { getChatLocalDb } from "@/lib/localDb";
 import { useAppDispatch } from "@/lib/hooks";
@@ -37,7 +38,7 @@ const useHydrateMessages = ({
                     {
                         pages: [
                             {
-                                clientIds: pageMessages.map((message) => message.clientId),
+                                clientIds: uniqueClientIds(pageMessages.map((message) => message.clientId)),
                                 hasMore: true,
                                 nextBeforeId: pageMessages[0]?.id ?? null,
                             },

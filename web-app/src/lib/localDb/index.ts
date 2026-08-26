@@ -46,6 +46,13 @@ export class LocalDb extends Dexie {
       );
   }
 
+  async putMessages(messages: ChatMessage[]): Promise<void> {
+    if (messages.length === 0) return;
+    const clientIds = [...new Set(messages.map((message) => message.clientId))];
+    await this.messages.where("clientId").anyOf(clientIds).delete();
+    await this.messages.bulkPut(messages);
+  }
+
   async getMessagesByConversationIdAndPage(
     conversationId: Conversation["id"],
     beforeId?: number,
@@ -55,12 +62,35 @@ export class LocalDb extends Dexie {
       .where("conversationId")
       .equals(conversationId)
       .toArray()
-      .then((messages) =>
-        messages.sort(
+      .then((rows) =>
+        rows.sort(
           (a, b) =>
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         ),
       );
+    const byClientId = new Map<string, ChatMessage>();
+    for (const message of messages) {
+      const prev = byClientId.get(message.clientId);
+      if (!prev) {
+        byClientId.set(message.clientId, message);
+        continue;
+      }
+      const preferPositiveId = message.id > 0 !== prev.id > 0;
+      byClientId.set(
+        message.clientId,
+        preferPositiveId
+          ? message.id > 0
+            ? message
+            : prev
+          : message.id >= prev.id
+            ? message
+            : prev,
+      );
+    }
+    messages = [...byClientId.values()].sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
     if (beforeId) {
       messages = messages.filter((message) => message.id < beforeId);
     }
@@ -97,7 +127,6 @@ let chatLocalDb: LocalDb | null = null;
 let chatLocalDbByUserId: number | undefined | null = null;
 
 export const getChatLocalDb = (currentUserId?: number) => {
-  console.log({ currentUserId });
   if (chatLocalDb && chatLocalDbByUserId !== currentUserId) {
     chatLocalDb.close();
     chatLocalDb = null;

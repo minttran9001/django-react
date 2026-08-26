@@ -15,7 +15,7 @@ class ConversationMemberSerializer(serializers.ModelSerializer):
     user = PublicOwnerSerializer(read_only=True)
     class Meta:
         model = Member
-        fields = ["user", "unread", "mention_unread"]
+        fields = ["user", "unread", "mention_unread", "last_read_message_id", "last_read_at"]
 
 
 

@@ -6,6 +6,7 @@ import { getChatLocalDb } from "@/lib/localDb";
 import { marketplaceBaseQuery } from "@/lib/api/baseApi";
 import { ingestTyped } from "@/lib/marketplace/ingest";
 import { authApi } from "../authApi";
+import { marketplaceConversationSelectors } from "@/lib/slices/marketplaceData/slice";
 
 export type ConversationInbox = {
   ids: number[];
@@ -74,6 +75,26 @@ export const conversationApi = createApi({
         _extraOptions,
         baseQuery,
       ) {
+        const fetchedConversationIds =
+          conversationApi.endpoints.getConversations.select()(
+            getState() as never,
+          ).data?.ids;
+
+        const cachedConversations = fetchedConversationIds?.map((id) =>
+          marketplaceConversationSelectors.selectById(getState() as never, id),
+        ) as Conversation[];
+
+        const dmConversation = cachedConversations?.find(
+          (conversation): conversation is Conversation =>
+            conversation?.type === "dm" &&
+            conversation?.members.some((member) => member.user.id === userId),
+        );
+
+        if (dmConversation) {
+          appendConversationId(dispatch, getState, dmConversation.id);
+          return { data: dmConversation.id };
+        }
+
         const response = await baseQuery({
           url: "/conversations/dm",
           params: { userId },
@@ -95,6 +116,18 @@ export const conversationApi = createApi({
         { type: "Conversations", id: `dm_${userId}` },
       ],
     }),
+    markMessageAsSeen: builder.mutation<
+      void,
+      { conversationId: number; messageId: number }
+    >({
+      query: ({ conversationId, messageId }) => ({
+        url: `/conversations/${conversationId}/seen`,
+        method: "POST",
+        body: {
+          messageId,
+        },
+      }),
+    }),
   }),
 });
 
@@ -102,6 +135,7 @@ export const {
   useGetConversationsQuery,
   useGetDirectConversationQuery,
   useLazyGetDirectConversationQuery,
+  useMarkMessageAsSeenMutation,
 } = conversationApi;
 
 /** Dexie / socket payloads that are already unwrapped. */

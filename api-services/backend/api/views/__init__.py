@@ -23,7 +23,7 @@ from .transaction import (
     MyTransactionCountsView,
 )
 from .message import SendMessageView, ReadMessageListAPIView
-from .conversation import ConversationReadView, DirectConversationView
+from .conversation import ConversationReadView, DirectConversationView, ConversationSeenView
 
 __all__ = [
     "CookieTokenRefreshView",
@@ -56,4 +56,5 @@ __all__ = [
     "ConversationReadView",
     "ReadMessageListAPIView",
     "DirectConversationView",
+    "ConversationSeenView",
 ]

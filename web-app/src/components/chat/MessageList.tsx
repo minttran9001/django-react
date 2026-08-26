@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChatMessage, EMessageStatus } from "@/lib/types/message";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import useVirtualizer from "@/hooks/useVirtualizer";
 import { format, isSameDay } from "date-fns";
-import { ConversationMember } from "@/lib/types/conversation";
+import { ConversationMember, PublicUser } from "@/lib/types/conversation";
 import { RichMessageText } from "../core/RichTextMessage";
 import StickerImage from "./StickerImage";
 import { parseStickerToken } from "@/utils/sticker";
@@ -18,12 +18,14 @@ const isOutgoingMessage = (message: ChatMessage, currentUserId: number) => {
 };
 
 const Message = ({
+    className,
     showAvatar,
     message,
     currentUserId,
     onRemeasure,
     showStatus: showStatusProp,
 }: {
+    className?: string;
     showAvatar: boolean;
     message: ChatMessage;
     currentUserId: number;
@@ -34,7 +36,7 @@ const Message = ({
 
     const isOutgoing = isOutgoingMessage(message, currentUserId);
     const sticker = parseStickerToken(message.body ?? "");
-    const rootClasses = cn("flex w-fit min-w-0 max-w-3/4 flex-col gap-2 pb-2 text-sm", {
+    const rootClasses = cn("flex w-fit min-w-0 max-w-3/4 flex-col gap-2 pb-2 text-sm", className, {
         "self-end": isOutgoing,
         "self-start": !isOutgoing,
     });
@@ -65,7 +67,7 @@ const Message = ({
                         "items-start": !isOutgoing,
                     })}
                     onClick={() => {
-                        setShowStatus(true);
+                        setShowStatus(!showStatus);
                         onRemeasure?.();
                     }}
                 >
@@ -139,12 +141,14 @@ function showTimeSeparator(messages: ChatMessage[], index: number) {
 }
 
 const MessageList = ({
+    seenStates,
     messages = [],
     isLoading,
     isFetchingOlder = false,
     hasOlder = false,
     onLoadOlder,
     typingStates,
+    onSeen,
 }: {
     messages: ChatMessage[];
     isLoading: boolean;
@@ -152,6 +156,8 @@ const MessageList = ({
     hasOlder?: boolean;
     onLoadOlder?: () => void;
     typingStates?: { typingMembers?: ConversationMember[] };
+    onSeen?: (lastReadMessageId: number) => void;
+    seenStates?: { user: PublicUser; lastReadMessageId: number; lastReadAt: string }[];
 }) => {
     const { user: currentUser } = useAuth();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -173,6 +179,7 @@ const MessageList = ({
         (index: number) => messageKey(messages[index], index),
         [messages],
     );
+
 
     const {
         virtualItems,
@@ -212,7 +219,6 @@ const MessageList = ({
         const distanceFromBottom =
             el.scrollHeight - el.scrollTop - el.clientHeight;
         stickToBottomRef.current = distanceFromBottom <= NEAR_BOTTOM_PX;
-
         const anchor = prependAnchorRef.current;
         if (anchor && messages.length > anchor.lengthBefore) {
             const drift = Math.abs(el.scrollTop - lastRestoredScrollTopRef.current);
@@ -307,6 +313,67 @@ const MessageList = ({
         scrollToIndex(messages.length - 1, { align: "end" });
     }, [messages.length, totalSize, scrollToIndex]);
 
+
+    const lastSeenMessageId = useRef(0);
+
+    const seenTimer = useRef<NodeJS.Timeout | null>(null);
+    const pendingSeenId = useRef<number>(0);
+
+    useLayoutEffect(() => {
+        messages.forEach((message, index) => {
+            try {
+                const key = messageKey(message, index);
+                const incomingMessage = message.sender.id !== currentUser?.id;
+                if (!incomingMessage) return;
+                const messageEl = window.document.getElementById(key.toString());
+                if (!messageEl) return;
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting && message.id > lastSeenMessageId.current) {
+                            pendingSeenId.current = Math.max(pendingSeenId.current, message.id);
+                            if (seenTimer.current) {
+                                clearTimeout(seenTimer.current);
+                            }
+                            seenTimer.current = setTimeout(() => {
+                                onSeen?.(pendingSeenId.current);
+                                lastSeenMessageId.current = pendingSeenId.current;
+                                pendingSeenId.current = 0;
+                                seenTimer.current = null;
+                            }, 1000);
+                        }
+                    });
+                });
+                if (messageEl) {
+                    observer.observe(messageEl);
+                    return () => observer.disconnect();
+                }
+
+            } catch (error) {
+                console.error(error);
+            }
+        });
+
+    }, [onSeen, messages, currentUser?.id]);
+
+
+    const showSeenStatus = (message: ChatMessage) => {
+        const isOwnMessage = message.sender.id === currentUser?.id;
+        if (!isOwnMessage) return null;
+        const memberSeenThisMessage = seenStates?.filter(s => s.lastReadMessageId === message.id && s.user.id !== currentUser?.id);
+        if (!memberSeenThisMessage?.length) return null;
+        return (
+            <div className="flex items-center gap-1 self-end mb-2">
+                {memberSeenThisMessage.map(m => (
+                    <Avatar size="xs" key={m.user.id} className="[animation:seen-drop_300ms_ease-out]">
+                        <AvatarImage src={m.user.avatar?.url} />
+                        <AvatarFallback>
+                            {m.user.name?.charAt(0) ?? ""}
+                        </AvatarFallback>
+                    </Avatar>
+                ))}
+            </div>
+        );
+    }
     const typingLabel = typingStates?.typingMembers?.length
         ? typingStates.typingMembers.length === 1
             ? `${typingStates.typingMembers[0].user.name} is typing...`
@@ -346,12 +413,18 @@ const MessageList = ({
                                     {virtualItems.map((virtualRow) => {
                                         const message = messages[virtualRow.index];
                                         if (!message) return null;
+                                        const seenEl = showSeenStatus(message);
                                         return (
                                             <div
+                                                id={messageKey(message, virtualRow.index).toString()}
                                                 key={virtualRow.key}
                                                 data-index={virtualRow.index}
                                                 data-key={String(virtualRow.key)}
-                                                ref={measureElement}
+                                                ref={(ref) => {
+                                                    if (ref) {
+                                                        measureElement(ref);
+                                                    }
+                                                }}
                                                 className="flex w-full min-w-0 flex-col"
                                             >
                                                 {showTimeSeparator(messages, virtualRow.index) ? (
@@ -376,7 +449,10 @@ const MessageList = ({
                                                     )}
                                                     message={message}
                                                     currentUserId={currentUser?.id ?? 0}
+                                                    className={cn({ "pb-1": !!seenEl })}
                                                 />
+
+                                                {seenEl}
                                             </div>
                                         );
                                     })}

@@ -37,8 +37,9 @@ export const transactionApi = baseApi.injectEndpoints({
         invalidatesTags: [{ type: "Transaction", id: "LIST" }],
       },
     ),
-    getTransaction: builder.query<Transaction, number>({
+    getTransaction: builder.query<{ id: number }, number>({
       query: (id) => `/transactions/${id}`,
+      transformResponse: (transaction: Transaction) => ({ id: transaction.id }),
       providesTags: (_result, _error, id) => [{ type: "Transaction", id }],
     }),
     confirmPayment: builder.mutation<Transaction, number>({
@@ -50,29 +51,27 @@ export const transactionApi = baseApi.injectEndpoints({
         try {
           const { data } = await queryFulfilled;
           if (data.id && data.currentState === ETransactionState.CONFIRMED) {
-            //add to confirmed transactions
             dispatch(
               transactionApi.util.updateQueryData(
                 "getMyTransactions",
                 { states: [ETransactionState.CONFIRMED] },
-                (draft) => [data, ...draft.filter((t) => t.id !== data.id)],
+                (draft) => [data.id, ...draft.filter((tid) => tid !== data.id)],
               ),
             );
 
-            //remove from pending payment transactions
             dispatch(
               transactionApi.util.updateQueryData(
                 "getMyTransactions",
                 { states: [ETransactionState.PENDING_PAYMENT] },
-                (draft) => draft.filter((transaction) => transaction.id !== id),
+                (draft) => draft.filter((tid) => tid !== id),
               ),
             );
 
             dispatch(
-              transactionApi.util.updateQueryData(
+              transactionApi.util.upsertQueryData(
                 "getTransaction",
                 data.id,
-                () => data,
+                { id: data.id },
               ),
             );
           }
@@ -91,15 +90,15 @@ export const transactionApi = baseApi.injectEndpoints({
         body: { rating, comment },
       }),
       invalidatesTags: () => [{ type: "Transaction", id: "LIST" }],
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
           if (data.id && data.currentState === ETransactionState.REVIEWED) {
             dispatch(
-              transactionApi.util.updateQueryData(
+              transactionApi.util.upsertQueryData(
                 "getTransaction",
                 data.id,
-                () => data,
+                { id: data.id },
               ),
             );
           }
@@ -110,7 +109,7 @@ export const transactionApi = baseApi.injectEndpoints({
       },
     }),
     getMyTransactions: builder.query<
-      Transaction[],
+      number[],
       { states?: number[]; dateFrom?: Date; dateTo?: Date }
     >({
       query: (queryParams) =>
@@ -129,7 +128,15 @@ export const transactionApi = baseApi.injectEndpoints({
               }).toString()}`
             : ""
         }`,
-      providesTags: [{ type: "Transaction", id: "LIST" }],
+      transformResponse: (transactions: Transaction[]) =>
+        transactions.map((transaction) => transaction.id),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map((id) => ({ type: "Transaction" as const, id })),
+              { type: "Transaction", id: "LIST" },
+            ]
+          : [{ type: "Transaction", id: "LIST" }],
     }),
     getMyTransactionCounts: builder.query<
       MyTransactionCountsResponse,

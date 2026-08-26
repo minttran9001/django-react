@@ -30,6 +30,7 @@ from .views import (
     ConversationReadView,
     ReadMessageListAPIView,
     DirectConversationView,
+    ConversationSeenView,
 )
 
 
@@ -73,4 +74,5 @@ urlpatterns = [
     path('messages/<int:conversation_id>', ReadMessageListAPIView.as_view(), name='read_message_list'),
     path('conversations', ConversationReadView.as_view(), name='conversation_read'),
     path('conversations/dm', DirectConversationView.as_view(), name='dm_conversation'),
+    path('conversations/<int:conversation_id>/seen', ConversationSeenView.as_view(), name='conversation_seen'),
 ]

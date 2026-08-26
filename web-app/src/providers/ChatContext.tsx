@@ -1,17 +1,23 @@
 import { useChatSocket } from "@/hooks/useChatSocket";
 import { createContext, useContext } from "react";
 
+const FORBIDDEN_MESSAGE = "useChatContext must be used within a ChatProvider";
+
 const ChatContext = createContext<{
     sendTyping: (conversationId: number, typing: boolean) => void;
+    sendSeen: (conversationId: number, lastReadMessageId: number) => void;
 }>({
     sendTyping: () => {
-        throw new Error("useChatContext must be used within a ChatProvider");
+        throw new Error(FORBIDDEN_MESSAGE);
+    },
+    sendSeen: () => {
+        throw new Error(FORBIDDEN_MESSAGE);
     },
 });
 
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
-    const { sendTyping } = useChatSocket();
-    return <ChatContext.Provider value={{ sendTyping }}>{children}</ChatContext.Provider>;
+    const values = useChatSocket();
+    return <ChatContext.Provider value={values}>{children}</ChatContext.Provider>;
 };
 
 export const useChatContext = () => {

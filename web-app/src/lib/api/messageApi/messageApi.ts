@@ -17,7 +17,7 @@ import { getChatLocalDb } from "@/lib/localDb";
 import { marketplaceBaseQuery } from "@/lib/api/baseApi";
 import { authApi } from "../authApi";
 import { appendConversationId } from "../conversationApi/conversationApi";
-import { type MessagePage } from "@/lib/entities/messages";
+import { type MessagePage, uniqueClientIds } from "@/lib/entities/messages";
 import { ingestTyped } from "@/lib/marketplace/ingest";
 import { updateMarketplaceConversation } from "@/lib/slices/marketplaceData/slice";
 
@@ -86,7 +86,7 @@ export function buildLocalMessagePages(
     const start = Math.max(0, end - pageSize);
     const results = messages.slice(start, end);
     pages.push({
-      clientIds: results.map((m) => m.clientId),
+      clientIds: uniqueClientIds(results.map((m) => m.clientId)),
       nextBeforeId: results[0].id,
       hasMore: true,
     });
@@ -198,7 +198,10 @@ export function appendMessageClientId(
             draft.pageParams.push(null);
             return;
           }
-          if (!draft.pages[0].clientIds.includes(clientId)) {
+          const alreadyPresent = draft.pages.some((page) =>
+            page.clientIds.includes(clientId),
+          );
+          if (!alreadyPresent) {
             draft.pages[0].clientIds.push(clientId);
           }
         },
@@ -271,13 +274,15 @@ export const messageApi = createApi({
                   },
                   unread: 0,
                   mentionUnread: 0,
+                  lastReadMessageId: 0,
+                  lastReadAt: "",
                 },
               },
             }),
           );
         }
 
-        await db.messages.add(optimistic);
+        await db.putMessages([optimistic]);
         await db.outbox.put(optimistic);
         try {
           let response = await handleSendMessage(optimistic, baseQuery);
@@ -298,6 +303,7 @@ export const messageApi = createApi({
             }
             if (payload.message) {
               ingestMessages(dispatch, [payload.message]);
+              await db.putMessages([payload.message]);
             }
           }
           return response;
@@ -340,7 +346,7 @@ export const messageApi = createApi({
 
         const data = response.data as MessageListResponse;
         if (data?.results?.length > 0) {
-          await db.messages.bulkPut(data.results);
+          await db.putMessages(data.results);
 
           let results = data.results;
           if (!beforeId) {
@@ -351,7 +357,7 @@ export const messageApi = createApi({
 
           return {
             data: {
-              clientIds: results.map((m) => m.clientId),
+              clientIds: uniqueClientIds(results.map((m) => m.clientId)),
               nextBeforeId: data.nextBeforeId,
               hasMore: data.hasMore,
             },
@@ -367,7 +373,7 @@ export const messageApi = createApi({
           ingestMessages(dispatch, local);
           return {
             data: {
-              clientIds: local.map((m) => m.clientId),
+              clientIds: uniqueClientIds(local.map((m) => m.clientId)),
               nextBeforeId: local[0].id,
               hasMore: true,
             },

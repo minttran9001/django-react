@@ -39,13 +39,29 @@ export function selectMessagesByConversationId(
     .filter((message) => message.conversationId === conversationId);
 }
 
+export function uniqueClientIds(clientIds: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const clientId of clientIds) {
+    if (seen.has(clientId)) continue;
+    seen.add(clientId);
+    result.push(clientId);
+  }
+  return result;
+}
+
 export function selectMessagesForPages(
   entities: MessagesState | undefined,
   pages: MessagePage[] | undefined,
 ): ChatMessage[] {
   if (!pages?.length) return [];
+  const seen = new Set<string>();
   return pages.reduceRight<ChatMessage[]>((acc, page) => {
-    acc.push(...resolveMessages(entities, page.clientIds));
+    for (const message of resolveMessages(entities, page.clientIds)) {
+      if (seen.has(message.clientId)) continue;
+      seen.add(message.clientId);
+      acc.push(message);
+    }
     return acc;
   }, []);
 }

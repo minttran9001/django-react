@@ -3,6 +3,7 @@ export const MARKETPLACE_TYPES = [
   "conversation",
   "courtCenter",
   "message",
+  "transaction",
 ] as const;
 
 export type MarketplaceType = (typeof MARKETPLACE_TYPES)[number];

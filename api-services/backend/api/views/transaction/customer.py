@@ -11,7 +11,6 @@ from api.models import Court, CourtCenter, Transaction
 from api.serializers import (
     InitiateTransactionSerializer,
     RequestReviewSerializer,
-    TransactionSerializer,
 )
 from api.transaction_process.actions import ActionError
 from api.transaction_process.base import TransactionEngine, TransitionError
@@ -23,7 +22,11 @@ from api.transaction_process.court_booking import (
 from api.utils.app_timezone import timezone_from_query_params
 from api.utils.exceptions import validation_error_response
 
-from ._helpers import load_transaction_for_response, transaction_queryset_for_serializer
+from ._helpers import (
+    load_transaction_for_response,
+    transaction_queryset_for_serializer,
+    typed_transaction,
+)
 
 
 class InitiateTransactionView(APIView):
@@ -78,7 +81,7 @@ class InitiateTransactionView(APIView):
 
         transaction = load_transaction_for_response(transaction.pk)
         return Response(
-            TransactionSerializer(transaction).data,
+            typed_transaction(transaction),
             status=status.HTTP_201_CREATED,
         )
 
@@ -92,7 +95,7 @@ class TransactionDetailView(APIView):
             pk=pk,
             customer=request.user,
         )
-        return Response(TransactionSerializer(transaction).data)
+        return Response(typed_transaction(transaction))
 
 
 class ConfirmPaymentView(APIView):
@@ -118,7 +121,7 @@ class ConfirmPaymentView(APIView):
             return validation_error_response({"detail": [str(exc)]})
 
         transaction = load_transaction_for_response(transaction.pk)
-        return Response(TransactionSerializer(transaction).data)
+        return Response(typed_transaction(transaction))
 
 
 class RequestReviewView(APIView):
@@ -148,6 +151,6 @@ class RequestReviewView(APIView):
             return validation_error_response({"detail": [str(exc)]})
         transaction = load_transaction_for_response(transaction.pk)
         return Response(
-            TransactionSerializer(transaction).data,
+            typed_transaction(transaction),
             status=status.HTTP_200_OK,
         )

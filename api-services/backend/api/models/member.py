@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from .message import Message
 
 
 class Member(models.Model):
@@ -12,6 +13,14 @@ class Member(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     unread = models.IntegerField(default=0)
+    last_read_message = models.ForeignKey(
+        Message,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
+    last_read_at = models.DateTimeField(null=True, blank=True)    
     mention_unread = models.IntegerField(default=0)
 
     class Meta:

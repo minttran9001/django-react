@@ -35,8 +35,6 @@ import { useGetMeQuery } from "@/lib/api/authApi";
 import BookingPanel from "../booking/BookingPanel";
 import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
 import { useSetChatWidgetOpen, useSetNewMessageOpen } from "@/lib/slices/ui/actions";
-import { useGetDirectConversationQuery } from "@/lib/api/conversationApi/conversationApi";
-import { useSetActiveConversation } from "@/lib/slices/chat/actions";
 
 type CourtCenterDetailsViewProps = {
   id: string;
@@ -146,8 +144,6 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
   const setChatWidgetOpen = useSetChatWidgetOpen();
   const setNewMessageOpen = useSetNewMessageOpen();
   const userId = courtCenter?.owner.id ?? 0;
-  const { data: directConversation } = useGetDirectConversationQuery({ userId }, { skip: !userId });
-  const setActiveConversation = useSetActiveConversation();
   if (isLoading) {
     return <CourtCenterDetailsSkeleton />;
   }
@@ -237,11 +233,7 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
             </div>
             <Button variant="outline" onClick={() => {
               setChatWidgetOpen(true);
-              if (directConversation) {
-                setActiveConversation(directConversation);
-              } else {
-                setNewMessageOpen(userId, true);
-              }
+              setNewMessageOpen(userId, true);
             }}>
               Chat with owner
               <MessageCircleIcon />

@@ -31,9 +31,9 @@ import { RequestReviewFormValues } from "@/features/auth/schemas/reviewSchema";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
   useConfirmPaymentMutation,
-  useGetTransactionQuery,
   useRequestReviewMutation,
 } from "@/lib/api/transactionApi";
+import { useTransactionQuery } from "@/lib/api/transactionQueries";
 import { clearCheckoutSession } from "@/lib/checkout/draft";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { getMediaUrl } from "@/lib/media";
@@ -253,7 +253,7 @@ export function TransactionDetailsView({
     isLoading,
     isError,
     error,
-  } = useGetTransactionQuery(transactionId, { skip: !isAuthenticated });
+  } = useTransactionQuery(transactionId, { skip: !isAuthenticated });
 
   const expiresAt = useMemo(() => {
     if (!transaction?.lastTransitionAt) {

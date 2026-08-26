@@ -11,6 +11,7 @@ import { unwrapDeep } from "@/lib/marketplace/typedResource";
 import { addMarketplaceData } from "@/lib/slices/marketplaceData/slice";
 import { env } from "@/lib/env";
 import { authApi } from "./authApi";
+import { closeChatLocalDb } from "../localDb";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: `${env.NEXT_PUBLIC_API_URL}/api`,
@@ -49,6 +50,7 @@ export const baseQueryWithReauth: BaseQueryFn<
   if (!ok) {
     api.dispatch(authApi.endpoints.logout.initiate());
     if (typeof window !== "undefined") {
+      closeChatLocalDb();
       window.location.href = "/login";
     }
     return result;
