@@ -7,7 +7,7 @@ export function useAuth() {
     refetchOnMountOrArgChange: false,
   });
 
-  const user = data ?? initialUser;
+  const user = typeof data === "undefined" ? initialUser : data;
 
   return {
     user,
