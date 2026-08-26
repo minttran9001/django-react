@@ -112,3 +112,27 @@ export function centerToImageState(center: CourtCenter) {
     courtImages,
   };
 }
+
+/**
+ * Court photos are stored by form row index. When a court row is removed,
+ * higher indices must shift down so image_ids stay aligned with the courts
+ * payload — otherwise a remaining court can be saved with [] and wipe its gallery.
+ */
+export function reindexCourtImagesAfterRemove(
+  courtImages: Record<number, ImageResource[]>,
+  removedIndex: number,
+): Record<number, ImageResource[]> {
+  const next: Record<number, ImageResource[]> = {};
+  for (const [key, images] of Object.entries(courtImages)) {
+    const index = Number(key);
+    if (Number.isNaN(index) || index === removedIndex) {
+      continue;
+    }
+    if (index < removedIndex) {
+      next[index] = images;
+    } else {
+      next[index - 1] = images;
+    }
+  }
+  return next;
+}
