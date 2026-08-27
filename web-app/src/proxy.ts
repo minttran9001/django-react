@@ -15,11 +15,11 @@ import type { CurrentUser } from "@/lib/auth/types";
 import {
   AUTH_ROUTE_SET,
   PATHNAME_HEADER,
-  PUBLIC_ROUTE_SET,
+  isPublicRoute,
 } from "@/lib/routes";
 
 function isProtectedRoute(pathname: string) {
-  return !AUTH_ROUTE_SET.has(pathname) && !PUBLIC_ROUTE_SET.has(pathname);
+  return !AUTH_ROUTE_SET.has(pathname) && !isPublicRoute(pathname);
 }
 
 /**
