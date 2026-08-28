@@ -51,8 +51,16 @@ def _compute_pay_out(line_items: list[dict], currency: str) -> dict:
 
 def reserve_bookings(transaction: "Transaction", context: dict) -> None:
     slots = _require_slots(transaction, context)
-    court = _load_court(transaction)
     tz = context.get("timezone") or DEFAULT_TIMEZONE
+    # Lock the court row inside the surrounding atomic() so concurrent
+    # initiate requests cannot both pass availability checks and create
+    # overlapping PENDING bookings for the same court/slot.
+    court = (
+        Court.objects.select_related("center")
+        .prefetch_related("schedules")
+        .select_for_update()
+        .get(pk=transaction.court_id)
+    )
     validate_slots_are_available_for_court(slots, court, tz)
     merged_slots = merge_adjacent_slots(slots)
 
