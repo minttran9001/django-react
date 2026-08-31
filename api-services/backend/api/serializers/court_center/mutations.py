@@ -87,10 +87,12 @@ class CourtCenterWriteSerializer(serializers.Serializer):
     )
     address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     logo_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    # No default: omitted image_ids must stay absent so update() can skip sync.
+    # default=list made title/description-only PATCHes look like image_ids=[] and
+    # wipe the center gallery via sync_center_images → sync_gallery.
     image_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         required=False,
-        default=list,
     )
     courts = CourtUpdateInputSerializer(many=True, required=False)
 
