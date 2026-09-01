@@ -322,7 +322,9 @@ export function ListingWizard(props: ListingWizardProps) {
         <BasicStep
           formId={FORM_ID}
           defaultValues={
-            center ? centerToBasicValues(center) : { title: "", description: "", logoImage: { id: 0, url: "" }, centerImages: [] }
+            center
+              ? centerToBasicValues(center)
+              : { title: "", description: "", centerImages: [] }
           }
           onUpload={uploadFiles}
           isUploading={isUploadingImages}

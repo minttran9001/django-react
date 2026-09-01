@@ -6,6 +6,7 @@ import type {
   CourtCenter,
   ImageResource,
 } from "@/features/court-centers/types";
+import type { DefaultValues } from "react-hook-form";
 
 export const WIZARD_STEPS = [
   { id: 1, label: "Basic" },
@@ -29,13 +30,17 @@ export function normalizeTime(time: string): string {
   return time.length >= 5 ? time.slice(0, 5) : time;
 }
 
-export function centerToBasicValues(center: CourtCenter): BasicStepValues {
+export function centerToBasicValues(
+  center: CourtCenter,
+): DefaultValues<BasicStepValues> {
   return {
     title: center.title,
     description: center.description ?? "",
-    logoImage: center.logo
-      ? { id: center.logo.id, url: center.logo.url }
-      : { id: 0, url: "" },
+    // Omit a fake { id: 0, url: "" } placeholder — it rendered in PendingImageInput,
+    // hid the Upload control, and crashed next/image on empty src.
+    ...(center.logo
+      ? { logoImage: { id: center.logo.id, url: center.logo.url } }
+      : {}),
     centerImages: center.images.map((image) => ({
       id: image.id,
       url: image.url,

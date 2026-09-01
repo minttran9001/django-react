@@ -1,6 +1,8 @@
 "use client";
 
 
+import type { DefaultValues } from "react-hook-form";
+
 import { FieldPendingImageInput, FieldTextInput, FieldTextarea, Form } from "@/components/form";
 import {
   Card,
@@ -18,7 +20,7 @@ import { fieldClassName } from "@/components/court-centers/wizard/constants";
 import { cn } from "@/lib/utils";
 
 type BasicStepProps = {
-  defaultValues: BasicStepValues;
+  defaultValues: DefaultValues<BasicStepValues>;
   onUpload: (files: File[]) => Promise<ImageResource[]>;
   isUploading: boolean;
   disabled?: boolean;

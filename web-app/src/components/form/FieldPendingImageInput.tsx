@@ -79,10 +79,13 @@ export function FieldPendingImageInput<TFieldValues extends FieldValues>({
   >(name);
 
   const images = multiple
-    ? ((field.value as ImageResource[] | undefined) ?? [])
-    : field.value
-      ? [field.value as ImageResource]
-      : [];
+    ? ((field.value as ImageResource[] | undefined) ?? []).filter(
+        (image) => image.id > 0 && Boolean(image.url),
+      )
+    : (() => {
+        const image = field.value as ImageResource | null | undefined;
+        return image && image.id > 0 && image.url ? [image] : [];
+      })();
 
   return (
     <FieldPendingImageInputComponent
