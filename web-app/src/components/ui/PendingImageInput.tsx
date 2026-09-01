@@ -53,6 +53,10 @@ export function PendingImageInput({
     onChange(newImages);
   };
 
+  const visibleImages = value.filter(
+    (image) => image.id > 0 && Boolean(image.url),
+  );
+
   return (
     <div className="space-y-2">
       <Label htmlFor={inputId}>{label}</Label>
@@ -75,7 +79,7 @@ export function PendingImageInput({
       />
 
       <div className="flex flex-wrap gap-3">
-        {value.map((image) => (
+        {visibleImages.map((image) => (
           <div
             key={image.id}
             className="relative size-24 overflow-hidden rounded-lg border bg-muted"
@@ -104,7 +108,7 @@ export function PendingImageInput({
           </div>
         ))}
 
-        {(multiple || value.length === 0) && (
+        {(multiple || visibleImages.length === 0) && (
           <button
             type="button"
             disabled={disabled || isUploading}
