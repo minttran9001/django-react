@@ -116,6 +116,14 @@ def cancel_bookings(transaction: "Transaction", context: dict) -> None:
 
 
 def capture_payment(transaction: "Transaction", context: dict) -> None:
+    # CONFIRM_PAYMENT must only succeed after a payment provider (webhook /
+    # capture API) sets payment_verified. Customer-facing confirm-payment used
+    # to spoof the SYSTEM actor and call this no-op, confirming bookings and
+    # locking CourtSlots with no money captured.
+    if not context.get("payment_verified"):
+        raise ActionError(
+            "Payment has not been verified by the payment provider."
+        )
     context["payment"] = {"status": "captured"}
 
 

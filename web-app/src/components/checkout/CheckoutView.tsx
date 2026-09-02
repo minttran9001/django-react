@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/card";
 import { LineItemSlotInput, useSpeculatedLineItemsQuery } from "@/lib/api/lineItem";
 import { getApiErrorMessage } from "@/lib/api/errors";
-import { useConfirmPaymentMutation, useInitiateTransactionMutation } from "@/lib/api/transactionApi";
+import { useInitiateTransactionMutation } from "@/lib/api/transactionApi";
 import {
   buildCheckoutLoginNext,
   clearCheckoutDraft,
@@ -38,7 +38,7 @@ import {
   clearPendingCheckoutTransaction,
 } from "@/lib/checkout/draft";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { ETransactionState, Transaction } from "@/lib/types/transaction";
+import { ETransactionState } from "@/lib/types/transaction";
 
 function DraftSlotsPreview({ slots }: { slots: LineItemSlotInput[] }) {
   return (
@@ -76,10 +76,7 @@ export function CheckoutDraftView({ search }: { search: string }) {
   const [initiateTransaction, { isLoading: isInitiating }] =
     useInitiateTransactionMutation();
 
-  const [confirmPayment, { isLoading: isConfirmingPayment }] =
-    useConfirmPaymentMutation();
-
-  const isLoading = isInitiating || isConfirmingPayment;
+  const isLoading = isInitiating;
 
   const [initError, setInitError] = useState<unknown>(null);
 
@@ -138,49 +135,26 @@ export function CheckoutDraftView({ search }: { search: string }) {
 
     setInitError(null);
 
-    //step 1: initiate transaction
-    const onInitiateTransaction = async (pendingTransaction: Transaction | null) => {
-      const hasPendingPayment = pendingTransaction?.current_state === ETransactionState.PENDING_PAYMENT;
-      if (hasPendingPayment) {
-        return Promise.resolve(pendingTransaction);
+    try {
+      const hasPendingPayment =
+        pendingTransaction?.current_state === ETransactionState.PENDING_PAYMENT;
+      const transaction = hasPendingPayment
+        ? pendingTransaction
+        : await initiateTransaction({
+            court_id: draft.court_id,
+            slots: draft.slots,
+          }).unwrap();
+
+      if (!hasPendingPayment) {
+        savePendingCheckoutTransaction(transaction);
+        clearCheckoutDraft();
       }
 
-      const newTransaction = await initiateTransaction({
-        court_id: draft.court_id,
-        slots: draft.slots,
-      }).unwrap();
-      savePendingCheckoutTransaction(newTransaction);
-      clearCheckoutDraft();
-      return Promise.resolve(newTransaction);
-    };
-    //step 2: auto confirm payment
-    const onAutoConfirmPayment = async (transaction: Transaction | null) => {
-      if (!transaction) {
-        return Promise.resolve(null);
-      }
-      const alreadyConfirmed = transaction.current_state === ETransactionState.CONFIRMED;
-      if (alreadyConfirmed) {
-        return Promise.resolve(transaction);
-      }
-      const confirmedTransaction = await confirmPayment(transaction.id).unwrap();
-      savePendingCheckoutTransaction(confirmedTransaction);
-      return Promise.resolve(confirmedTransaction);
-    };
-    //step 3: navigate to transaction details
-    const onNavigateToTransactionDetails = async (transaction: Transaction | null) => {
-      if (!transaction) {
-        return Promise.resolve(null);
-      }
       clearPendingCheckoutTransaction();
       router.push(`/transaction/${transaction.id}`);
-      return Promise.resolve(transaction);
-    };
-
-    const applyAsync = (acc: Promise<Transaction | null>, val: (x: Transaction | null) => Promise<Transaction | null>) => acc.then(val);
-    const composeAsync = (...funcs: ((x: Transaction | null) => Promise<Transaction | null>)[]) => (x: Transaction | null) => funcs.reduce(applyAsync, Promise.resolve(x));
-    const handler = composeAsync(onInitiateTransaction, onAutoConfirmPayment, onNavigateToTransactionDetails);
-    const transaction = await handler(pendingTransaction);
-    return transaction;
+    } catch (error) {
+      setInitError(error);
+    }
   };
 
 
@@ -264,13 +238,13 @@ export function CheckoutDraftView({ search }: { search: string }) {
                 disabled={isSpeculateLoading || !speculatedLineItems}
                 onClick={onCreateBooking}
               >
-                {pendingTransaction && pendingTransaction.current_state === ETransactionState.PENDING_PAYMENT ? "Confirm payment" : "Create booking"}
+                {pendingTransaction && pendingTransaction.current_state === ETransactionState.PENDING_PAYMENT ? "Continue to booking" : "Create booking"}
               </Button>
-              {pendingTransaction && pendingTransaction.current_state !== ETransactionState.PENDING_PAYMENT ? (
-                <p className="text-center text-xs text-muted-foreground">
-                  You will be able to confirm payment in {PAYMENT_WINDOW_MINUTES} minutes.
-                </p>
-              ) : null}
+              <p className="text-center text-xs text-muted-foreground">
+                Creating a booking holds your slots for {PAYMENT_WINDOW_MINUTES}{" "}
+                minutes. Payment capture is not available yet — unpaid holds
+                expire automatically.
+              </p>
             </CardContent>
           </Card>
         </div>
