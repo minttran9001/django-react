@@ -21,7 +21,7 @@ from api.transaction_process.court_booking import (
     TRANSACTION_TRANSITIONS,
 )
 from api.utils.app_timezone import timezone_from_query_params
-from api.utils.exceptions import validation_error_response
+from api.utils.exceptions import error_response, validation_error_response
 
 from ._helpers import load_transaction_for_response
 
@@ -100,29 +100,31 @@ class TransactionDetailView(APIView):
 
 
 class ConfirmPaymentView(APIView):
+    """
+    Customer self-service confirm is disabled until a real PSP webhook exists.
+
+    Previously this view authenticated as the customer, then ran CONFIRM_PAYMENT
+    as TRANSACTION_ACTORS.SYSTEM while capture_payment was a no-op — any
+    authenticated customer could lock slots as CONFIRMED without paying.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk: int):
-        transaction = get_object_or_404(
+        # Ensure the transaction exists and belongs to the caller (same 404
+        # surface as before) before refusing confirmation.
+        get_object_or_404(
             Transaction.objects.select_related("court"),
             pk=pk,
             customer=request.user,
         )
-
-        engine = TransactionEngine(transaction)
-
-        try:
-            transaction = engine.transition(
-                TRANSACTION_TRANSITIONS.CONFIRM_PAYMENT,
-                actor=TRANSACTION_ACTORS.SYSTEM,
-            )
-        except ActionError as exc:
-            return validation_error_response({"detail": [str(exc)]})
-        except TransitionError as exc:
-            return validation_error_response({"detail": [str(exc)]})
-
-        transaction = load_transaction_for_response(transaction.pk)
-        return Response(TransactionSerializer(transaction).data)
+        return error_response(
+            "Payment confirmation is not available until a payment provider "
+            "webhook verifies capture. Your booking stays pending and will "
+            "expire if unpaid.",
+            code="payment_provider_not_configured",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
 
 class RequestReviewView(APIView):

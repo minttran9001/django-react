@@ -30,7 +30,6 @@ import Review from "@/components/ui/Review";
 import { RequestReviewFormValues } from "@/features/auth/schemas/reviewSchema";
 import { getApiErrorMessage } from "@/lib/api/errors";
 import {
-  useConfirmPaymentMutation,
   useGetTransactionQuery,
   useRequestReviewMutation,
 } from "@/lib/api/transactionApi";
@@ -132,8 +131,6 @@ function ProviderCard({
 
 function TransactionActions({ transaction }: { transaction: Transaction }) {
   const [requestReview] = useRequestReviewMutation();
-  const [confirmPayment, { isLoading: isConfirming }] =
-    useConfirmPaymentMutation();
 
   const nextBookingStartsAt = useMemo(() => {
     const nextBooking = transaction.bookings
@@ -149,14 +146,6 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
     }
     return new Date(nextBooking.date + " " + nextBooking.start_time);
   }, [transaction.bookings]);
-
-  const onConfirmPayment = async () => {
-    try {
-      await confirmPayment(transaction.id).unwrap();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-    }
-  };
 
   const onRequestReview = async (values: RequestReviewFormValues) => {
     try {
@@ -183,17 +172,14 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
   } else if (transaction.current_state === ETransactionState.PENDING_PAYMENT) {
     return (
       <div className="w-full">
-        <Button
-          className="mb-2 w-full"
-          onClick={onConfirmPayment}
-          isLoading={isConfirming}
-        >
-          Confirm Payment
-        </Button>
-        <p className="text-center text-xs text-muted-foreground">
-          Payment will be processed securely. Your card is only charged when you
-          confirm below.
-        </p>
+        <div className="mb-2 flex items-start gap-3 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+          <ShieldCheckIcon className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Payment capture is not configured yet. Your slots stay on hold
+            until the payment window expires; they will not be marked confirmed
+            without a verified payment provider webhook.
+          </p>
+        </div>
       </div>
     );
   } else if (transaction.current_state === ETransactionState.PAYMENT_EXPIRED) {
