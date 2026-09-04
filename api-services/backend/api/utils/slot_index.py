@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from datetime import date, time, timedelta
 
+from django.db import transaction
 from django.db.models import Q
 
 from api.models.booking import Booking, BookingStatus
@@ -73,18 +74,25 @@ def regenerate_slots_for_court(court: Court, from_date: date | None = None) -> N
     Call this whenever a court's CourtSchedule records change.
 
     Uses court.schedules.all() — prefetch it before calling if batching many courts.
+
+    Overlapping schedules for the same day are collapsed to unique (date, start_time)
+    rows so bulk_create cannot violate unique_together after the delete has already
+    cleared the horizon (which would otherwise leave the court with zero slots).
     """
     today = date.today()
     start = max(from_date or today, today)
     horizon = today + timedelta(days=SLOT_GENERATION_DAYS)
 
-    CourtSlot.objects.filter(court=court, date__gte=start).delete()
-
     schedules = list(court.schedules.all())
     to_create: list[CourtSlot] = []
+    seen: set[tuple[date, time]] = set()
     d = start
     while d <= horizon:
         for start_t, end_t in _generate_slots_from_schedules(schedules, d):
+            key = (d, start_t)
+            if key in seen:
+                continue
+            seen.add(key)
             to_create.append(CourtSlot(
                 court=court,
                 date=d,
@@ -94,23 +102,26 @@ def regenerate_slots_for_court(court: Court, from_date: date | None = None) -> N
             ))
         d += timedelta(days=1)
 
-    if to_create:
-        CourtSlot.objects.bulk_create(to_create)
+    with transaction.atomic():
+        CourtSlot.objects.filter(court=court, date__gte=start).delete()
 
-    # Re-apply any active bookings that fall inside the rebuilt range
-    active = list(
-        Booking.objects.filter(
-            court=court,
-            date__gte=start,
-            date__lte=horizon,
-            status__in=ACTIVE_BOOKING_STATUSES,
-        ).values_list("date", "start_time")
-    )
-    if active:
-        q = Q()
-        for booking_date, start_t in active:
-            q |= Q(date=booking_date, start_time=start_t)
-        CourtSlot.objects.filter(court=court).filter(q).update(is_available=False)
+        if to_create:
+            CourtSlot.objects.bulk_create(to_create)
+
+        # Re-apply any active bookings that fall inside the rebuilt range
+        active = list(
+            Booking.objects.filter(
+                court=court,
+                date__gte=start,
+                date__lte=horizon,
+                status__in=ACTIVE_BOOKING_STATUSES,
+            ).values_list("date", "start_time")
+        )
+        if active:
+            q = Q()
+            for booking_date, start_t in active:
+                q |= Q(date=booking_date, start_time=start_t)
+            CourtSlot.objects.filter(court=court).filter(q).update(is_available=False)
 
 
 def mark_slots_unavailable(court_id: int, slot_specs: list[dict]) -> None:
