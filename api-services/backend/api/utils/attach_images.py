@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from rest_framework import serializers
 
 from api.models import Court, CourtCenter, Image
@@ -93,24 +94,32 @@ def sync_gallery(
     owner,
     image_ids: list[int],
 ) -> None:
-    Image.objects.filter(
-        content_type=content_type,
-        object_id=object_id,
-        kind=Image.Kind.GALLERY,
-    ).exclude(id__in=image_ids).delete()
-
-    for sort_order, image_id in enumerate(image_ids):
-        image = resolve_owner_image(
+    # Resolve every id before mutating so a bad id cannot wipe the gallery.
+    resolved = [
+        resolve_owner_image(
             owner,
             image_id,
             content_type=content_type,
             object_id=object_id,
         )
-        image.content_type = content_type
-        image.object_id = object_id
-        image.kind = Image.Kind.GALLERY
-        image.sort_order = sort_order
-        image.save(update_fields=["content_type", "object_id", "kind", "sort_order"])
+        for image_id in image_ids
+    ]
+
+    with transaction.atomic():
+        Image.objects.filter(
+            content_type=content_type,
+            object_id=object_id,
+            kind=Image.Kind.GALLERY,
+        ).exclude(id__in=image_ids).delete()
+
+        for sort_order, image in enumerate(resolved):
+            image.content_type = content_type
+            image.object_id = object_id
+            image.kind = Image.Kind.GALLERY
+            image.sort_order = sort_order
+            image.save(
+                update_fields=["content_type", "object_id", "kind", "sort_order"]
+            )
 
 
 def attach_center_images(
