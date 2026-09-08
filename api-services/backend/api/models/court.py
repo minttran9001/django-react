@@ -5,7 +5,8 @@ from .image import Image
 from django.contrib.contenttypes.fields import GenericRelation
 
 class Court(models.Model):
-    sport = models.ForeignKey(Sport, on_delete=models.CASCADE, related_name="courts")
+    # PROTECT: CASCADE would wipe courts → bookings/transactions when a Sport is deleted.
+    sport = models.ForeignKey(Sport, on_delete=models.PROTECT, related_name="courts")
     center = models.ForeignKey(CourtCenter, on_delete=models.CASCADE, related_name="courts")
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
