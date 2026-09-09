@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import type { CourtCenter } from "@/features/court-centers/types";
+
 import { ACCESS_TOKEN_COOKIE } from "../auth/constants";
 import { env } from "../env";
 import { cookies } from "next/headers";
@@ -10,9 +12,9 @@ export const prefetchPublicCourtCenter = async ({
 }: {
   id: string;
   date: string;
-}) => {
+}): Promise<CourtCenter | null> => {
   try {
-    const response = await axios.get(
+    const response = await axios.get<CourtCenter>(
       `${env.NEXT_PUBLIC_API_URL}/api/court-centers/${id}`,
       {
         params: { date },
