@@ -11,7 +11,8 @@ class CourtCenter(models.Model):
         ARCHIVED = "archived", "Archived"
         PUBLISHED = "published", "Published"
 
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="court_centers")
+    # PROTECT: admin/user delete must not cascade-wipe centers → courts → paid bookings.
+    owner = models.ForeignKey(User, on_delete=models.PROTECT, related_name="court_centers")
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
