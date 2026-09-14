@@ -22,8 +22,9 @@ class Transaction(models.Model):
         default=TRANSACTION_STATES.INITIAL,
     )
     process_name = models.CharField(max_length=64, default=COURT_BOOKING_PROCESS["name"])
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="transactions")
-    provider = models.ForeignKey(User, on_delete=models.CASCADE, related_name="provider_transactions")
+    # PROTECT: admin/user delete must not cascade-wipe paid bookings/transactions.
+    customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name="transactions")
+    provider = models.ForeignKey(User, on_delete=models.PROTECT, related_name="provider_transactions")
     court = models.ForeignKey("Court", on_delete=models.CASCADE, related_name="transactions")
     line_items = models.JSONField(default=list)
     last_transition_at = models.DateTimeField(auto_now_add=True)
