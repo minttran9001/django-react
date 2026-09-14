@@ -1,6 +1,7 @@
 "use client";
 import { useGetMessagesInfiniteQuery } from "@/lib/api/messageApi/messageApi";
 import { Conversation, ConversationMember, PublicUser } from "@/lib/types/conversation";
+import type { ChatMessage } from "@/lib/types/message";
 import Composer from "./Composer";
 import { useCallback, useMemo } from "react";
 import { ArrowLeftIcon } from "lucide-react";
@@ -13,7 +14,7 @@ import {
     useMarketplaceMessagesForPages,
 } from "@/lib/slices/marketplaceData/actions";
 import { useChatContext } from "@/providers/ChatContext";
-import { useMarkMessageAsSeenMutation } from "@/lib/api/conversationApi/conversationApi";
+import { useMarkConversationSeenMutation } from "@/lib/api/conversationApi/conversationApi";
 import { useAuth } from "@/lib/hooks/useAuth";
 
 const ChatWindow = ({
@@ -27,12 +28,12 @@ const ChatWindow = ({
         isFetchingNextPage,
         hasNextPage,
         fetchNextPage,
-    } = useGetMessagesInfiniteQuery({ conversationId });
+    } = useGetMessagesInfiniteQuery({ conversationId }, { refetchOnMountOrArgChange: true });
     const setActiveConversation = useSetActiveConversation();
     const conversation = useMarketplaceConversation(conversationId);
     const typingStates = useTyping(conversationId);
     const { sendSeen } = useChatContext();
-    const [markMessageAsSeen] = useMarkMessageAsSeenMutation();
+    const [markConversationSeen] = useMarkConversationSeenMutation();
     const { user } = useAuth();
 
     const typingMembers = useMemo(() => {
@@ -47,29 +48,38 @@ const ChatWindow = ({
         void fetchNextPage();
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-    const ownMember = useMemo(() => {
-        return conversation?.members.find(member => member.user.id === user?.id);
+    const { recipient, meAsMember } = useMemo(() => {
+        if (!conversation?.members?.length) return { recipient: null, meAsMember: null };
+        return conversation?.members?.reduce((acc, member) => {
+            if (member.user.id === user?.id) {
+                acc.meAsMember = member;
+            } else {
+                acc.recipient = member;
+            }
+            return acc;
+        }, { meAsMember: null, recipient: null } as { meAsMember: ConversationMember | null; recipient: ConversationMember | null });
     }, [conversation, user?.id]);
 
-    const ownLastReadMessageId = useMemo(() => {
-        return ownMember?.lastReadMessageId ?? 0;
-    }, [ownMember?.lastReadMessageId]);
+    const ownWatermarkMs = meAsMember?.lastReadMessageCreatedAt?.getTime() ?? 0;
 
-
-    const onSeen = useCallback((lastReadMessageId: number) => {
-        if (!conversationId || lastReadMessageId <= ownLastReadMessageId) return;
-        sendSeen(conversationId, lastReadMessageId);
-        void markMessageAsSeen({ conversationId, messageId: lastReadMessageId });
-    }, [markMessageAsSeen, conversationId, sendSeen, ownLastReadMessageId]);
+    const onSeen = useCallback((message: ChatMessage) => {
+        if (!conversationId) return;
+        if (message.createdAt.getTime() <= ownWatermarkMs) return;
+        sendSeen(conversationId, message.createdAt);
+        void markConversationSeen({
+            conversationId,
+            createdAt: message.createdAt,
+            clientId: message.clientId,
+        });
+    }, [conversationId, sendSeen, markConversationSeen, ownWatermarkMs]);
 
     const seenStates = useMemo(() => {
         return conversation?.members.map(member => {
             return {
-                lastReadMessageId: member.lastReadMessageId,
-                lastReadAt: member.lastReadAt,
+                lastReadMessageCreatedAt: member.lastReadMessageCreatedAt,
                 user: member.user,
             };
-        }).filter(Boolean) as { user: PublicUser; lastReadMessageId: number; lastReadAt: string }[];
+        }).filter(Boolean) as { user: PublicUser; lastReadMessageCreatedAt: Date }[];
     }, [conversation?.members]);
 
     return (
@@ -82,7 +92,7 @@ const ChatWindow = ({
                 >
                     <ArrowLeftIcon className="size-4" />
                 </Button>
-                <h2 className="text-lg font-bold">{conversation?.name || ""}</h2>
+                <h2 className="text-lg font-bold">{recipient?.user?.name ?? conversation?.name ?? '?'}</h2>
             </div>
             <MessageList
                 seenStates={seenStates}
@@ -94,6 +104,7 @@ const ChatWindow = ({
                 hasOlder={Boolean(hasNextPage)}
                 onLoadOlder={onLoadOlder}
                 onSeen={onSeen}
+                ownWatermarkMs={ownWatermarkMs}
             />
             <Composer conversationId={conversationId} className="px-4 pb-4" />
         </div>

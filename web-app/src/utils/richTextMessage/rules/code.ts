@@ -1,6 +1,9 @@
 import type { SegmentMatch, SegmentRule } from "../types";
 
+// text contain ```javascript\nconsole.log("Hello, world!");\n```
 const BLOCK_SRC = "```([a-zA-Z0-9_+-]*)\\r?\\n([\\s\\S]*?)```";
+
+// text contain `console.log("Hello, world!");`
 const INLINE_SRC = "`([^`\\n]+)`";
 
 // text contain ```javascript\nconsole.log("Hello, world!");\n```

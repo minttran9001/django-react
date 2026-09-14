@@ -23,10 +23,10 @@ import {
   marketplaceMessageSelectors,
   marketplaceUserSelectors,
   updateMarketplaceConversation,
-  updateMarketplaceConversationMember,
 } from "@/lib/slices/marketplaceData/slice";
 import { MessageBatchQueue } from "@/utils/batchQueue";
 import { ConversationMember } from "@/lib/types/conversation";
+import { asDate } from "@/lib/dates";
 
 export function wsBase() {
   return env.NEXT_PUBLIC_API_URL.replace(/^http/, "ws");
@@ -60,7 +60,7 @@ type ChatSocketMessage = {
   clientId: string;
   conversationId: number;
   body: string;
-  createdAt: number;
+  createdAt: string;
   status: EMessageStatus;
   sender: { id: number };
 };
@@ -79,7 +79,7 @@ type ChatSocketData = {
   message?: ChatSocketMessage;
   userId?: number;
   typing?: boolean;
-  lastReadMessageId?: number;
+  lastReadMessageCreatedAt?: Date | string;
 };
 
 function toChatMessage(
@@ -100,9 +100,25 @@ function toChatMessage(
     clientId: message.clientId,
     conversationId: message.conversationId,
     body: message.body,
-    createdAt: message.createdAt,
+    createdAt: asDate(message.createdAt),
     status: message.status,
     sender,
+  };
+}
+
+function mergeWithExisting(
+  incoming: ChatMessage,
+  existing: ChatMessage | undefined,
+): ChatMessage {
+  if (!existing) return incoming;
+  return {
+    ...incoming,
+    id: incoming.id > 0 ? incoming.id : existing.id,
+    createdAt: existing.createdAt,
+    status:
+      statusRank(existing.status) > statusRank(incoming.status)
+        ? existing.status
+        : incoming.status,
   };
 }
 
@@ -156,7 +172,8 @@ const resolveSender = (
     unread: 0,
     mentionUnread: 0,
     lastReadMessageId: 0,
-    lastReadAt: "",
+    lastReadAt: new Date(0),
+    lastReadMessageCreatedAt: new Date(0),
     user: {
       id: senderId,
       name: "Unknown",
@@ -200,13 +217,28 @@ export function useChatSocket() {
         resolveSender(state, conversationId, messageData.sender.id).user,
         existing?.id,
       );
+
+      if (!user?.id) {
+        return;
+      }
+
       const db = getChatLocalDb(user?.id);
 
       if (type === EChatSocketType.MESSAGE_CREATED) {
         batchQueueRef.current ??= new MessageBatchQueue<ChatMessage>(
           (allMessages) => {
-            ingestMessages(dispatch, allMessages);
-            const messagesByConversationId = allMessages.reduce(
+            const stateAtFlush = reduxStore.getState();
+            const merged = allMessages.map((queued) =>
+              mergeWithExisting(
+                queued,
+                marketplaceMessageSelectors.selectById(
+                  stateAtFlush,
+                  queued.clientId,
+                ),
+              ),
+            );
+            ingestMessages(dispatch, merged);
+            const messagesByConversationId = merged.reduce(
               (acc, queued) => {
                 acc[queued.conversationId] = [
                   ...(acc[queued.conversationId] ?? []),
@@ -235,15 +267,16 @@ export function useChatSocket() {
       }
 
       if (type === EChatSocketType.MESSAGE_ACKED) {
-        ingestMessages(dispatch, [message]);
+        const merged = mergeWithExisting(message, existing);
+        ingestMessages(dispatch, [merged]);
         appendMessageClientId(
           dispatch,
           reduxStore.getState,
           conversationId,
-          message.clientId,
+          merged.clientId,
         );
-        void db.putMessages([message]);
-        void db.deleteOutboxByClientId(message.clientId);
+        void db.putMessages([merged]);
+        void db.deleteOutboxByClientId(merged.clientId);
       }
 
       if (type === EChatSocketType.MESSAGE_FAILED) {
@@ -264,25 +297,61 @@ export function useChatSocket() {
       )
         return;
 
+      const isCreated = type === EChatSocketType.MESSAGE_CREATED;
+
       const sender = resolveSender(
         reduxStore.getState(),
         conversationId,
         messageData.sender.id,
       );
 
+      if (!user?.id) {
+        return;
+      }
+
+      const db = getChatLocalDb(user?.id);
+
+      const conversation = marketplaceConversationSelectors.selectById(
+        reduxStore.getState(),
+        conversationId,
+      );
+      if (!conversation) return;
+
+      const meAsMember = conversation.members.find(
+        (member) => member.user.id === user?.id,
+      ) as ConversationMember;
+
+      const isOwnMessage = messageData.sender.id === user?.id;
+
+      const newMeAsMember = {
+        ...meAsMember,
+        ...(!isOwnMessage ? { unread: meAsMember.unread + 1 } : {}),
+      };
+
+      const newMembers = conversation?.members.map((member) =>
+        member.user.id === user?.id ? newMeAsMember : member,
+      );
+
+      const changes = {
+        lastMessagePreview: messageData.body,
+        lastMessageAt: asDate(messageData.createdAt),
+        lastMessageSender: sender,
+        ...(isCreated ? { members: newMembers } : {}),
+      };
+
+      void db.putConversation({
+        ...conversation,
+        ...changes,
+      });
       dispatch(
         updateMarketplaceConversation({
           id: conversationId,
-          changes: {
-            lastMessagePreview: messageData.body,
-            lastMessageAt: messageData.createdAt,
-            lastMessageSender: sender,
-          },
+          changes,
         }),
       );
       appendConversationId(dispatch, reduxStore.getState, conversationId);
     },
-    [dispatch, reduxStore],
+    [dispatch, user?.id],
   );
 
   const soundNotification = useCallback(
@@ -306,17 +375,47 @@ export function useChatSocket() {
   const handleSeen = useCallback(
     (data: ChatSocketData) => {
       if (data.type === EChatSocketType.SEEN && data.userId) {
+        if (!user?.id) {
+          return;
+        }
+        const db = getChatLocalDb(user?.id);
+        const conversation = marketplaceConversationSelectors.selectById(
+          reduxStore.getState(),
+          data.conversationId,
+        );
+        if (!conversation) return;
+        const conversationChanges = {
+          members: conversation.members.map((member) => {
+            if (member.user.id !== data.userId) return member;
+            if (data.lastReadMessageCreatedAt == null) return member;
+            const nextCreatedAt = asDate(data.lastReadMessageCreatedAt);
+            if (
+              member.lastReadMessageCreatedAt.getTime() >=
+              nextCreatedAt.getTime()
+            ) {
+              return member;
+            }
+            return {
+              ...member,
+              lastReadMessageCreatedAt: nextCreatedAt,
+            };
+          }),
+        };
+
+        void db.putConversation({
+          ...conversation,
+          ...conversationChanges,
+        });
+
         dispatch(
-          updateMarketplaceConversationMember({
-            conversationId: data.conversationId,
-            memberId: data.userId,
-            lastReadMessageId: data.lastReadMessageId ?? 0,
-            lastReadAt: new Date().toISOString(),
+          updateMarketplaceConversation({
+            id: data.conversationId,
+            changes: conversationChanges,
           }),
         );
       }
     },
-    [dispatch],
+    [dispatch, user?.id],
   );
 
   useEffect(() => {
@@ -398,6 +497,7 @@ export function useChatSocket() {
     const reconnectIfNeeded = () => {
       if (document.visibilityState !== "visible") return;
       const state = wsRef.current?.readyState;
+      console.log({ state });
       if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
       console.log("[WebSocket] reconnecting");
       connect();
@@ -454,11 +554,11 @@ export function useChatSocket() {
   );
 
   const sendSeen = useCallback(
-    (conversationId: number, lastReadMessageId: number) => {
+    (conversationId: number, lastReadMessageCreatedAt: Date) => {
       emitEvent({
         type: EChatSocketType.SEEN,
         conversationId,
-        lastReadMessageId,
+        lastReadMessageCreatedAt,
       });
     },
     [emitEvent],

@@ -1,7 +1,6 @@
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from api.models import Member
-from django.contrib.auth.models import User
 
 
 @database_sync_to_async
@@ -45,19 +44,23 @@ async def _fanout_seen(self: AsyncJsonWebsocketConsumer, content: dict):
     channel_layer = self.channel_layer
     user = self.scope["user"]
     conversation_id = content.get("conversationId")
-    last_read_message_id = content.get("lastReadMessageId")
-    if not conversation_id or not last_read_message_id:
+    last_read_message_created_at = content.get("lastReadMessageCreatedAt")
+    if not conversation_id or not last_read_message_created_at:
         return
 
     member_ids = await _get_member_ids(conversation_id)
     if user.id not in member_ids:
         return
 
+    # Relay opaque watermark string; consumer does not persist.
+    if hasattr(last_read_message_created_at, "isoformat"):
+        last_read_message_created_at = last_read_message_created_at.isoformat()
+
     payload = {
         "type": "seen",
         "conversationId": conversation_id,
         "userId": user.id,
-        "lastReadMessageId": last_read_message_id,
+        "lastReadMessageCreatedAt": last_read_message_created_at,
     }
 
     for member_id in member_ids:

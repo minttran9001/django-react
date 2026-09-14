@@ -1,12 +1,16 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import type { AppDispatch } from "@/lib/store";
 
-import { Conversation } from "../../types/conversation";
+import { Conversation, ConversationMember } from "../../types/conversation";
 import { getChatLocalDb } from "@/lib/localDb";
 import { marketplaceBaseQuery } from "@/lib/api/baseApi";
 import { ingestTyped } from "@/lib/marketplace/ingest";
 import { authApi } from "../authApi";
-import { marketplaceConversationSelectors } from "@/lib/slices/marketplaceData/slice";
+import {
+  marketplaceConversationSelectors,
+  updateMarketplaceConversation,
+} from "@/lib/slices/marketplaceData/slice";
+import { laterDate } from "@/lib/dates";
 
 export type ConversationInbox = {
   ids: number[];
@@ -62,7 +66,7 @@ export const conversationApi = createApi({
 
         const list = (response.data as Conversation[] | null) ?? [];
         const db = getChatLocalDb(user.data?.id);
-        await db.conversations.bulkPut(list);
+        await db?.putConversations(list);
 
         return { data: { ids: list.map((conversation) => conversation.id) } };
       },
@@ -107,8 +111,10 @@ export const conversationApi = createApi({
           return { data: null };
         }
         const user = authApi.endpoints.getMe.select()(getState() as never);
-        const db = getChatLocalDb(user.data?.id);
-        await db.conversations.put(conversation);
+        if (user.data?.id) {
+          const db = getChatLocalDb(user.data.id);
+          await db.putConversation(conversation);
+        }
         appendConversationId(dispatch, getState, conversation.id);
         return { data: conversation.id };
       },
@@ -116,17 +122,84 @@ export const conversationApi = createApi({
         { type: "Conversations", id: `dm_${userId}` },
       ],
     }),
-    markMessageAsSeen: builder.mutation<
-      void,
-      { conversationId: number; messageId: number }
+    markConversationSeen: builder.mutation<
+      { success: boolean },
+      {
+        conversationId: number;
+        createdAt: Date;
+        clientId?: string;
+      }
     >({
-      query: ({ conversationId, messageId }) => ({
-        url: `/conversations/${conversationId}/seen`,
-        method: "POST",
-        body: {
-          messageId,
-        },
-      }),
+      queryFn: async (
+        { conversationId, createdAt, clientId },
+        { getState, dispatch },
+        _extraOptions,
+        baseQuery,
+      ) => {
+        const currentUser = authApi.endpoints.getMe.select()(
+          getState() as never,
+        );
+
+        const conversation = marketplaceConversationSelectors.selectById(
+          getState() as never,
+          conversationId,
+        );
+
+        if (conversation) {
+          const meAsMember = conversation.members.find(
+            (member) => member.user.id === currentUser.data?.id,
+          );
+
+          if (meAsMember) {
+            if (
+              meAsMember.lastReadMessageCreatedAt.getTime() >=
+              createdAt.getTime()
+            ) {
+              return { data: { success: true } };
+            }
+            const newMeAsMember: ConversationMember = {
+              ...meAsMember,
+              lastReadMessageCreatedAt: laterDate(
+                meAsMember.lastReadMessageCreatedAt,
+                createdAt,
+              ),
+              unread: 0,
+            };
+            const db = getChatLocalDb(currentUser.data?.id);
+            const changes = {
+              members: conversation.members.map((member) =>
+                member.user.id === currentUser.data?.id
+                  ? newMeAsMember
+                  : member,
+              ),
+            };
+            await db?.putConversation({
+              ...conversation,
+              ...changes,
+            });
+            void dispatch(
+              updateMarketplaceConversation({
+                id: conversationId,
+                changes,
+              }),
+            );
+          }
+        }
+
+        const response = await baseQuery({
+          url: `/conversations/${conversationId}/seen`,
+          method: "POST",
+          body: {
+            createdAt: createdAt.toISOString(),
+            ...(clientId ? { clientId } : {}),
+          },
+        });
+
+        if (response.error) {
+          return { error: response.error };
+        }
+        return { data: { success: true } };
+      },
     }),
   }),
 });
@@ -135,7 +208,7 @@ export const {
   useGetConversationsQuery,
   useGetDirectConversationQuery,
   useLazyGetDirectConversationQuery,
-  useMarkMessageAsSeenMutation,
+  useMarkConversationSeenMutation,
 } = conversationApi;
 
 /** Dexie / socket payloads that are already unwrapped. */

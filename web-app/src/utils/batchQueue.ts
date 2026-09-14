@@ -12,13 +12,27 @@ export class MessageBatchQueue<T> {
 
   push(item: T): void {
     this.buffer.push(item);
+    const hidden =
+      typeof document !== "undefined" && document.visibilityState === "hidden";
+    if (hidden) {
+      this.flushNow();
+      return;
+    }
     if (this.rafId != null) return;
     this.rafId = requestAnimationFrame(() => {
       this.rafId = null;
-      const batch = this.buffer;
-      this.buffer = [];
-      if (batch.length) this.flush(batch);
+      this.flushNow();
     });
+  }
+
+  private flushNow(): void {
+    if (this.rafId != null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    const batch = this.buffer;
+    this.buffer = [];
+    if (batch.length) this.flush(batch);
   }
 
   clear(): void {

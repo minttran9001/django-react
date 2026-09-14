@@ -19,7 +19,21 @@ export function makeStore() {
       ...reducers,
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware().concat(
+      getDefaultMiddleware({
+        serializableCheck: {
+          isSerializable: (value: unknown) =>
+            value instanceof Date ||
+            value === undefined ||
+            value === null ||
+            typeof value === "boolean" ||
+            typeof value === "number" ||
+            typeof value === "string" ||
+            typeof value === "bigint" ||
+            Array.isArray(value) ||
+            (typeof value === "object" &&
+              Object.getPrototypeOf(value) === Object.prototype),
+        },
+      }).concat(
         baseApi.middleware,
         authApi.middleware,
         courtCenterApi.middleware,

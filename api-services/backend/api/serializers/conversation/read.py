@@ -12,10 +12,10 @@ class LastMessageSenderSerializer(serializers.Serializer):
         return member.user.email or str(member.user_id)
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
-    user = PublicOwnerSerializer(read_only=True)
+    user = PublicOwnerSerializer(read_only=True)    
     class Meta:
         model = Member
-        fields = ["user", "unread", "mention_unread", "last_read_message_id", "last_read_at"]
+        fields = ["user", "unread", "mention_unread", "last_read_message_id", "last_read_at", "last_read_message_created_at"]
 
 
 

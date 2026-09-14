@@ -1,4 +1,5 @@
 import { ImageResource } from "@/features/court-centers/types";
+import { asDate } from "@/lib/dates";
 import { Conversation } from "./conversation";
 
 export enum EMessageStatus {
@@ -23,7 +24,7 @@ export interface ChatMessage {
   clientId: string;
   conversationId: Conversation["id"];
   body: string;
-  createdAt: number;
+  createdAt: Date;
   status: EMessageStatus;
   sender: {
     id: number;
@@ -55,4 +56,11 @@ export interface MessageListResponse {
   results: ChatMessage[];
   hasMore: boolean;
   nextBeforeId: number | null;
+}
+
+export function normalizeChatMessage(message: ChatMessage): ChatMessage {
+  return {
+    ...message,
+    createdAt: asDate(message.createdAt),
+  };
 }

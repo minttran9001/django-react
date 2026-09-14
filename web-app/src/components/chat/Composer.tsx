@@ -30,17 +30,17 @@ type SendMessageFormValues = z.infer<typeof sendMessageSchema>;
 type ComposerProps = {
     conversationId?: Conversation["id"];
     className?: string;
+    onFocusInput?: () => void;
 }
 
 type ComposerComponentProps = {
-    conversationId: Conversation["id"] | undefined;
     setDraftMessage: (conversationId: number, draftMessage: string) => void;
     form: UseFormReturn<SendMessageFormValues>;
     onSubmit: (values: SendMessageFormValues) => void;
     onStickerSelect: (sticker: Sticker) => void;
-}
+} & Omit<ComposerProps, "className">;
 
-const ComposerComponent = ({ conversationId, setDraftMessage, form, onSubmit, onStickerSelect }: ComposerComponentProps) => {
+const ComposerComponent = ({ setDraftMessage, form, onSubmit, onStickerSelect, onFocusInput, conversationId }: ComposerComponentProps) => {
     const backDropRef = useRef<HTMLDivElement | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
@@ -137,6 +137,7 @@ const ComposerComponent = ({ conversationId, setDraftMessage, form, onSubmit, on
                     onKeyUp={rememberSelection}
                     onClick={rememberSelection}
                     onKeyDown={onKeyDown}
+                    onFocus={onFocusInput}
                 />
             </div>
             <EmojiPicker
@@ -159,7 +160,7 @@ const ComposerComponent = ({ conversationId, setDraftMessage, form, onSubmit, on
     )
 }
 
-const Composer = ({ conversationId, className = "" }: ComposerProps) => {
+const Composer = ({ conversationId, className = "", ...restProps }: ComposerProps) => {
     const [sendMessage] = useSendMessageMutation();
     const setDraftMessage = useSetDraftMessage();
     const draftMessage = useDraftMessage(conversationId ?? 0);
@@ -193,7 +194,7 @@ const Composer = ({ conversationId, className = "" }: ComposerProps) => {
             {(form) => {
                 formRef.current = form;
                 return (
-                    <ComposerComponent conversationId={conversationId} form={form} setDraftMessage={setDraftMessage} onSubmit={onSubmit} onStickerSelect={onStickerSelect} />
+                    <ComposerComponent conversationId={conversationId} form={form} setDraftMessage={setDraftMessage} onSubmit={onSubmit} onStickerSelect={onStickerSelect} {...restProps} />
                 )
             }}
         </Form>

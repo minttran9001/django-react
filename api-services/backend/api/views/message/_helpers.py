@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.utils import timezone
 from django.db.models import F
 from api.models import Conversation, Member, UserProfile, Message
@@ -85,7 +86,7 @@ def resolve_conversation_for_send_message(user, data):
 
 
 @transaction.atomic
-def persist_message(conversation: Conversation, sender: User, sender_member: Member, *, client_id: str, body: str) -> tuple[Message, bool]:
+def persist_message(conversation: Conversation, sender: User, sender_member: Member, *, client_id: str, body: str, created_at: datetime) -> tuple[Message, bool]:
     message, created = Message.objects.get_or_create(
         client_id=client_id,
         defaults={
@@ -95,8 +96,10 @@ def persist_message(conversation: Conversation, sender: User, sender_member: Mem
             'status': Message.Status.ACKED,
         }
     )
-    now = timezone.now()
-    conversation.last_message_at = now
+    if created:
+        Message.objects.filter(pk=message.pk).update(created_at=created_at)
+        message.created_at = created_at
+    conversation.last_message_at = created_at
     conversation.last_message_content = body
     conversation.last_message_sender = sender_member
     conversation.save(

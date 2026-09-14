@@ -1,9 +1,10 @@
 import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
 import type { Conversation, PublicUser } from "@/lib/types/conversation";
+import { compareDateDesc } from "@/lib/dates";
 
 export const conversationsAdapter = createEntityAdapter<Conversation, number>({
   selectId: (conversation) => conversation.id,
-  sortComparer: (a, b) => (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0),
+  sortComparer: (a, b) => compareDateDesc(a.lastMessageAt, b.lastMessageAt),
 });
 
 export type ConversationsState = EntityState<Conversation, number>;

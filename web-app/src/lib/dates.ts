@@ -53,6 +53,41 @@ export function parseFlexibleDate(
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
+/** Always a Date. Invalid / empty values become epoch 0. */
+export function asDate(value: Date | string | number | null | undefined): Date {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? new Date(0) : value;
+  }
+  if (value == null || value === "") {
+    return new Date(0);
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date(0) : date;
+}
+
+export function laterDate(
+  a: Date | string | number | null | undefined,
+  b: Date | string | number | null | undefined,
+): Date {
+  const left = asDate(a);
+  const right = asDate(b);
+  return left.getTime() >= right.getTime() ? left : right;
+}
+
+export function compareDateAsc(
+  a: Date | string | number | null | undefined,
+  b: Date | string | number | null | undefined,
+): number {
+  return asDate(a).getTime() - asDate(b).getTime();
+}
+
+export function compareDateDesc(
+  a: Date | string | number | null | undefined,
+  b: Date | string | number | null | undefined,
+): number {
+  return asDate(b).getTime() - asDate(a).getTime();
+}
+
 /** @deprecated Use parseFlexibleDate instead. */
 export function parseApiDate(value: string | null | undefined): Date | undefined {
   return parseFlexibleDate(value);

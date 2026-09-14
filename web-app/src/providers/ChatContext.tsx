@@ -5,7 +5,7 @@ const FORBIDDEN_MESSAGE = "useChatContext must be used within a ChatProvider";
 
 const ChatContext = createContext<{
     sendTyping: (conversationId: number, typing: boolean) => void;
-    sendSeen: (conversationId: number, lastReadMessageId: number) => void;
+    sendSeen: (conversationId: number, lastReadMessageCreatedAt: Date) => void;
 }>({
     sendTyping: () => {
         throw new Error(FORBIDDEN_MESSAGE);

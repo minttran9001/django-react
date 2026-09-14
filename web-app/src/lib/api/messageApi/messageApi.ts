@@ -11,15 +11,20 @@ import {
   EMessageStatus,
   MessageListResponse,
   MessageResponse,
+  normalizeChatMessage,
 } from "@/lib/types/message";
 import { Conversation, PublicUser } from "@/lib/types/conversation";
+import { compareDateAsc } from "@/lib/dates";
 import { getChatLocalDb } from "@/lib/localDb";
 import { marketplaceBaseQuery } from "@/lib/api/baseApi";
 import { authApi } from "../authApi";
 import { appendConversationId } from "../conversationApi/conversationApi";
 import { type MessagePage, uniqueClientIds } from "@/lib/entities/messages";
 import { ingestTyped } from "@/lib/marketplace/ingest";
-import { updateMarketplaceConversation } from "@/lib/slices/marketplaceData/slice";
+import {
+  updateMarketplaceConversation,
+  marketplaceConversationSelectors,
+} from "@/lib/slices/marketplaceData/slice";
 
 const DEFAULT_PAGE_SIZE = 40;
 
@@ -65,8 +70,8 @@ const mergeMessages = (
     merged.set(message.clientId, message);
   }
 
-  return [...merged.values()].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  return [...merged.values()].sort((a, b) =>
+    compareDateAsc(a.createdAt, b.createdAt),
   );
 };
 
@@ -142,7 +147,7 @@ const createOptimisticMessage = (
     sender: {
       id: currentUserId,
     },
-    createdAt: Date.now(),
+    createdAt: new Date(),
     ...(data.memberUserIds ? { memberUserIds: data.memberUserIds } : {}),
   };
 };
@@ -241,6 +246,9 @@ export const messageApi = createApi({
         baseQuery,
       ) => {
         const user = authApi.endpoints.getMe.select()(getState() as never);
+        if (!user.data?.id) {
+          throw new Error("Current user not found");
+        }
         const db = getChatLocalDb(user.data?.id);
         const { conversationId } = data;
         const currentUser = authApi.endpoints.getMe.select()(
@@ -260,6 +268,13 @@ export const messageApi = createApi({
         appendMessageClientId(dispatch, getState, conversationId, clientId);
 
         if (conversationId !== -1) {
+          const conversation = marketplaceConversationSelectors.selectById(
+            getState() as never,
+            conversationId,
+          );
+          const meAsMember = conversation?.members.find(
+            (member) => member.user.id === currentUserId,
+          );
           dispatch(
             updateMarketplaceConversation({
               id: conversationId,
@@ -272,10 +287,12 @@ export const messageApi = createApi({
                     name: currentUser.data?.name ?? "",
                     avatar: currentUser.data?.avatar ?? null,
                   },
-                  unread: 0,
-                  mentionUnread: 0,
-                  lastReadMessageId: 0,
-                  lastReadAt: "",
+                  unread: meAsMember?.unread ?? 0,
+                  mentionUnread: meAsMember?.mentionUnread ?? 0,
+                  lastReadMessageId: meAsMember?.lastReadMessageId ?? 0,
+                  lastReadAt: meAsMember?.lastReadAt ?? new Date(0),
+                  lastReadMessageCreatedAt:
+                    meAsMember?.lastReadMessageCreatedAt ?? new Date(0),
                 },
               },
             }),
@@ -283,7 +300,7 @@ export const messageApi = createApi({
         }
 
         await db.putMessages([optimistic]);
-        await db.outbox.put(optimistic);
+        await db.putOutbox(optimistic);
         try {
           let response = await handleSendMessage(optimistic, baseQuery);
           if (response.error) {
@@ -291,7 +308,7 @@ export const messageApi = createApi({
             if (outboxItem) {
               outboxItem.attempts = (outboxItem.attempts ?? 0) + 1;
               outboxItem.lastAttemptAt = Date.now();
-              await db.outbox.put(outboxItem);
+              await db.putOutbox(outboxItem);
             }
             response = await handleSendMessage(optimistic, baseQuery);
           }
@@ -299,7 +316,7 @@ export const messageApi = createApi({
             const payload = response.data as MessageResponse;
             if (payload.conversation) {
               appendConversationId(dispatch, getState, payload.conversation.id);
-              await db.conversations.put(payload.conversation);
+              await db.putConversation(payload.conversation);
             }
             if (payload.message) {
               ingestMessages(dispatch, [payload.message]);
@@ -334,6 +351,11 @@ export const messageApi = createApi({
         const beforeId = pageParam ?? undefined;
 
         const user = authApi.endpoints.getMe.select()(getState() as never);
+        if (!user.data?.id) {
+          return {
+            data: { clientIds: [], nextBeforeId: null, hasMore: false },
+          };
+        }
         const db = getChatLocalDb(user.data?.id);
 
         const response = await baseQuery({
@@ -392,8 +414,13 @@ export const messageApi = createApi({
     drainOutbox: builder.mutation<{ count: number }, void>({
       queryFn: async (_arg, { getState }, _extraOptions, baseQuery) => {
         const user = authApi.endpoints.getMe.select()(getState() as never);
+        if (!user.data?.id) {
+          return { data: { count: 0 } };
+        }
         const db = getChatLocalDb(user.data?.id);
-        const outbox = await db.outbox.orderBy("createdAt").toArray();
+        const outbox = (await db.outbox.orderBy("createdAt").toArray()).map(
+          (item) => ({ ...item, ...normalizeChatMessage(item) }),
+        );
         let count = 0;
         for (const item of outbox) {
           let attempts = item.attempts ?? 0;
@@ -413,7 +440,7 @@ export const messageApi = createApi({
             );
             item.errorMessage =
               "Failed to send message after " + MAX_ATTEMPTS + " attempts";
-            await db.outbox.put(item);
+            await db.putOutbox(item);
             if (
               item.lastAttemptAt &&
               Date.now() - item.lastAttemptAt > LAST_ATTEMPT_AT_TOO_OLD

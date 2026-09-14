@@ -11,6 +11,7 @@ import { stickerMessagePreview } from "@/utils/sticker";
 import { useTyping } from "@/lib/slices/chat/selectors";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useInboxConversations } from "@/lib/slices/marketplaceData/actions";
+import { cn } from "@/lib/utils";
 
 const REORDER_MS = 220;
 
@@ -29,8 +30,16 @@ const ConversationItem = forwardRef<HTMLDivElement, { conversation: Conversation
             : "Several people are typing..."
         : null;
 
-    const recipient = useMemo(() => {
-        return conversation.members.find(member => member.user.id !== currentUser?.id);
+    const { recipient, meAsMember } = useMemo(() => {
+        if (!conversation?.members?.length) return { recipient: null, meAsMember: null };
+        return conversation.members?.reduce((acc, member) => {
+            if (member?.user.id === currentUser?.id) {
+                acc.meAsMember = member as ConversationMember;
+            } else {
+                acc.recipient = member as ConversationMember;
+            }
+            return acc;
+        }, {} as { recipient: ConversationMember, meAsMember: ConversationMember });
     }, [conversation.members, currentUser?.id]);
 
     const isGroupConversation = useMemo(() => {
@@ -40,15 +49,15 @@ const ConversationItem = forwardRef<HTMLDivElement, { conversation: Conversation
     const avatar = useMemo(() => {
         const dmAvatar = (
             <Avatar>
-                <AvatarImage src={recipient?.user.avatar?.url} />
-                <AvatarFallback>{recipient?.user.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={recipient?.user?.avatar?.url} />
+                <AvatarFallback>{recipient?.user?.name?.charAt(0) ?? '?'}</AvatarFallback>
             </Avatar>
         );
 
 
         const groupAvatar = (
             <Avatar>
-                <AvatarFallback>{conversation.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{conversation.name?.charAt(0) ?? '?'}</AvatarFallback>
             </Avatar>
         );
 
@@ -64,9 +73,11 @@ const ConversationItem = forwardRef<HTMLDivElement, { conversation: Conversation
         >
             <div className="flex flex-[0.5] items-center gap-2">
                 {avatar}
-                <h2 className="text-sm font-medium">{conversation.name}</h2>
+                <h2 className="text-sm font-medium">{recipient?.user?.name ?? conversation.name ?? '?'}</h2>
             </div>
-            <p className="flex-[0.8] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-gray-500">
+            <p className={cn("flex-[0.8] overflow-hidden text-ellipsis whitespace-nowrap text-sm text-gray-500", {
+                "font-bold": (meAsMember?.unread ?? 0) > 0
+            })}>
                 {typingLabel ? typingLabel : stickerMessagePreview(conversation.lastMessagePreview)}
             </p>
         </div>

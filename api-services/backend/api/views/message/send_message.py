@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from api.utils.exceptions import error_response
 from api.utils.typed_resource import RESOURCE_CONVERSATION, RESOURCE_MESSAGE, typed_resource
-from datetime import datetime
+from django.utils import timezone
 from api.models import Member
 
 
@@ -32,6 +32,7 @@ class SendMessageView(APIView):
             conversation, sender_member, conv_created = resolve_conversation_for_send_message(request.user, data)
             client_id = data["client_id"]
             body = data["body"]
+            created_at = data.get("created_at", timezone.now())
             # Same shape as message list; camelCase avatar for WS (no DRF camel middleware)
             # 1) fan-out sớm
             pending = {
@@ -43,7 +44,7 @@ class SendMessageView(APIView):
                     "conversationId": conversation.id,
                     "body": body,
                     "status": "sent",
-                    "createdAt": int(datetime.now().timestamp() * 1000),
+                    "createdAt": created_at.isoformat(),
                     "sender": {
                         "id": request.user.id,
                     },
@@ -68,6 +69,7 @@ class SendMessageView(APIView):
                 sender_member,
                 client_id=data["client_id"],
                 body=data["body"],
+                created_at=created_at,
             )
 
         except NotConversationMemberError as exc:
@@ -120,7 +122,7 @@ class SendMessageView(APIView):
                 "conversationId": msg["conversation_id"],
                 "body": msg["body"],
                 "status": msg["status"],
-                "createdAt": int(message.created_at.timestamp() * 1000),
+                "createdAt": message.created_at.isoformat(),
                 "sender": {
                     "id": request.user.id,
                 },

@@ -22,6 +22,9 @@ const useHydrateMessages = ({
     useEffect(() => {
         if (!conversationId || conversationHydrated) return;
         const hydrate = async () => {
+            if (!user?.id) {
+                return;
+            }
             const db = getChatLocalDb(user?.id);
             const messages = await db.getMessagesByConversationIdAndPage(
                 conversationId,

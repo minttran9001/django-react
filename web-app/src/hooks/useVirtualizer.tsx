@@ -15,7 +15,7 @@ export type VirtualItem = {
   key: string | number;
   start: number;
   size: number;
-end: number;
+  end: number;
 };
 
 function toMeasuredKey(key: string | number) {
@@ -39,13 +39,13 @@ export default function useVirtualizer({
     [measured, estimateSize, getItemKey],
   );
 
-  const { offsets, totalSize } = useMemo(() => {
+  const { offsets, ghostHeight } = useMemo(() => {
     const nextOffsets = new Array<number>(count + 1);
     nextOffsets[0] = 0;
     for (let i = 0; i < count; i++) {
       nextOffsets[i + 1] = nextOffsets[i] + getSize(i);
     }
-    return { offsets: nextOffsets, totalSize: nextOffsets[count] ?? 0 };
+    return { offsets: nextOffsets, ghostHeight: nextOffsets[count] ?? 0 };
   }, [count, getSize]);
 
   const findStartIndex = useCallback(
@@ -162,14 +162,14 @@ export default function useVirtualizer({
         // Prefer true bottom when targeting the last item.
         top =
           index === count - 1
-            ? totalSize - el.clientHeight
+            ? ghostHeight - el.clientHeight
             : start + size - el.clientHeight;
       }
       if (align === "center") top = start - el.clientHeight / 2 + size / 2;
       el.scrollTop = Math.max(0, top);
       setScrollTop(el.scrollTop);
     },
-    [getScrollElement, count, offsets, getSize, totalSize],
+    [getScrollElement, count, offsets, getSize, ghostHeight],
   );
 
   const scrollToOffset = useCallback(
@@ -189,7 +189,7 @@ export default function useVirtualizer({
 
   return {
     virtualItems,
-    totalSize,
+    ghostHeight,
     measureElement,
     scrollToIndex,
     scrollToOffset,

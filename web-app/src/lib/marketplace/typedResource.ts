@@ -24,6 +24,9 @@ export function isTypedResource(value: unknown): value is TypedResource {
 }
 
 export function unwrapDeep<T>(value: T): T {
+  if (value instanceof Date) {
+    return value;
+  }
   if (Array.isArray(value)) {
     return value.map((item) => unwrapDeep(item)) as T;
   }

@@ -1,6 +1,12 @@
 import Dexie, { Table } from "dexie";
-import { Conversation } from "../types/conversation";
-import { ChatMessage, EMessageStatus, OutboxItem } from "../types/message";
+import { Conversation, normalizeConversation } from "../types/conversation";
+import {
+  ChatMessage,
+  EMessageStatus,
+  OutboxItem,
+  normalizeChatMessage,
+} from "../types/message";
+import { compareDateAsc, compareDateDesc } from "../dates";
 
 export class LocalDb extends Dexie {
   conversations!: Table<Conversation>;
@@ -31,6 +37,15 @@ export class LocalDb extends Dexie {
     });
   }
 
+  async putConversation(conversation: Conversation): Promise<void> {
+    await this.conversations.put(normalizeConversation(conversation));
+  }
+
+  async putConversations(conversations: Conversation[]): Promise<void> {
+    if (conversations.length === 0) return;
+    await this.conversations.bulkPut(conversations.map(normalizeConversation));
+  }
+
   getMessagesByConversationId(
     conversationId: Conversation["id"],
   ): Promise<ChatMessage[]> {
@@ -39,18 +54,20 @@ export class LocalDb extends Dexie {
       .equals(conversationId)
       .toArray()
       .then((messages) =>
-        messages.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        ),
+        messages
+          .map(normalizeChatMessage)
+          .sort((a, b) => compareDateAsc(a.createdAt, b.createdAt)),
       );
   }
 
   async putMessages(messages: ChatMessage[]): Promise<void> {
     if (messages.length === 0) return;
-    const clientIds = [...new Set(messages.map((message) => message.clientId))];
+    const normalized = messages.map(normalizeChatMessage);
+    const clientIds = [
+      ...new Set(normalized.map((message) => message.clientId)),
+    ];
     await this.messages.where("clientId").anyOf(clientIds).delete();
-    await this.messages.bulkPut(messages);
+    await this.messages.bulkPut(normalized);
   }
 
   async getMessagesByConversationIdAndPage(
@@ -63,10 +80,9 @@ export class LocalDb extends Dexie {
       .equals(conversationId)
       .toArray()
       .then((rows) =>
-        rows.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        ),
+        rows
+          .map(normalizeChatMessage)
+          .sort((a, b) => compareDateAsc(a.createdAt, b.createdAt)),
       );
     const byClientId = new Map<string, ChatMessage>();
     for (const message of messages) {
@@ -87,9 +103,8 @@ export class LocalDb extends Dexie {
             : prev,
       );
     }
-    messages = [...byClientId.values()].sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    messages = [...byClientId.values()].sort((a, b) =>
+      compareDateAsc(a.createdAt, b.createdAt),
     );
     if (beforeId) {
       messages = messages.filter((message) => message.id < beforeId);
@@ -104,15 +119,27 @@ export class LocalDb extends Dexie {
       .equals(EMessageStatus.PENDING)
       .toArray()
       .then((messages) =>
-        messages.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        ),
+        messages
+          .map((message) => normalizeChatMessage(message) as OutboxItem)
+          .sort((a, b) => compareDateAsc(a.createdAt, b.createdAt)),
       );
   }
 
   getConversations(): Promise<Conversation[]> {
-    return this.conversations.toArray();
+    return this.conversations
+      .toArray()
+      .then((conversations) =>
+        conversations
+          .map(normalizeConversation)
+          .sort((a, b) => compareDateDesc(a.lastMessageAt, b.lastMessageAt)),
+      );
+  }
+
+  async putOutbox(item: OutboxItem): Promise<void> {
+    await this.outbox.put({
+      ...item,
+      ...normalizeChatMessage(item),
+    });
   }
 
   deleteOutboxByClientId(clientId?: string) {
@@ -126,7 +153,13 @@ export class LocalDb extends Dexie {
 let chatLocalDb: LocalDb | null = null;
 let chatLocalDbByUserId: number | undefined | null = null;
 
-export const getChatLocalDb = (currentUserId?: number) => {
+export function getChatLocalDb(currentUserId: number): LocalDb;
+export function getChatLocalDb(currentUserId?: number): LocalDb | null;
+export function getChatLocalDb(currentUserId?: number): LocalDb | null {
+  if (!currentUserId) {
+    return null;
+  }
+
   if (chatLocalDb && chatLocalDbByUserId !== currentUserId) {
     chatLocalDb.close();
     chatLocalDb = null;
@@ -138,7 +171,7 @@ export const getChatLocalDb = (currentUserId?: number) => {
   }
 
   return chatLocalDb;
-};
+}
 
 export const closeChatLocalDb = () => {
   if (chatLocalDb) {

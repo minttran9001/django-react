@@ -7,6 +7,7 @@ class SendMessageSerializer(serializers.Serializer):
 
 
     conversation_id = serializers.IntegerField(required=False)
+    created_at = serializers.DateTimeField(required=False)
 
     # only for new thread
     member_user_ids = serializers.ListField(child=serializers.IntegerField(), required=False)

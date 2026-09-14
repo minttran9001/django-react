@@ -1,10 +1,15 @@
-import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
+import {
+  createEntityAdapter,
+  createSelector,
+  type EntityState,
+} from "@reduxjs/toolkit";
 import type { ChatMessage } from "@/lib/types/message";
+import { compareDateAsc } from "@/lib/dates";
 
 /** Messages are keyed by clientId (stable across optimistic → ack). */
 export const messagesAdapter = createEntityAdapter<ChatMessage, string>({
   selectId: (message) => message.clientId,
-  sortComparer: (a, b) => a.createdAt - b.createdAt,
+  sortComparer: (a, b) => compareDateAsc(a.createdAt, b.createdAt),
 });
 
 export type MessagesState = EntityState<ChatMessage, string>;
@@ -50,20 +55,26 @@ export function uniqueClientIds(clientIds: string[]): string[] {
   return result;
 }
 
-export function selectMessagesForPages(
-  entities: MessagesState | undefined,
-  pages: MessagePage[] | undefined,
-): ChatMessage[] {
-  if (!pages?.length) return [];
-  const seen = new Set<string>();
-  return pages.reduceRight<ChatMessage[]>((acc, page) => {
-    for (const message of resolveMessages(entities, page.clientIds)) {
-      if (seen.has(message.clientId)) continue;
-      seen.add(message.clientId);
-      acc.push(message);
-    }
-    return acc;
-  }, []);
-}
+const EMPTY_PAGE_MESSAGES: ChatMessage[] = [];
+
+export const selectMessagesForPages = createSelector(
+  [
+    (entities: MessagesState | undefined) => entities,
+    (_entities: MessagesState | undefined, pages: MessagePage[] | undefined) =>
+      pages,
+  ],
+  (entities, pages): ChatMessage[] => {
+    if (!pages?.length) return EMPTY_PAGE_MESSAGES;
+    const seen = new Set<string>();
+    return pages.reduceRight<ChatMessage[]>((acc, page) => {
+      for (const message of resolveMessages(entities, page.clientIds)) {
+        if (seen.has(message.clientId)) continue;
+        seen.add(message.clientId);
+        acc.push(message);
+      }
+      return acc;
+    }, []);
+  },
+);
 
 export const DRAFT_CONVERSATION_ID = -1;

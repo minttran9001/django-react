@@ -6,11 +6,11 @@
  */
 const NOTO_CDN = "https://fonts.gstatic.com/s/e/notoemoji/latest";
 
-export const STICKER_TOKEN_RE =
-  /\[\[sticker:([a-z0-9]+):([a-z0-9_]+)\]\]/gi;
+// text contain [[sticker:noto:1f600]]
+export const STICKER_TOKEN_RE = /\[\[sticker:([a-z0-9]+):([a-z0-9_]+)\]\]/gi;
 
-const STICKER_ONLY_RE =
-  /^\[\[sticker:([a-z0-9]+):([a-z0-9_]+)\]\]$/i;
+// text contain [[sticker:noto:1f600]]
+const STICKER_ONLY_RE = /^\[\[sticker:([a-z0-9]+):([a-z0-9_]+)\]\]$/i;
 
 export type StickerSource = "noto";
 

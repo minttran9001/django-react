@@ -1,4 +1,4 @@
-import { createSlice, current, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 import type { CourtCenter } from "@/features/court-centers/types";
 import {
@@ -18,7 +18,13 @@ import {
   type TypedResource,
 } from "@/lib/marketplace/typedResource";
 import type { Conversation, PublicUser } from "@/lib/types/conversation";
+import {
+  normalizeConversation,
+  normalizeConversationMember,
+} from "@/lib/types/conversation";
 import type { ChatMessage } from "@/lib/types/message";
+import { normalizeChatMessage } from "@/lib/types/message";
+import { asDate, laterDate } from "@/lib/dates";
 import { transactionsAdapter } from "@/lib/entities/transaction";
 import { transactionsInitialState } from "@/lib/entities/transaction";
 import { Transaction } from "@/lib/types/transaction";
@@ -44,6 +50,50 @@ function asArray<T>(value: T | T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
+function mergeConversationMembers(
+  existing: Conversation["members"] | undefined,
+  incoming: Conversation["members"] | undefined,
+): Conversation["members"] {
+  if (!incoming?.length) return incoming ?? existing ?? [];
+  if (!existing?.length) return incoming;
+  const prevByUserId = new Map(
+    existing.map((member) => [member.user.id, member]),
+  );
+  return incoming.map((member) => {
+    const prev = prevByUserId.get(member.user.id);
+    if (!prev) return member;
+    const lastReadAt = laterDate(prev.lastReadAt, member.lastReadAt);
+    const lastReadMessageCreatedAt = laterDate(
+      prev.lastReadMessageCreatedAt,
+      member.lastReadMessageCreatedAt,
+    );
+    return {
+      ...member,
+      lastReadMessageId: Math.max(
+        prev.lastReadMessageId ?? 0,
+        member.lastReadMessageId ?? 0,
+      ),
+      lastReadAt,
+      lastReadMessageCreatedAt,
+    };
+  });
+}
+
+function mergeIncomingMessages(
+  state: MarketplaceState,
+  incoming: ChatMessage[],
+): ChatMessage[] {
+  return incoming.map((message) => {
+    const existing = state.message.entities[message.clientId];
+    if (!existing) return message;
+    return {
+      ...message,
+      id: message.id > 0 ? message.id : existing.id,
+      createdAt: existing.createdAt,
+    };
+  });
+}
+
 function upsertByType(
   state: MarketplaceState,
   type: MarketplaceType,
@@ -57,7 +107,18 @@ function upsertByType(
     case "conversation":
       conversationsAdapter.upsertMany(
         state.conversation,
-        asArray(unwrapped as Conversation),
+        asArray(unwrapped as Conversation).map((conversation) => {
+          const incoming = normalizeConversation(conversation);
+          const existing = state.conversation.entities[incoming.id];
+          if (!existing) return incoming;
+          return {
+            ...incoming,
+            members: mergeConversationMembers(
+              existing.members,
+              incoming.members,
+            ),
+          };
+        }),
       );
       break;
     case "courtCenter":
@@ -72,11 +133,25 @@ function upsertByType(
         | ChatMessage[]
         | { results?: ChatMessage[] };
       if (Array.isArray(page)) {
-        messagesAdapter.upsertMany(state.message, page);
+        messagesAdapter.upsertMany(
+          state.message,
+          mergeIncomingMessages(state, page.map(normalizeChatMessage)),
+        );
       } else if (page && typeof page === "object" && "results" in page) {
-        messagesAdapter.upsertMany(state.message, page.results ?? []);
+        messagesAdapter.upsertMany(
+          state.message,
+          mergeIncomingMessages(
+            state,
+            (page.results ?? []).map(normalizeChatMessage),
+          ),
+        );
       } else if (page && typeof page === "object" && "clientId" in page) {
-        messagesAdapter.upsertOne(state.message, page as ChatMessage);
+        messagesAdapter.upsertOne(
+          state.message,
+          mergeIncomingMessages(state, [
+            normalizeChatMessage(page as ChatMessage),
+          ])[0],
+        );
       }
       break;
     }
@@ -110,40 +185,32 @@ const marketplaceDataSlice = createSlice({
         changes: Partial<Conversation>;
       }>,
     ) => {
-      conversationsAdapter.updateOne(state.conversation, action.payload);
-    },
-    updateMarketplaceConversationMember: (
-      state,
-      action: PayloadAction<{
-        conversationId: number;
-        memberId: number;
-        lastReadMessageId: number;
-        lastReadAt: string;
-      }>,
-    ) => {
-      const conversation = marketplaceConversationSelectors.selectById(
-        { marketplaceData: state },
-        action.payload.conversationId,
-      );
-      if (!conversation) return;
-      const member = conversation.members?.find(
-        (m) => m.user.id === action.payload.memberId,
-      );
-      if (!member) return;
-      if (action.payload.lastReadMessageId > member.lastReadMessageId) {
-        member.lastReadMessageId = action.payload.lastReadMessageId;
-        member.lastReadAt = action.payload.lastReadAt;
-        conversationsAdapter.upsertOne(state.conversation, conversation);
-      }
+      const { id, changes } = action.payload;
+      conversationsAdapter.updateOne(state.conversation, {
+        id,
+        changes: {
+          ...changes,
+          ...(changes.lastMessageAt
+            ? { lastMessageAt: asDate(changes.lastMessageAt) }
+            : {}),
+          ...(changes.lastMessageSender
+            ? {
+                lastMessageSender: normalizeConversationMember(
+                  changes.lastMessageSender,
+                ),
+              }
+            : {}),
+          ...(changes.members
+            ? { members: changes.members.map(normalizeConversationMember) }
+            : {}),
+        },
+      });
     },
   },
 });
 
-export const {
-  addMarketplaceData,
-  updateMarketplaceConversation,
-  updateMarketplaceConversationMember,
-} = marketplaceDataSlice.actions;
+export const { addMarketplaceData, updateMarketplaceConversation } =
+  marketplaceDataSlice.actions;
 export default marketplaceDataSlice.reducer;
 
 export type { MarketplaceState };

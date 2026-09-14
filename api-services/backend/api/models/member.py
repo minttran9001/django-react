@@ -22,6 +22,7 @@ class Member(models.Model):
     )
     last_read_at = models.DateTimeField(null=True, blank=True)    
     mention_unread = models.IntegerField(default=0)
+    last_read_message_created_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         indexes = [
