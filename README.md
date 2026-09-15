@@ -60,8 +60,9 @@ source venv/bin/activate
  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Copy env and add your Neon connection string (same format as court-booking)
+# Copy env, set DJANGO_SECRET_KEY, and add your Neon connection string
 cp .env.example .env
+# DJANGO_SECRET_KEY=<long random string>   # required — signs JWTs
 # DATABASE_URL=postgresql://...@ep-xxx-pooler.us-east-2.aws.neon.tech/mint-db?sslmode=require
 
 python manage.py makemigrations api

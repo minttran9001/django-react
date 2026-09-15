@@ -15,6 +15,9 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
 import os
+import sys
+
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
@@ -26,7 +29,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-vc6x$*=h1$s#tkmnyn$_yakek+fe9ea!114&z^5^)%%6_#q0wd'
+# Must come from the environment — a hardcoded key in a public repo lets anyone
+# forge SimpleJWT access tokens for any user_id.
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    # Allow `manage.py test` without a local .env; never use this outside tests.
+    if "test" in sys.argv:
+        SECRET_KEY = "test-only-insecure-secret-key-not-for-production"
+    else:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY environment variable must be set "
+            "(see api-services/backend/.env.example)."
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
