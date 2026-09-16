@@ -35,6 +35,7 @@ import {
   useRequestReviewMutation,
 } from "@/lib/api/transactionApi";
 import { clearCheckoutSession } from "@/lib/checkout/draft";
+import { parseBookingDateTime } from "@/lib/dates";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { getMediaUrl } from "@/lib/media";
 import {
@@ -140,14 +141,16 @@ function TransactionActions({ transaction }: { transaction: Transaction }) {
       .filter(
         (booking) => booking.status === ETransactionBookingStatus.CONFIRMED,
       )
-      .sort(
-        (a, b) =>
-          parseISO(a.start_time).getTime() - parseISO(b.start_time).getTime(),
-      )[0];
+      .sort((a, b) => {
+        const aAt = parseBookingDateTime(a.date, a.start_time)?.getTime() ?? 0;
+        const bAt = parseBookingDateTime(b.date, b.start_time)?.getTime() ?? 0;
+        return aAt - bAt;
+      })[0];
     if (!nextBooking) {
       return null;
     }
-    return new Date(nextBooking.date + " " + nextBooking.start_time);
+    // Invalid Date is truthy; only return a real Date so format() cannot throw.
+    return parseBookingDateTime(nextBooking.date, nextBooking.start_time) ?? null;
   }, [transaction.bookings]);
 
   const onConfirmPayment = async () => {

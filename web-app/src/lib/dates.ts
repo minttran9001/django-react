@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 
 export type FlexibleDateInput = Date | string | number;
 
@@ -10,6 +10,25 @@ export type DayLabel = {
 /** Format a local calendar date for API fields (YYYY-MM-DD). */
 export function formatApiDate(date: Date): string {
   return format(date, "yyyy-MM-dd");
+}
+
+/**
+ * Parse a booking calendar date + wall-clock time into a Date.
+ * Uses ISO `YYYY-MM-DDTHH:mm[:ss]` so Safari/WebKit do not return Invalid Date
+ * (unlike `new Date(date + " " + time)`).
+ */
+export function parseBookingDateTime(
+  date: string,
+  time: string,
+): Date | undefined {
+  const datePart = date?.trim();
+  const timePart = time?.trim();
+  if (!datePart || !timePart) {
+    return undefined;
+  }
+
+  const parsed = parseISO(`${datePart}T${timePart}`);
+  return isValid(parsed) ? parsed : undefined;
 }
 
 /** IANA timezone from the user's browser (e.g. Asia/Ho_Chi_Minh). */
