@@ -45,6 +45,7 @@ class InitiateTransactionView(APIView):
                 {"court_id": ["You cannot book your own venue."]}
             )
 
+        booking_tz = timezone_from_query_params(request.query_params)
         transaction = Transaction(
             customer=request.user,
             provider=court.center.owner,
@@ -54,13 +55,14 @@ class InitiateTransactionView(APIView):
             pay_in_total_currency=court.price_currency,
             pay_out_total_amount=Decimal("0"),
             pay_out_total_currency=court.price_currency,
+            timezone=getattr(booking_tz, "key", str(booking_tz)),
         )
 
         engine = TransactionEngine(
             transaction,
             context={
                 "slots": data["slots"],
-                "timezone": timezone_from_query_params(request.query_params),
+                "timezone": booking_tz,
             },
         )
 

@@ -53,6 +53,12 @@ def reserve_bookings(transaction: "Transaction", context: dict) -> None:
     slots = _require_slots(transaction, context)
     court = _load_court(transaction)
     tz = context.get("timezone") or DEFAULT_TIMEZONE
+    # Persist the wall-clock timezone used for this booking so COMPLETE fires on time.
+    tz_key = getattr(tz, "key", str(tz))
+    if getattr(transaction, "timezone", None) != tz_key:
+        transaction.timezone = tz_key
+        if transaction.pk is not None:
+            transaction.save(update_fields=["timezone", "updated_at"])
     validate_slots_are_available_for_court(slots, court, tz)
     merged_slots = merge_adjacent_slots(slots)
 
