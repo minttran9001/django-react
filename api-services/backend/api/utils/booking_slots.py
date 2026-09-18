@@ -17,7 +17,33 @@ ALLOWED_SLOT_DURATION_MINUTES = 60
 
 def slot_duration_minutes(start, end) -> int:
     delta = datetime.combine(date.min, end) - datetime.combine(date.min, start)
-    return int(delta.total_seconds() // ALLOWED_SLOT_DURATION_MINUTES)
+    return int(delta.total_seconds() // 60)
+
+
+def slot_aligns_to_court_grid(court: Court, slot_date: date, start, end) -> bool:
+    """
+    True iff [start, end) is a positive multiple of ALLOWED_SLOT_DURATION_MINUTES
+    and every hourly segment matches a slot generated from the court's schedules.
+
+    Without this, off-grid API slots (e.g. 10:30–11:30 on an hour grid) create
+    bookings whose expand_slot_to_hourly_specs() starts never match CourtSlot
+    rows, so confirm/cancel cannot update availability and inventory lies.
+    """
+    duration = slot_duration_minutes(start, end)
+    if duration <= 0 or duration % ALLOWED_SLOT_DURATION_MINUTES != 0:
+        return False
+    candidates = set(generate_schedule_slots_for_date(court, slot_date))
+    cursor = _time_to_minutes(start)
+    end_min = _time_to_minutes(end)
+    while cursor < end_min:
+        pair = (
+            _minutes_to_time(cursor),
+            _minutes_to_time(cursor + ALLOWED_SLOT_DURATION_MINUTES),
+        )
+        if pair not in candidates:
+            return False
+        cursor += ALLOWED_SLOT_DURATION_MINUTES
+    return True
 
 def date_to_day_of_week(slot_date: date) -> int:
     return slot_date.weekday() 
@@ -221,7 +247,7 @@ def validate_slots_are_available_for_court(
 ) -> None:
     if not slots:
         raise serializers.ValidationError({"slots": "At least one slot is required."})
-    # 1. Past + duration + schedule
+    # 1. Past + duration/grid + schedule
     for slot in slots:
         slot_date = slot["date"]
         start = slot["start"]
@@ -229,6 +255,13 @@ def validate_slots_are_available_for_court(
         if is_slot_start_in_past(slot_date, start, tz):
             raise serializers.ValidationError({
                 "slots": f"Slot {slot_date} {start}-{end} is in the past."
+            })
+        if not slot_aligns_to_court_grid(court, slot_date, start, end):
+            raise serializers.ValidationError({
+                "slots": (
+                    f"Slot {slot_date} {start}-{end} must align to "
+                    f"{ALLOWED_SLOT_DURATION_MINUTES}-minute court slots."
+                )
             })
         if not slot_fits_weekly_schedule(court, slot_date, start, end):
             raise serializers.ValidationError({
