@@ -1,8 +1,8 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.contrib.auth.models import User
 from django.db import models
-from django.utils import timezone
 
 from api.transaction_process.court_booking import (
     COURT_BOOKING_PROCESS,
@@ -36,21 +36,28 @@ class Transaction(models.Model):
     pay_in_total_currency = models.CharField(max_length=3)
     pay_out_total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     pay_out_total_currency = models.CharField(max_length=3)
+    # IANA tz used when the booking wall-clock times were interpreted (e.g. Asia/Ho_Chi_Minh).
+    # COMPLETE / payout triggers must use this — not Django TIME_ZONE (UTC).
+    timezone = models.CharField(max_length=64, default="UTC")
 
     class Meta:
         indexes = [
             models.Index(fields=["customer_id","provider_id","court_id","-created_at","current_state"]), #default index for customer, provider, court, created_at and current_state
         ]
 
+    def _booking_zoneinfo(self) -> ZoneInfo:
+        try:
+            return ZoneInfo(self.timezone or "UTC")
+        except ZoneInfoNotFoundError:
+            return ZoneInfo("UTC")
+
     @property
     def latest_end_at(self) -> datetime | None:
+        """Latest booking end as an aware datetime in the transaction booking timezone."""
+        tz = self._booking_zoneinfo()
         latest = None
         for booking in self.bookings.all():
-            end_at = datetime.combine(booking.date, booking.end_time)
+            end_at = datetime.combine(booking.date, booking.end_time, tzinfo=tz)
             if latest is None or end_at > latest:
                 latest = end_at
-        if latest is None:
-            return None
-        if timezone.is_naive(latest):
-            latest = timezone.make_aware(latest)
         return latest
