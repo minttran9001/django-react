@@ -1,6 +1,6 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import {
     CalendarIcon,
     ChevronRightIcon,
@@ -8,6 +8,8 @@ import {
     ReceiptIcon,
 } from "lucide-react";
 import Link from "next/link";
+
+import { formatBookingDate, parseFlexibleDate } from "@/lib/dates";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -90,7 +92,7 @@ function StatusBadge({
 }
 
 function getBookingSortKey(booking: TransactionBooking): number {
-    return parseISO(booking.date).getTime();
+    return parseFlexibleDate(booking.date)?.getTime() ?? 0;
 }
 
 function getEarliestBooking(
@@ -121,7 +123,7 @@ function BookingSlotSummary({ booking }: { booking: TransactionBooking }) {
             <CalendarIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             <div>
                 <p className="font-medium">
-                    {format(parseISO(booking.date), "EEEE, MMM d, yyyy")}
+                    {formatBookingDate(booking.date)}
                 </p>
                 <p className="text-muted-foreground">
                     {formatSlotTime(booking.start_time)} – {formatSlotTime(booking.end_time)}

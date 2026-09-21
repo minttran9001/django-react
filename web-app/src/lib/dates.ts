@@ -58,6 +58,21 @@ export function parseApiDate(value: string | null | undefined): Date | undefined
   return parseFlexibleDate(value);
 }
 
+/**
+ * Format an API calendar date (YYYY-MM-DD) for display without UTC day-shift.
+ * Prefer this over `format(parseISO(date), …)` for date-only booking fields.
+ */
+export function formatBookingDate(
+  value: FlexibleDateInput,
+  pattern = "EEEE, MMM d, yyyy",
+): string {
+  const date = parseFlexibleDate(value);
+  if (!date) {
+    throw new Error(`Invalid date: ${String(value)}`);
+  }
+  return format(date, pattern);
+}
+
 /** Normalize any supported date input to local start-of-day. */
 export function normalizeToDay(value: FlexibleDateInput): Date {
   const date = parseFlexibleDate(value);
