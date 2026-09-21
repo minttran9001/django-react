@@ -8,7 +8,6 @@ export function useAuth() {
   });
 
   const user = typeof data === "undefined" ? initialUser : data;
-
   return {
     user,
     isLoading: isLoading && data === undefined,

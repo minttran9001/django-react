@@ -3,7 +3,7 @@ import type { AppDispatch } from "@/lib/store";
 
 import { Conversation, ConversationMember } from "../../types/conversation";
 import { getChatLocalDb } from "@/lib/localDb";
-import { marketplaceBaseQuery } from "@/lib/api/baseApi";
+import { chatMarketplaceBaseQuery } from "@/lib/api/baseApi";
 import { ingestTyped } from "@/lib/marketplace/ingest";
 import { authApi } from "../authApi";
 import {
@@ -50,7 +50,7 @@ export function appendConversationId(
 
 export const conversationApi = createApi({
   reducerPath: "conversationApi",
-  baseQuery: marketplaceBaseQuery,
+  baseQuery: chatMarketplaceBaseQuery,
   tagTypes: ["Conversations"],
   endpoints: (builder) => ({
     getConversations: builder.query<ConversationInbox, void>({

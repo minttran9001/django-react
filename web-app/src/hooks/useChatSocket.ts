@@ -29,7 +29,7 @@ import { ConversationMember } from "@/lib/types/conversation";
 import { asDate } from "@/lib/dates";
 
 export function wsBase() {
-  return env.NEXT_PUBLIC_API_URL.replace(/^http/, "ws");
+  return env.NEXT_PUBLIC_CHAT_API_URL.replace(/^http/, "ws");
 }
 
 function getNotifySound(): HTMLAudioElement | null {

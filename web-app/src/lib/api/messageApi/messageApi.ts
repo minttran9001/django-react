@@ -16,7 +16,7 @@ import {
 import { Conversation, PublicUser } from "@/lib/types/conversation";
 import { compareDateAsc } from "@/lib/dates";
 import { getChatLocalDb } from "@/lib/localDb";
-import { marketplaceBaseQuery } from "@/lib/api/baseApi";
+import { chatMarketplaceBaseQuery } from "@/lib/api/baseApi";
 import { authApi } from "../authApi";
 import { appendConversationId } from "../conversationApi/conversationApi";
 import { type MessagePage, uniqueClientIds } from "@/lib/entities/messages";
@@ -26,7 +26,7 @@ import {
   marketplaceConversationSelectors,
 } from "@/lib/slices/marketplaceData/slice";
 
-const DEFAULT_PAGE_SIZE = 40;
+const DEFAULT_PAGE_SIZE = 100;
 
 /** `null` = first page (latest). Number = `beforeId` cursor for older pages. */
 export type MessagesPageParam = number | null;
@@ -234,7 +234,7 @@ export function appendMessageClientId(
 
 export const messageApi = createApi({
   reducerPath: "messageApi",
-  baseQuery: marketplaceBaseQuery,
+  baseQuery: chatMarketplaceBaseQuery,
   tagTypes: ["Messages"],
   endpoints: (builder) => ({
     sendMessage: builder.mutation<MessageResponse, SendMessageInput>({

@@ -24,11 +24,11 @@ class Message(models.Model):
     class Meta:
         # Add a unique constraint on the client_id field to ensure that each message is sent only once
         constraints = [
-            models.UniqueConstraint(fields=["client_id"], name="unique_conversation_client_id"),
+            # This will add client_id to unique btree
+            models.UniqueConstraint(fields=["conversation","client_id"], name="unique_conversation_client_id"),
         ]
 
         # Add indexes for the conversation and client_id fields
         indexes = [
-            models.Index(fields=["conversation"]),
-            models.Index(fields=["client_id"]),
+            models.Index(fields=["conversation","-id"]), # -id is for descending order
         ]

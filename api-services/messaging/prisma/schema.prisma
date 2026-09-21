@@ -1,0 +1,432 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AuthUser {
+  id                                                     Int                          @id @default(autoincrement())
+  password                                               String                       @db.VarChar(128)
+  lastLogin                                              DateTime?                    @map("last_login") @db.Timestamptz(6)
+  isSuperuser                                            Boolean                      @map("is_superuser")
+  username                                               String                       @unique @db.VarChar(150)
+  firstName                                              String                       @map("first_name") @db.VarChar(150)
+  lastName                                               String                       @map("last_name") @db.VarChar(150)
+  email                                                  String                       @db.VarChar(254)
+  isStaff                                                Boolean                      @map("is_staff")
+  isActive                                               Boolean                      @map("is_active")
+  dateJoined                                             DateTime                     @map("date_joined") @db.Timestamptz(6)
+  api_booking                                            api_booking[]
+  api_courtcenter                                        api_courtcenter[]
+  api_emailverificationtoken                             api_emailverificationtoken[]
+  api_image                                              Image[]
+  members                                                Member[]                     @relation("MemberUser")
+  messages                                               Message[]                    @relation("MessageSender")
+  api_review                                             api_review[]
+  api_transaction_api_transaction_customer_idToauth_user api_transaction[]            @relation("api_transaction_customer_idToauth_user")
+  api_transaction_api_transaction_provider_idToauth_user api_transaction[]            @relation("api_transaction_provider_idToauth_user")
+  profile                                                UserProfile?
+  auth_user_groups                                       auth_user_groups[]
+  auth_user_user_permissions                             auth_user_user_permissions[]
+  django_admin_log                                       django_admin_log[]
+
+  @@index([username], map: "auth_user_username_6821ab7c_like")
+  @@map("auth_user")
+}
+
+model Image {
+  id                  BigInt               @id @default(autoincrement())
+  object_id           BigInt?
+  url                 String               @db.VarChar(500)
+  kind                String?              @db.VarChar(20)
+  caption             String               @db.VarChar(255)
+  sort_order          Int
+  created_at          DateTime             @db.Timestamptz(6)
+  content_type_id     Int?
+  publicId            String               @map("public_id") @db.VarChar(255)
+  owner_id            Int
+  django_content_type django_content_type? @relation(fields: [content_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_image_content_type_id_46785bc2_fk_django_content_type_id")
+  auth_user           AuthUser             @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_image_owner_id_8f9f568d_fk_auth_user_id")
+  profiles            UserProfile[]
+
+  @@index([content_type_id, object_id], map: "api_image_content_81c922_idx")
+  @@index([content_type_id], map: "api_image_content_type_id_46785bc2")
+  @@index([owner_id, content_type_id], map: "api_image_owner_i_74344c_idx")
+  @@index([owner_id], map: "api_image_owner_id_8f9f568d")
+  @@map("api_image")
+}
+
+model UserProfile {
+  id          BigInt    @id @default(autoincrement())
+  name        String    @db.VarChar(255)
+  phoneNumber String    @map("phone_number") @db.VarChar(50)
+  address     String    @db.VarChar(255)
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  avatarId    BigInt?   @map("avatar_id")
+  userId      Int       @unique @map("user_id")
+  avatar      Image?    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_userprofile_avatar_id_ad04b658_fk_api_image_id")
+  user        AuthUser  @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_userprofile_user_id_5a1c1c92_fk_auth_user_id")
+
+  @@index([avatarId], map: "api_userprofile_avatar_id_ad04b658")
+  @@map("api_userprofile")
+}
+
+model Conversation {
+  id                  BigInt    @id @default(autoincrement())
+  type                String    @db.VarChar(255)
+  createdAt           DateTime  @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastMessageAt       DateTime? @map("last_message_at") @db.Timestamptz(6)
+  lastMessageContent  String?   @map("last_message_content")
+  name                String?   @db.VarChar(255)
+  lastMessageSenderId BigInt?   @map("last_message_sender_id")
+  lastMessageSender   Member?   @relation("ConversationLastSender", fields: [lastMessageSenderId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_conversation_last_message_sender__d53375b5_fk_api_membe")
+  members             Member[]  @relation("ConversationMembers")
+  messages            Message[]
+
+  @@index([lastMessageSenderId], map: "api_conversation_last_message_sender_id_d53375b5")
+  @@map("api_conversation")
+}
+
+model Member {
+  id                       BigInt         @id @default(autoincrement())
+  createdAt                DateTime       @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  unread                   Int
+  mentionUnread            Int            @map("mention_unread")
+  conversationId           BigInt         @map("conversation_id")
+  userId                   Int            @map("user_id")
+  lastReadAt               DateTime?      @map("last_read_at") @db.Timestamptz(6)
+  lastReadMessageId        BigInt?        @map("last_read_message_id")
+  lastReadMessageCreatedAt DateTime?      @map("last_read_message_created_at") @db.Timestamptz(6)
+  lastSenderFor            Conversation[] @relation("ConversationLastSender")
+  conversation             Conversation   @relation("ConversationMembers", fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_member_conversation_id_022876dc_fk_api_conversation_id")
+  lastReadMessage          Message?       @relation("MemberLastRead", fields: [lastReadMessageId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_member_last_read_message_id_e213b78a_fk_api_message_id")
+  user                     AuthUser       @relation("MemberUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_member_user_id_90620086_fk_auth_user_id")
+
+  @@unique([userId, conversationId], map: "unique_user_conversation")
+  @@index([conversationId], map: "api_member_conversation_id_022876dc")
+  @@index([lastReadMessageId], map: "api_member_last_read_message_id_e213b78a")
+  @@index([userId], map: "api_member_user_id_90620086")
+  @@map("api_member")
+}
+
+model Message {
+  id             BigInt       @id @default(autoincrement())
+  body           String?
+  createdAt      DateTime     @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  clientId       String?      @map("client_id") @db.VarChar(255)
+  status         String       @db.VarChar(255)
+  conversationId BigInt       @map("conversation_id")
+  senderId       Int          @map("sender_id")
+  readBy         Member[]     @relation("MemberLastRead")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_message_conversation_id_e0f0e1a5_fk_api_conversation_id")
+  sender         AuthUser     @relation("MessageSender", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_message_sender_id_fa6d8ff2_fk_auth_user_id")
+
+  @@unique([conversationId, clientId], map: "unique_conversation_client_id")
+  @@index([conversationId, id(sort: Desc)], map: "api_message_convers_fa3024_idx")
+  @@index([conversationId], map: "api_message_conversation_id_e0f0e1a5")
+  @@index([senderId], map: "api_message_sender_id_fa6d8ff2")
+  @@map("api_message")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_booking {
+  id              BigInt           @id @default(autoincrement())
+  status          Int
+  start_time      DateTime         @db.Time(6)
+  end_time        DateTime         @db.Time(6)
+  date            DateTime         @db.Date
+  created_at      DateTime         @db.Timestamptz(6)
+  updated_at      DateTime         @db.Timestamptz(6)
+  user_id         Int
+  court_id        BigInt
+  transaction_id  BigInt?
+  api_court       api_court        @relation(fields: [court_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_booking_court_id_c40a6669_fk_api_court_id")
+  api_transaction api_transaction? @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_booking_transaction_id_6a466800_fk_api_transaction_id")
+  auth_user       AuthUser         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_booking_user_id_0beb30da_fk_auth_user_id")
+
+  @@index([court_id], map: "api_booking_court_id_c40a6669")
+  @@index([transaction_id], map: "api_booking_transaction_id_6a466800")
+  @@index([user_id], map: "api_booking_user_id_0beb30da")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_court {
+  id                         BigInt                       @id @default(autoincrement())
+  title                      String                       @db.VarChar(255)
+  description                String
+  created_at                 DateTime                     @db.Timestamptz(6)
+  updated_at                 DateTime                     @db.Timestamptz(6)
+  center_id                  BigInt
+  sport_id                   BigInt
+  price_per_hour             Decimal                      @db.Decimal(10, 2)
+  price_currency             String                       @db.VarChar(3)
+  api_booking                api_booking[]
+  api_courtcenter            api_courtcenter              @relation(fields: [center_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_court_center_id_265d7c25_fk_api_courtcenter_id")
+  api_sport                  api_sport                    @relation(fields: [sport_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_court_sport_id_c971581d_fk_api_sport_id")
+  api_courtschedule          api_courtschedule[]
+  api_courtscheduleexception api_courtscheduleexception[]
+  api_courtslot              api_courtslot[]
+  api_transaction            api_transaction[]
+
+  @@index([center_id, sport_id, created_at(sort: Desc)], map: "api_court_center__9831e1_idx")
+  @@index([center_id], map: "api_court_center_id_265d7c25")
+  @@index([sport_id], map: "api_court_sport_id_c971581d")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_courtcenter {
+  id                    BigInt      @id @default(autoincrement())
+  title                 String      @db.VarChar(255)
+  description           String
+  created_at            DateTime    @db.Timestamptz(6)
+  updated_at            DateTime    @db.Timestamptz(6)
+  owner_id              Int
+  latitude              Decimal?    @db.Decimal(9, 6)
+  longitude             Decimal?    @db.Decimal(9, 6)
+  address               String?     @db.VarChar(255)
+  status                String      @db.VarChar(20)
+  review_average_rating Decimal     @db.Decimal(3, 2)
+  review_count          Int
+  api_court             api_court[]
+  auth_user             AuthUser    @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_courtcenter_owner_id_9c90e25a_fk_auth_user_id")
+
+  @@index([status, created_at(sort: Desc)], map: "api_courtce_status_b34531_idx")
+  @@index([status, latitude, longitude], map: "api_courtce_status_c718b5_idx")
+  @@index([owner_id], map: "api_courtcenter_owner_id_9c90e25a")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_courtschedule {
+  id          BigInt    @id @default(autoincrement())
+  day_of_week Int
+  start_time  DateTime  @db.Time(6)
+  end_time    DateTime  @db.Time(6)
+  created_at  DateTime  @db.Timestamptz(6)
+  updated_at  DateTime  @db.Timestamptz(6)
+  court_id    BigInt
+  api_court   api_court @relation(fields: [court_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_courtschedule_court_id_ce10d1cf_fk_api_court_id")
+
+  @@index([court_id, day_of_week], map: "api_courtsc_court_i_640a0b_idx")
+  @@index([court_id], map: "api_courtschedule_court_id_ce10d1cf")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_courtscheduleexception {
+  id         BigInt    @id @default(autoincrement())
+  type       Int
+  reason     String
+  start_time DateTime  @db.Time(6)
+  end_time   DateTime  @db.Time(6)
+  created_at DateTime  @db.Timestamptz(6)
+  updated_at DateTime  @db.Timestamptz(6)
+  court_id   BigInt
+  api_court  api_court @relation(fields: [court_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_courtscheduleexception_court_id_2514d6a8_fk_api_court_id")
+
+  @@index([court_id], map: "api_courtscheduleexception_court_id_2514d6a8")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_courtslot {
+  id           BigInt    @id @default(autoincrement())
+  date         DateTime  @db.Date
+  start_time   DateTime  @db.Time(6)
+  end_time     DateTime  @db.Time(6)
+  is_available Boolean
+  court_id     BigInt
+  api_court    api_court @relation(fields: [court_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_courtslot_court_id_1c7d4bcc_fk_api_court_id")
+
+  @@unique([court_id, date, start_time], map: "api_courtslot_court_id_date_start_time_7d35a423_uniq")
+  @@index([court_id, date, is_available], map: "api_courtsl_court_i_5fa66b_idx")
+  @@index([date, is_available], map: "api_courtsl_date_da6816_idx")
+  @@index([court_id], map: "api_courtslot_court_id_1c7d4bcc")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_emailverificationtoken {
+  id         BigInt   @id @default(autoincrement())
+  token      String   @unique @db.VarChar(64)
+  created_at DateTime @db.Timestamptz(6)
+  expires_at DateTime @db.Timestamptz(6)
+  user_id    Int
+  auth_user  AuthUser @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_emailverificationtoken_user_id_7e807130_fk_auth_user_id")
+
+  @@index([token], map: "api_emailverificationtoken_token_5e55b1bc_like")
+  @@index([user_id], map: "api_emailverificationtoken_user_id_7e807130")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_review {
+  id              BigInt          @id @default(autoincrement())
+  rating          Int             @db.SmallInt
+  comment         String?
+  created_at      DateTime        @db.Timestamptz(6)
+  updated_at      DateTime        @db.Timestamptz(6)
+  reviewer_id     Int
+  transaction_id  BigInt
+  auth_user       AuthUser        @relation(fields: [reviewer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_review_reviewer_id_5048d9dd_fk_auth_user_id")
+  api_transaction api_transaction @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_review_transaction_id_218aac77_fk_api_transaction_id")
+
+  @@unique([reviewer_id, transaction_id], map: "unique_review_per_transaction")
+  @@index([reviewer_id], map: "api_review_reviewer_id_5048d9dd")
+  @@index([transaction_id], map: "api_review_transaction_id_218aac77")
+}
+
+model api_sport {
+  id          BigInt      @id @default(autoincrement())
+  name        String      @db.VarChar(255)
+  code        String      @db.VarChar(255)
+  description String?
+  created_at  DateTime    @db.Timestamptz(6)
+  updated_at  DateTime    @db.Timestamptz(6)
+  api_court   api_court[]
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model api_transaction {
+  id                                               BigInt        @id @default(autoincrement())
+  created_at                                       DateTime      @db.Timestamptz(6)
+  updated_at                                       DateTime      @db.Timestamptz(6)
+  current_state                                    Int
+  process_name                                     String        @db.VarChar(64)
+  line_items                                       Json
+  last_transition_at                               DateTime      @db.Timestamptz(6)
+  last_transition                                  String        @db.VarChar(32)
+  pay_in_total_amount                              Decimal       @db.Decimal(10, 2)
+  pay_in_total_currency                            String        @db.VarChar(3)
+  pay_out_total_amount                             Decimal       @db.Decimal(10, 2)
+  pay_out_total_currency                           String        @db.VarChar(3)
+  court_id                                         BigInt
+  customer_id                                      Int
+  provider_id                                      Int
+  api_booking                                      api_booking[]
+  api_review                                       api_review[]
+  api_court                                        api_court     @relation(fields: [court_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_transaction_court_id_1bbdaa56_fk_api_court_id")
+  auth_user_api_transaction_customer_idToauth_user AuthUser      @relation("api_transaction_customer_idToauth_user", fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_transaction_customer_id_a59c60b4_fk_auth_user_id")
+  auth_user_api_transaction_provider_idToauth_user AuthUser      @relation("api_transaction_provider_idToauth_user", fields: [provider_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_transaction_provider_id_300768f1_fk_auth_user_id")
+
+  @@index([customer_id, provider_id, court_id, created_at(sort: Desc), current_state], map: "api_transac_custome_52e50d_idx")
+  @@index([court_id], map: "api_transaction_court_id_1bbdaa56")
+  @@index([customer_id], map: "api_transaction_customer_id_a59c60b4")
+  @@index([provider_id], map: "api_transaction_provider_id_300768f1")
+}
+
+model auth_group {
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique @db.VarChar(150)
+  auth_group_permissions auth_group_permissions[]
+  auth_user_groups       auth_user_groups[]
+
+  @@index([name], map: "auth_group_name_a6ea08ec_like")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model auth_group_permissions {
+  id              BigInt          @id @default(autoincrement())
+  group_id        Int
+  permission_id   Int
+  auth_permission auth_permission @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_group_permissio_permission_id_84c5c92e_fk_auth_perm")
+  auth_group      auth_group      @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_group_permissions_group_id_b120cbf9_fk_auth_group_id")
+
+  @@unique([group_id, permission_id], map: "auth_group_permissions_group_id_permission_id_0cd325b0_uniq")
+  @@index([group_id], map: "auth_group_permissions_group_id_b120cbf9")
+  @@index([permission_id], map: "auth_group_permissions_permission_id_84c5c92e")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model auth_permission {
+  id                         Int                          @id @default(autoincrement())
+  name                       String                       @db.VarChar(255)
+  content_type_id            Int
+  codename                   String                       @db.VarChar(100)
+  auth_group_permissions     auth_group_permissions[]
+  django_content_type        django_content_type          @relation(fields: [content_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_permission_content_type_id_2f476e4b_fk_django_co")
+  auth_user_user_permissions auth_user_user_permissions[]
+
+  @@unique([content_type_id, codename], map: "auth_permission_content_type_id_codename_01ab375a_uniq")
+  @@index([content_type_id], map: "auth_permission_content_type_id_2f476e4b")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model auth_user_groups {
+  id         BigInt     @id @default(autoincrement())
+  user_id    Int
+  group_id   Int
+  auth_group auth_group @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_user_groups_group_id_97559544_fk_auth_group_id")
+  auth_user  AuthUser   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_user_groups_user_id_6a12ed8b_fk_auth_user_id")
+
+  @@unique([user_id, group_id], map: "auth_user_groups_user_id_group_id_94350c0c_uniq")
+  @@index([group_id], map: "auth_user_groups_group_id_97559544")
+  @@index([user_id], map: "auth_user_groups_user_id_6a12ed8b")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model auth_user_user_permissions {
+  id              BigInt          @id @default(autoincrement())
+  user_id         Int
+  permission_id   Int
+  auth_permission auth_permission @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm")
+  auth_user       AuthUser        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id")
+
+  @@unique([user_id, permission_id], map: "auth_user_user_permissions_user_id_permission_id_14a6b632_uniq")
+  @@index([permission_id], map: "auth_user_user_permissions_permission_id_1fbb5f2c")
+  @@index([user_id], map: "auth_user_user_permissions_user_id_a95ead1b")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model django_admin_log {
+  id                  Int                  @id @default(autoincrement())
+  action_time         DateTime             @db.Timestamptz(6)
+  object_id           String?
+  object_repr         String               @db.VarChar(200)
+  action_flag         Int                  @db.SmallInt
+  change_message      String
+  content_type_id     Int?
+  user_id             Int
+  django_content_type django_content_type? @relation(fields: [content_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_admin_log_content_type_id_c4bce8eb_fk_django_co")
+  auth_user           AuthUser             @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_admin_log_user_id_c564eba6_fk_auth_user_id")
+
+  @@index([content_type_id], map: "django_admin_log_content_type_id_c4bce8eb")
+  @@index([user_id], map: "django_admin_log_user_id_c564eba6")
+}
+
+model django_content_type {
+  id               Int                @id @default(autoincrement())
+  app_label        String             @db.VarChar(100)
+  model            String             @db.VarChar(100)
+  api_image        Image[]
+  auth_permission  auth_permission[]
+  django_admin_log django_admin_log[]
+
+  @@unique([app_label, model], map: "django_content_type_app_label_model_76bd3d3b_uniq")
+}
+
+model django_migrations {
+  id      BigInt   @id @default(autoincrement())
+  app     String   @db.VarChar(255)
+  name    String   @db.VarChar(255)
+  applied DateTime @db.Timestamptz(6)
+}
+
+model django_session {
+  session_key  String   @id @db.VarChar(40)
+  session_data String
+  expire_date  DateTime @db.Timestamptz(6)
+
+  @@index([expire_date], map: "django_session_expire_date_a5c62663")
+  @@index([session_key], map: "django_session_session_key_c0390e0f_like")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}

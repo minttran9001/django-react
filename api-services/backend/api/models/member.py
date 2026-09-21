@@ -25,10 +25,11 @@ class Member(models.Model):
     last_read_message_created_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        indexes = [
-            models.Index(fields=["user"]),
-            models.Index(fields=["conversation"]),
+        constraints = [
+            # this make sure that a user can only be a member of a conversation once and also create index for the constraint
+            models.UniqueConstraint(fields=["user", "conversation"], name="unique_user_conversation"),
         ]
+        indexes = []
 
     def __str__(self):
         return f"{self.user.username} - {self.conversation.name}"
