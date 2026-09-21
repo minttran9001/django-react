@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import OrderBreakdownLineItems from "@/components/booking/OrderBreakdownLineItems";
 import { PAYMENT_WINDOW_MINUTES, formatSlotTime } from "@/components/checkout/helpers";
+import { formatBookingDate } from "@/lib/dates";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -377,7 +378,7 @@ export function TransactionDetailsView({
                 >
                   <div>
                     <p className="font-medium">
-                      {format(parseISO(booking.date), "EEEE, MMM d, yyyy")}
+                      {formatBookingDate(booking.date)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {formatSlotTime(booking.start_time)} –{" "}

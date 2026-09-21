@@ -1,6 +1,5 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
 import {
   AlertCircleIcon,
   ArrowLeftIcon,
@@ -18,6 +17,7 @@ import {
   formatSlotTime,
   useIsClient,
 } from "@/components/checkout/helpers";
+import { formatBookingDate } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -56,7 +56,7 @@ function DraftSlotsPreview({ slots }: { slots: LineItemSlotInput[] }) {
             className="rounded-lg border bg-muted/30 px-4 py-3"
           >
             <p className="font-medium">
-              {format(parseISO(slot.date), "EEEE, MMM d, yyyy")}
+              {formatBookingDate(slot.date)}
             </p>
             <p className="text-sm text-muted-foreground">
               {formatSlotTime(slot.start)} – {formatSlotTime(slot.end)}
