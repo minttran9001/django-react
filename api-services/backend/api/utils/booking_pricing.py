@@ -24,6 +24,7 @@ def build_line_items(
     include_for = include_for or ["customer", "provider"]
     currency = court.price_currency
     line_items = []
+    slot_subtotal = Decimal("0")
     pay_in_total = Decimal("0")
     merged_slots = merge_adjacent_slots(slots)
 
@@ -51,11 +52,12 @@ def build_line_items(
             }
         }
         line_items.append(line_item)
+        slot_subtotal += total
         pay_in_total += total
 
 
     if VAT_RATE > 0 and "customer" in include_for:
-        vat_total = pay_in_total * VAT_RATE
+        vat_total = slot_subtotal * VAT_RATE
         line_items.append({
             "type": "vat",
             "code": "line-item/vat",
@@ -80,8 +82,10 @@ def build_line_items(
         })
         pay_in_total += customer_platform_fee_total
 
+    # Provider fee is taken from the provider's slot revenue only — not VAT or
+    # customer platform fees, which the provider never receives.
     if PROVIDER_PLATFORM_FEE_RATE > 0 and "provider" in include_for:
-        provider_platform_fee_total = pay_in_total * PROVIDER_PLATFORM_FEE_RATE
+        provider_platform_fee_total = slot_subtotal * PROVIDER_PLATFORM_FEE_RATE
         line_items.append({
             "type": "provider_platform_fee",
             "code": "line-item/provider-platform-fee",
