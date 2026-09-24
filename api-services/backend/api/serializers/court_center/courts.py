@@ -25,6 +25,14 @@ class CourtCreateInputSerializer(serializers.Serializer):
         if price:
             attrs["price_per_hour"] = price["amount"]
             attrs["price_currency"] = price["currency"]
+        elif not attrs.get("id"):
+            # Create path: model default is 0, which publish forbids but
+            # post-publish court adds skipped — leaving a free bookable court.
+            raise serializers.ValidationError({
+                "price_per_hour": (
+                    "Price per hour is required and must be greater than 0."
+                ),
+            })
         return attrs
 
 

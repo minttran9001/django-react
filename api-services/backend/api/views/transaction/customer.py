@@ -40,6 +40,11 @@ class InitiateTransactionView(APIView):
             center__status=CourtCenter.Status.PUBLISHED,
         )
 
+        if court.price_per_hour <= 0:
+            return validation_error_response(
+                {"court_id": ["This court is not available for booking."]}
+            )
+
         if court.center.owner_id == request.user.id:
             return validation_error_response(
                 {"court_id": ["You cannot book your own venue."]}

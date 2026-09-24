@@ -177,6 +177,14 @@ def sync_courts(center: CourtCenter, courts_data: list[dict], owner) -> None:
                 setattr(court, field, value)
             court.save()
         else:
+            price = court_data.get("price_per_hour", 0)
+            if price is None or price <= 0:
+                raise serializers.ValidationError({
+                    "price_per_hour": (
+                        f'Court "{court_data.get("title", "")}" must have a '
+                        "price per hour greater than 0."
+                    ),
+                })
             court = Court.objects.create(center=center, **court_data)
 
         submitted_ids.add(court.id)

@@ -8,6 +8,7 @@ from api.utils.booking_pricing import build_line_items
 from api.models import Court, CourtCenter
 from api.utils.app_timezone import timezone_from_query_params
 from api.utils.booking_slots import validate_slots_are_available_for_court
+from api.utils.exceptions import validation_error_response
 from api.serializers.money import MoneySerializer
 
 #speculated transaction line-items for frontend (should be able to show the total price of the transaction)
@@ -26,6 +27,11 @@ class SpeculateLineItemListViewForCustomer(APIView):
             pk=court_id,
             center__status=CourtCenter.Status.PUBLISHED,
         )
+
+        if court.price_per_hour <= 0:
+            return validation_error_response(
+                {"court_id": ["This court is not available for booking."]}
+            )
 
         validate_slots_are_available_for_court(
             slots,
