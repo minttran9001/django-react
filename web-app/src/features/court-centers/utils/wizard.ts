@@ -112,3 +112,14 @@ export function centerToImageState(center: CourtCenter) {
     courtImages,
   };
 }
+
+/**
+ * Court photos are held in ListingWizard state across step changes. Re-entering
+ * the Courts step must reload from the saved center so an emptied map from a
+ * prior unsaved visit cannot be submitted as image_ids: [] and wipe the gallery.
+ */
+export function courtImagesForCourtsStep(
+  center: CourtCenter,
+): Record<number, ImageResource[]> {
+  return centerToImageState(center).courtImages;
+}
