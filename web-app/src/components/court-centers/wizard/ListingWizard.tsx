@@ -20,6 +20,7 @@ import {
   centerToImageState,
   centerToLocationValues,
   centerToSchedulesValues,
+  courtImagesForCourtsStep,
   WIZARD_STEPS,
 } from "@/features/court-centers/utils/wizard";
 import type { CourtCenter, ImageResource } from "@/features/court-centers/types";
@@ -102,6 +103,17 @@ export function ListingWizard(props: ListingWizardProps) {
   );
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Court photos live in wizard state (not the step form). Leaving Courts without
+  // saving must not stick an emptied map across Back/step nav — otherwise the next
+  // title/price save sends image_ids: [] and sync_gallery wipes the gallery.
+  const [courtsStepEntryKey, setCourtsStepEntryKey] = useState(currentStep);
+  if (currentStep !== courtsStepEntryKey) {
+    setCourtsStepEntryKey(currentStep);
+    if (currentStep === 3 && center) {
+      setCourtImages(courtImagesForCourtsStep(center));
+    }
+  }
 
   const isSaving =
     isCreatingDraft ||
