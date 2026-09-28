@@ -222,11 +222,16 @@ def validate_slots_are_available_for_court(
     if not slots:
         raise serializers.ValidationError({"slots": "At least one slot is required."})
     # 1. Past + duration + schedule
+    # Past-ness is always evaluated in UTC. Booking wall-clock times are treated as
+    # UTC elsewhere (e.g. Transaction.latest_end_at), and a client-supplied
+    # ?timezone= must not reopen slots that have already elapsed in UTC.
+    # `tz` is retained for call-site compatibility / future venue-TZ support.
+    _ = tz
     for slot in slots:
         slot_date = slot["date"]
         start = slot["start"]
         end = slot["end"]
-        if is_slot_start_in_past(slot_date, start, tz):
+        if is_slot_start_in_past(slot_date, start, DEFAULT_TIMEZONE):
             raise serializers.ValidationError({
                 "slots": f"Slot {slot_date} {start}-{end} is in the past."
             })
