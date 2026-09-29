@@ -1,37 +1,48 @@
-import { prisma } from "../../db/prisma.js";
-import { requireId } from "../../common/utils/ids.js";
-import { HttpError } from "../../common/errors/http-error.js";
+import { Injectable } from "@nestjs/common";
+import { requireId } from "../../common/utils/ids";
+import { HttpError } from "../../common/errors/http-error";
 import {
   formatMessage,
   formatMessageListEnvelope,
   formatMessageResource,
-} from "../../serializers/chat.serializer.js";
-import { fanoutToUsers } from "../../websocket/fanout.js";
-import { conversationInclude } from "../conversations/conversation.includes.js";
-import { conversationService } from "../conversations/conversation.service.js";
-import type { ListMessagesQuery, SendMessageInput } from "./message.types.js";
+} from "../../serializers/chat.serializer";
+import { FanoutService } from "../../websocket/fanout";
+import { conversationInclude } from "../conversations/conversation.includes";
+import { ConversationService } from "../conversations/conversation.service";
+import { PrismaService } from "../../prisma/prisma.service";
+import type { ListMessagesQuery, SendMessageInput } from "./message.types";
 
+@Injectable()
 export class MessageService {
-  private async displayName(userId: bigint): Promise<string> {
-    const profile = await prisma.userProfile.findUnique({
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly conversationService: ConversationService,
+    private readonly fanout: FanoutService,
+  ) {}
+
+  private async displayName(userId: number): Promise<string> {
+    const profile = await this.prisma.userProfile.findUnique({
       where: { userId },
     });
     if (profile?.name) return profile.name;
-    const user = await prisma.authUser.findUnique({ where: { id: userId } });
+    const user = await this.prisma.authUser.findUnique({
+      where: { id: userId },
+    });
     return user?.email || String(userId);
   }
 
-  private async ensureMember(conversationId: bigint, userId: bigint) {
-    const existing = await prisma.member.findFirst({
+  private async ensureMember(conversationId: bigint, userId: number) {
+    const existing = await this.prisma.member.findFirst({
       where: { conversationId, userId },
     });
     if (existing) return existing;
-    return prisma.member.create({
+    return this.prisma.member.create({
       data: {
         conversationId,
         userId,
         unread: 0,
         mentionUnread: 0,
+        createdAt: new Date(),
       },
     });
   }
@@ -45,57 +56,50 @@ export class MessageService {
 
     if (convType === "dm") {
       const peerId = memberUserIds[0]!;
-      const peer = await prisma.authUser.findUnique({
-        where: { id: BigInt(peerId) },
+      const peer = await this.prisma.authUser.findUnique({
+        where: { id: peerId },
       });
       if (!peer) {
         throw new HttpError("User not found.", 404, "not_found");
       }
 
-      const existing = await conversationService.findDm(userId, peerId);
+      const existing = await this.conversationService.findDm(userId, peerId);
       if (existing) {
-        const senderMember = await this.ensureMember(
-          existing.id,
-          BigInt(userId),
-        );
+        const senderMember = await this.ensureMember(existing.id, userId);
         return { conversation: existing, senderMember, created: false };
       }
 
-      const defaultName = name || (await this.displayName(BigInt(peerId)));
-      const conversation = await prisma.conversation.create({
+      const defaultName = name || (await this.displayName(peerId));
+      const conversation = await this.prisma.conversation.create({
         data: {
           type: "dm",
           name: defaultName,
+          createdAt: new Date(),
         },
         include: conversationInclude,
       });
-      await this.ensureMember(conversation.id, BigInt(peerId));
-      const senderMember = await this.ensureMember(
-        conversation.id,
-        BigInt(userId),
-      );
-      const full = await prisma.conversation.findUniqueOrThrow({
+      await this.ensureMember(conversation.id, peerId);
+      const senderMember = await this.ensureMember(conversation.id, userId);
+      const full = await this.prisma.conversation.findUniqueOrThrow({
         where: { id: conversation.id },
         include: conversationInclude,
       });
       return { conversation: full, senderMember, created: true };
     }
 
-    const conversation = await prisma.conversation.create({
+    const conversation = await this.prisma.conversation.create({
       data: {
         type: "muc",
         name: name ?? null,
+        createdAt: new Date(),
       },
     });
     const allUserIds = [userId, ...memberUserIds];
     for (const uid of allUserIds) {
-      await this.ensureMember(conversation.id, BigInt(uid));
+      await this.ensureMember(conversation.id, uid);
     }
-    const senderMember = await this.ensureMember(
-      conversation.id,
-      BigInt(userId),
-    );
-    const full = await prisma.conversation.findUniqueOrThrow({
+    const senderMember = await this.ensureMember(conversation.id, userId);
+    const full = await this.prisma.conversation.findUniqueOrThrow({
       where: { id: conversation.id },
       include: conversationInclude,
     });
@@ -107,7 +111,7 @@ export class MessageService {
     data: SendMessageInput,
   ) {
     if (data.conversationId != null) {
-      const conversation = await prisma.conversation.findUnique({
+      const conversation = await this.prisma.conversation.findUnique({
         where: { id: BigInt(data.conversationId) },
         include: conversationInclude,
       });
@@ -150,7 +154,7 @@ export class MessageService {
     body: string,
     createdAt: Date,
   ) {
-    return prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const messageInclude = {
         sender: {
           include: {
@@ -160,7 +164,9 @@ export class MessageService {
       } as const;
 
       const existing = await tx.message.findUnique({
-        where: { clientId },
+        where: {
+          conversationId_clientId: { conversationId, clientId },
+        },
         include: messageInclude,
       });
 
@@ -173,7 +179,7 @@ export class MessageService {
         message = await tx.message.create({
           data: {
             conversationId,
-            senderId: BigInt(senderId),
+            senderId,
             body,
             clientId,
             status: "acked",
@@ -183,7 +189,9 @@ export class MessageService {
         });
       } catch (err) {
         const raced = await tx.message.findUnique({
-          where: { clientId },
+          where: {
+            conversationId_clientId: { conversationId, clientId },
+          },
           include: messageInclude,
         });
         if (raced) {
@@ -210,7 +218,7 @@ export class MessageService {
       await tx.member.updateMany({
         where: {
           conversationId,
-          userId: { not: BigInt(senderId) },
+          userId: { not: senderId },
         },
         data: {
           unread: { increment: 1 },
@@ -239,7 +247,7 @@ export class MessageService {
       const createdAt = data.createdAt ?? new Date();
       const body = data.body;
 
-      fanoutToUsers(memberUserIds, {
+      this.fanout.fanoutToUsers(memberUserIds, {
         type: "message.created",
         conversationId: requireId(conversation.id),
         message: {
@@ -263,12 +271,12 @@ export class MessageService {
         createdAt,
       );
 
-      const conversationPayload = await conversationService.getForResponse(
+      const conversationPayload = await this.conversationService.getForResponse(
         conversation.id,
         userId,
       );
 
-      fanoutToUsers(memberUserIds, {
+      this.fanout.fanoutToUsers(memberUserIds, {
         type: "message.acked",
         conversationId: requireId(conversation.id),
         message: {
@@ -292,7 +300,7 @@ export class MessageService {
       };
     } catch (err) {
       if (pendingSent && conversationId != null) {
-        fanoutToUsers(memberUserIds, {
+        this.fanout.fanoutToUsers(memberUserIds, {
           type: "message.failed",
           conversationId: requireId(conversationId),
           clientId,
@@ -303,10 +311,10 @@ export class MessageService {
   }
 
   async list(userId: number, conversationId: number, opts: ListMessagesQuery) {
-    const isMember = await prisma.member.findFirst({
+    const isMember = await this.prisma.member.findFirst({
       where: {
         conversationId: BigInt(conversationId),
-        userId: BigInt(userId),
+        userId,
       },
     });
     if (!isMember) {
@@ -319,9 +327,10 @@ export class MessageService {
 
     const { limit, beforeId, afterId } = opts;
     let rows;
+    const limitNumber = Number(limit);
 
     if (beforeId != null) {
-      rows = await prisma.message.findMany({
+      rows = await this.prisma.message.findMany({
         where: {
           conversationId: BigInt(conversationId),
           id: { lt: BigInt(beforeId) },
@@ -332,10 +341,10 @@ export class MessageService {
           },
         },
         orderBy: { id: "desc" },
-        take: limit + 1,
+        take: limitNumber + 1,
       });
     } else if (afterId != null) {
-      rows = await prisma.message.findMany({
+      rows = await this.prisma.message.findMany({
         where: {
           conversationId: BigInt(conversationId),
           id: { gt: BigInt(afterId) },
@@ -346,10 +355,10 @@ export class MessageService {
           },
         },
         orderBy: { id: "asc" },
-        take: limit + 1,
+        take: limitNumber + 1,
       });
     } else {
-      rows = await prisma.message.findMany({
+      rows = await this.prisma.message.findMany({
         where: { conversationId: BigInt(conversationId) },
         include: {
           sender: {
@@ -357,12 +366,12 @@ export class MessageService {
           },
         },
         orderBy: { id: "desc" },
-        take: limit + 1,
+        take: limitNumber + 1,
       });
     }
 
-    const hasMore = rows.length > limit;
-    rows = rows.slice(0, limit);
+    const hasMore = rows.length > Number(limit);
+    rows = rows.slice(0, Number(limit));
     if (afterId == null) {
       rows = rows.reverse();
     }
@@ -377,5 +386,3 @@ export class MessageService {
     });
   }
 }
-
-export const messageService = new MessageService();

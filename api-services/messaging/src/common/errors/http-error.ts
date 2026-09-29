@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import { HttpException } from "@nestjs/common";
 
 export type ApiErrorBody = {
   message: string;
@@ -6,10 +6,9 @@ export type ApiErrorBody = {
   errors?: Record<string, string[]>;
 };
 
-export class HttpError extends Error {
-  status: number;
-  code: string;
-  errors?: Record<string, string[]>;
+export class HttpError extends HttpException {
+  readonly code: string;
+  readonly errors?: Record<string, string[]>;
 
   constructor(
     message: string,
@@ -17,21 +16,8 @@ export class HttpError extends Error {
     code = "bad_request",
     errors?: Record<string, string[]>,
   ) {
-    super(message);
-    this.status = status;
+    super(message, status);
     this.code = code;
     this.errors = errors;
   }
-}
-
-export function sendError(
-  res: Response,
-  message: string,
-  status = 400,
-  code = "bad_request",
-  errors?: Record<string, string[]>,
-) {
-  const body: ApiErrorBody = { message, code };
-  if (errors) body.errors = errors;
-  return res.status(status).json(body);
 }

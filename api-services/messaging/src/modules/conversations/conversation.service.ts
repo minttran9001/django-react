@@ -1,13 +1,17 @@
-import { prisma } from "../../db/prisma.js";
-import { requireId } from "../../common/utils/ids.js";
-import { HttpError } from "../../common/errors/http-error.js";
-import { formatConversation } from "../../serializers/chat.serializer.js";
-import { conversationInclude } from "./conversation.includes.js";
+import { Injectable } from "@nestjs/common";
+import { requireId } from "../../common/utils/ids";
+import { HttpError } from "../../common/errors/http-error";
+import { formatConversation } from "../../serializers/chat.serializer";
+import { PrismaService } from "../../prisma/prisma.service";
+import { conversationInclude } from "./conversation.includes";
 
+@Injectable()
 export class ConversationService {
+  constructor(private readonly prisma: PrismaService) {}
+
   async listForUser(userId: number) {
-    const memberships = await prisma.member.findMany({
-      where: { userId: BigInt(userId) },
+    const memberships = await this.prisma.member.findMany({
+      where: { userId },
       select: {
         conversationId: true,
         unread: true,
@@ -26,7 +30,7 @@ export class ConversationService {
       ]),
     );
 
-    const conversations = await prisma.conversation.findMany({
+    const conversations = await this.prisma.conversation.findMany({
       where: {
         id: { in: memberships.map((m) => m.conversationId) },
       },
@@ -62,8 +66,8 @@ export class ConversationService {
       );
     }
 
-    const peer = await prisma.authUser.findUnique({
-      where: { id: BigInt(peerUserId) },
+    const peer = await this.prisma.authUser.findUnique({
+      where: { id: peerUserId },
     });
     if (!peer) {
       throw new HttpError("User not found.", 404, "not_found");
@@ -86,12 +90,12 @@ export class ConversationService {
   }
 
   async findDm(userId: number, peerUserId: number) {
-    const candidates = await prisma.conversation.findMany({
+    const candidates = await this.prisma.conversation.findMany({
       where: {
         type: "dm",
         AND: [
-          { members: { some: { userId: BigInt(userId) } } },
-          { members: { some: { userId: BigInt(peerUserId) } } },
+          { members: { some: { userId } } },
+          { members: { some: { userId: peerUserId } } },
         ],
       },
       include: conversationInclude,
@@ -102,7 +106,7 @@ export class ConversationService {
   }
 
   async getForResponse(conversationId: bigint, viewerUserId: number) {
-    const conversation = await prisma.conversation.findUnique({
+    const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: conversationInclude,
     });
@@ -125,7 +129,7 @@ export class ConversationService {
     createdAt: Date,
     clientId?: string | null,
   ) {
-    return prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const conversation = await tx.conversation.findUnique({
         where: { id: BigInt(conversationId) },
       });
@@ -135,7 +139,7 @@ export class ConversationService {
 
       const member = await tx.member.findFirst({
         where: {
-          userId: BigInt(userId),
+          userId,
           conversationId: BigInt(conversationId),
         },
       });
@@ -190,7 +194,7 @@ export class ConversationService {
         where: {
           conversationId: BigInt(conversationId),
           createdAt: { gt: watermark },
-          senderId: { not: BigInt(userId) },
+          senderId: { not: userId },
         },
       });
 
@@ -208,5 +212,3 @@ export class ConversationService {
     });
   }
 }
-
-export const conversationService = new ConversationService();

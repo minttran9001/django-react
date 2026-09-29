@@ -1,32 +1,56 @@
-import type { Request, Response } from "express";
-import { messageService } from "./message.service.js";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
+import type { Response } from "express";
+import { AuthGuard } from "../../auth/auth.guard";
+import { CurrentUser } from "../../auth/current-user.decorator";
+import type { AuthUser } from "../../auth/auth.service";
+import { MessageService } from "./message.service";
 import {
   parseListMessagesQuery,
   parseSendMessageBody,
-} from "./message.validators.js";
+} from "./message.validators";
+import { ListMessagesQuery } from "src/common/types/message";
+import { SendMessageBody } from "./message.types";
 
+@Controller("messages")
+@UseGuards(AuthGuard)
 export class MessageController {
-  send = async (req: Request, res: Response) => {
-    const data = parseSendMessageBody(req.body, req.user!.id);
-    const { payload, statusCode } = await messageService.send(
-      req.user!.id,
+  constructor(private readonly messageService: MessageService) {}
+
+  @Post("send")
+  async send(
+    @CurrentUser() user: AuthUser,
+    @Body() body: SendMessageBody,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const data = parseSendMessageBody(body, user.id);
+    const { payload, statusCode } = await this.messageService.send(
+      user.id,
       data,
     );
-    res.status(statusCode).json(payload);
-  };
+    res.status(statusCode);
+    return payload;
+  }
 
-  list = async (req: Request, res: Response) => {
-    const parsed = parseListMessagesQuery(
-      String(req.params.conversationId),
-      req.query as Record<string, unknown>,
-    );
-    const data = await messageService.list(req.user!.id, parsed.conversationId, {
+  @Get(":conversationId")
+  list(
+    @CurrentUser() user: AuthUser,
+    @Param("conversationId") conversationId: string,
+    @Query() query: ListMessagesQuery,
+  ) {
+    const parsed = parseListMessagesQuery(conversationId, query);
+    return this.messageService.list(user.id, parsed.conversationId, {
       limit: parsed.limit,
       beforeId: parsed.beforeId,
       afterId: parsed.afterId,
     });
-    res.json(data);
-  };
+  }
 }
-
-export const messageController = new MessageController();

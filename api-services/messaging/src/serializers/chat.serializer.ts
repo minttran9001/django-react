@@ -3,14 +3,14 @@ import type {
   Image,
   Member,
   UserProfile,
-} from "../generated/prisma/client.js";
-import { idNum, requireId } from "../common/utils/ids.js";
+} from "../generated/prisma/client";
+import { idNum, requireId } from "../common/utils/ids";
 import {
   RESOURCE_CONVERSATION,
   RESOURCE_MESSAGE,
   RESOURCE_USER,
   typedResource,
-} from "../common/typed-resource.js";
+} from "../common/typed-resource";
 
 type ProfileWithAvatar = UserProfile & { avatar: Image | null };
 type UserWithProfile = AuthUser & { profile: ProfileWithAvatar | null };

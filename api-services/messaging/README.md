@@ -1,27 +1,26 @@
 # Messaging service
 
-Node.js (Express + TypeScript) chat API that shares Django's Postgres tables and JWT cookies.
+NestJS (TypeScript) chat API that shares Django's Postgres tables and JWT cookies.
 
 ## Structure
 
 ```
 src/
-  server.ts                 # HTTP + WebSocket bootstrap
-  app.ts                    # Express app factory
+  main.ts                   # Nest bootstrap (HTTP + WebSocket)
+  app.module.ts
   config/                   # env
-  db/                       # Prisma client
+  prisma/                   # Prisma client
+  auth/                     # JWT cookie guard
   common/                   # errors, utils, typed-resource
-  middleware/               # auth
   serializers/              # response shaping
   modules/
-    conversations/          # routes → controller → service → validators
+    conversations/          # controller → service → validators
     messages/
-  routes/                   # API router mount
   websocket/                # chat gateway + fan-out
   generated/prisma/         # prisma generate output (gitignored)
 ```
 
-Request flow: **route → controller → (validator) → service → db / websocket**.
+Request flow: **controller → (validator) → service → db / websocket**.
 
 ## Setup
 

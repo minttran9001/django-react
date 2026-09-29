@@ -1,109 +1,104 @@
-import type { IncomingMessage, Server } from "node:http";
-import { WebSocketServer, type WebSocket } from "ws";
+import type { IncomingMessage } from "node:http";
+import { Injectable } from "@nestjs/common";
 import {
-  authenticateToken,
-  parseCookieHeader,
-  type AuthUser,
-} from "../middleware/auth.middleware.js";
-import { prisma } from "../db/prisma.js";
-import { requireId } from "../common/utils/ids.js";
-import { addUserSocket, fanoutToUsers, removeUserSocket } from "./fanout.js";
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  WebSocketGateway,
+} from "@nestjs/websockets";
+import type { WebSocket } from "ws";
+import { requireId } from "../common/utils/ids";
+import { AuthService } from "../auth/auth.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { FanoutService } from "./fanout";
 
-type AuthedSocket = WebSocket & { user?: AuthUser };
+@WebSocketGateway({ path: "/ws/chat" })
+@Injectable()
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  private readonly clients = new WeakMap<WebSocket, number>();
 
-async function memberUserIds(conversationId: number): Promise<number[]> {
-  const members = await prisma.member.findMany({
-    where: { conversationId: BigInt(conversationId) },
-    select: { userId: true },
-  });
-  return members.map((m) => requireId(m.userId));
-}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly prisma: PrismaService,
+    private readonly fanout: FanoutService,
+  ) {}
 
-function extractWsToken(req: IncomingMessage): string | null {
-  const cookies = parseCookieHeader(req.headers.cookie);
-  if (cookies.access_token) return cookies.access_token;
-
-  const url = new URL(req.url ?? "/", "http://localhost");
-  return url.searchParams.get("token");
-}
-
-export function attachChatGateway(server: Server) {
-  const wss = new WebSocketServer({ noServer: true });
-
-  server.on("upgrade", (req, socket, head) => {
-    const url = new URL(req.url ?? "/", "http://localhost");
-    if (url.pathname !== "/ws/chat" && url.pathname !== "/ws/chat/") {
-      socket.destroy();
+  async handleConnection(client: WebSocket, request: IncomingMessage) {
+    const user = await this.authService.authenticateToken(
+      this.authService.extractWsToken(request),
+    );
+    if (!user || client.readyState !== client.OPEN) {
+      client.close();
       return;
     }
 
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req);
+    this.clients.set(client, user.id);
+    this.fanout.addUserSocket(user.id, client);
+
+    client.on("message", (raw) => {
+      void this.onClientMessage(user.id, raw);
     });
-  });
+  }
 
-  wss.on("connection", async (ws: AuthedSocket, req: IncomingMessage) => {
-    const user = await authenticateToken(extractWsToken(req));
-    if (!user) {
-      ws.close();
-      return;
-    }
+  handleDisconnect(client: WebSocket) {
+    const userId = this.clients.get(client);
+    if (userId == null) return;
+    this.clients.delete(client);
+    this.fanout.removeUserSocket(userId, client);
+  }
 
-    ws.user = user;
-    addUserSocket(user.id, ws);
+  private async onClientMessage(userId: number, raw: unknown) {
+    try {
+      const content = JSON.parse(String(raw)) as Record<string, unknown>;
+      const type = content.type;
+      const conversationId = Number(content.conversationId);
+      if (!Number.isFinite(conversationId)) return;
 
-    ws.on("message", async (raw) => {
-      try {
-        const content = JSON.parse(String(raw)) as Record<string, unknown>;
-        const type = content.type;
-        const conversationId = Number(content.conversationId);
-        if (!Number.isFinite(conversationId)) return;
+      const ids = await this.memberUserIds(conversationId);
+      if (!ids.includes(userId)) return;
 
-        const ids = await memberUserIds(conversationId);
-        if (!ids.includes(user.id)) return;
-
-        if (type === "typing") {
-          fanoutToUsers(
-            ids.filter((id) => id !== user.id),
-            {
-              type: "typing",
-              conversationId,
-              userId: user.id,
-              typing: Boolean(content.typing),
-            },
-          );
-          return;
-        }
-
-        if (type === "seen") {
-          let lastReadMessageCreatedAt = content.lastReadMessageCreatedAt;
-          if (
-            lastReadMessageCreatedAt &&
-            typeof lastReadMessageCreatedAt === "object" &&
-            "toISOString" in (lastReadMessageCreatedAt as object)
-          ) {
-            lastReadMessageCreatedAt = (
-              lastReadMessageCreatedAt as Date
-            ).toISOString();
-          }
-          if (!lastReadMessageCreatedAt) return;
-
-          fanoutToUsers(ids, {
-            type: "seen",
+      if (type === "typing") {
+        this.fanout.fanoutToUsers(
+          ids.filter((id) => id !== userId),
+          {
+            type: "typing",
             conversationId,
-            userId: user.id,
-            lastReadMessageCreatedAt,
-          });
-        }
-      } catch {
-        // ignore malformed client payloads
+            userId,
+            typing: Boolean(content.typing),
+          },
+        );
+        return;
       }
-    });
 
-    ws.on("close", () => {
-      removeUserSocket(user.id, ws);
-    });
-  });
+      if (type === "seen") {
+        let lastReadMessageCreatedAt = content.lastReadMessageCreatedAt;
+        if (
+          lastReadMessageCreatedAt &&
+          typeof lastReadMessageCreatedAt === "object" &&
+          "toISOString" in lastReadMessageCreatedAt
+        ) {
+          lastReadMessageCreatedAt = (
+            lastReadMessageCreatedAt as Date
+          ).toISOString();
+        }
+        if (!lastReadMessageCreatedAt) return;
 
-  return wss;
+        this.fanout.fanoutToUsers(ids, {
+          type: "seen",
+          conversationId,
+          userId,
+          lastReadMessageCreatedAt,
+        });
+      }
+    } catch {
+      // ignore malformed client payloads
+    }
+  }
+
+  private async memberUserIds(conversationId: number): Promise<number[]> {
+    const members = await this.prisma.member.findMany({
+      where: { conversationId: BigInt(conversationId) },
+      select: { userId: true },
+    });
+    return members.map((member) => requireId(member.userId));
+  }
 }

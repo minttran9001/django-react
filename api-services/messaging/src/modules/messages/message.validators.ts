@@ -1,8 +1,12 @@
-import { HttpError } from "../../common/errors/http-error.js";
-import type { ListMessagesQuery, SendMessageInput } from "./message.types.js";
+import { HttpError } from "../../common/errors/http-error";
+import type {
+  ListMessagesQuery,
+  SendMessageBody,
+  SendMessageInput,
+} from "./message.types";
 
 export function parseSendMessageBody(
-  body: unknown,
+  body: SendMessageBody,
   currentUserId: number,
 ): SendMessageInput {
   if (!body || typeof body !== "object") {
@@ -76,10 +80,7 @@ export function parseSendMessageBody(
     }
   }
 
-  if (
-    memberUserIds?.length === 1 &&
-    memberUserIds[0] === currentUserId
-  ) {
+  if (memberUserIds?.length === 1 && memberUserIds[0] === currentUserId) {
     throw new HttpError(
       "You cannot send a message to yourself",
       400,
@@ -108,7 +109,7 @@ export function parseSendMessageBody(
 
 export function parseListMessagesQuery(
   conversationIdRaw: string,
-  query: Record<string, unknown>,
+  query: ListMessagesQuery,
 ): { conversationId: number } & ListMessagesQuery {
   const conversationId = Number(conversationIdRaw);
   if (!Number.isFinite(conversationId)) {

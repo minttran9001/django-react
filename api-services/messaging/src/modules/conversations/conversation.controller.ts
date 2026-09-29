@@ -1,33 +1,56 @@
-import type { Request, Response } from "express";
-import { conversationService } from "./conversation.service.js";
-import { parseDmUserId, parseSeenBody } from "./conversation.validators.js";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
+import type { Response } from "express";
+import { AuthGuard } from "../../auth/auth.guard";
+import { CurrentUser } from "../../auth/current-user.decorator";
+import type { AuthUser } from "../../auth/auth.service";
+import { ConversationService } from "./conversation.service";
+import { parseDmUserId, parseSeenBody } from "./conversation.validators";
+import { GetDirectConversationQuery } from "src/common/types/conversation";
 
+@Controller("conversations")
+@UseGuards(AuthGuard)
 export class ConversationController {
-  list = async (req: Request, res: Response) => {
-    const data = await conversationService.listForUser(req.user!.id);
-    res.json(data);
-  };
+  constructor(private readonly conversationService: ConversationService) {}
 
-  getDirect = async (req: Request, res: Response) => {
-    const peerUserId = parseDmUserId(req.query.userId ?? req.query.user_id);
-    const data = await conversationService.findDirect(req.user!.id, peerUserId);
-    res.json(data);
-  };
+  @Get()
+  list(@CurrentUser() user: AuthUser) {
+    return this.conversationService.listForUser(user.id);
+  }
 
-  markSeen = async (req: Request, res: Response) => {
-    const conversationIdParam = String(req.params.conversationId);
-    const { conversationId, createdAt, clientId } = parseSeenBody(
-      conversationIdParam,
-      req.body as Record<string, unknown> | undefined,
-    );
-    await conversationService.persistSeenWatermark(
-      req.user!.id,
-      conversationId,
-      createdAt,
-      clientId,
+  @Get("dm")
+  getDirect(
+    @CurrentUser() user: AuthUser,
+    @Query() query: GetDirectConversationQuery,
+  ) {
+    const peerUserId = parseDmUserId(query.userId ?? query.user_id);
+    return this.conversationService.findDirect(user.id, peerUserId);
+  }
+
+  @Post(":conversationId/seen")
+  @HttpCode(200)
+  async markSeen(
+    @CurrentUser() user: AuthUser,
+    @Param("conversationId") conversationId: string,
+    @Body() body: Record<string, unknown> | undefined,
+    @Res() res: Response,
+  ) {
+    const parsed = parseSeenBody(conversationId, body);
+    await this.conversationService.persistSeenWatermark(
+      user.id,
+      parsed.conversationId,
+      parsed.createdAt,
+      parsed.clientId,
     );
     res.status(200).end();
-  };
+  }
 }
-
-export const conversationController = new ConversationController();

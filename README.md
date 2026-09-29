@@ -14,7 +14,7 @@ Full-stack app with a **Django REST API** (auth, listings, bookings), a **Node m
 
 ### Messaging (`api-services/messaging`)
 
-- Node.js + Express + TypeScript
+- NestJS + TypeScript
 - Prisma (maps existing Django tables — Django owns migrations)
 - Raw WebSocket (`ws`) for typing / seen / message fan-out
 - Shares Django `DATABASE_URL` + `SECRET_KEY` (as `JWT_SECRET`)
@@ -180,7 +180,7 @@ Login uses **email**, not username. On the backend, `username` is set equal to `
    - `access_token` (httpOnly)
    - `refresh_token` (httpOnly)
 3. The browser sends cookies automatically on later requests to Django **and** the messaging service (same host `localhost`, different ports).
-4. Django and the Node service both validate the JWT (Django `CookieJWTAuthentication` / Node `requireAuth`).
+4. Django and the NestJS service both validate the JWT (Django `CookieJWTAuthentication` / Nest `AuthGuard`).
 5. On 401 from chat, the frontend refreshes via Django `POST /api/token/refresh`, then retries.
 6. On first page load, Next.js reads the cookie server-side and hydrates the Redux store with the current user.
 
