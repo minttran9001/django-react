@@ -19,7 +19,8 @@ class Booking(models.Model):
         null=True,
         blank=True,
     )
-    court = models.ForeignKey(Court, on_delete=models.CASCADE, related_name="bookings")
+    # PROTECT: court delete must not cascade-wipe paid/orphan bookings.
+    court = models.ForeignKey(Court, on_delete=models.PROTECT, related_name="bookings")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bookings")
     status = models.IntegerField(choices=BookingStatus.choices, default=BookingStatus.PENDING)
     start_time = models.TimeField()
