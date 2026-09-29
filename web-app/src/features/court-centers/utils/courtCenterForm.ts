@@ -1,4 +1,5 @@
 import type { CourtCenter } from "@/features/court-centers/types";
+import { courtSportId } from "@/features/court-centers/types";
 import type { CourtCenterFormValues } from "@/features/court-centers/schemas/courtCenterFormSchema";
 
 export function courtCenterToFormValues(
@@ -13,7 +14,7 @@ export function courtCenterToFormValues(
     courts:
       center.courts?.map((court) => ({
         id: court.id,
-        sportId: court.sport.id,
+        sportId: courtSportId(court),
         title: court.title,
         description: court.description ?? "",
       })) ?? [],
@@ -24,7 +25,7 @@ export function courtCenterToImageState(center: CourtCenter) {
   const courtImages: Record<number, CourtCenter["images"]> = {};
 
   center.courts?.forEach((court, index) => {
-    courtImages[index] = court.images;
+    courtImages[index] = court.images ?? [];
   });
 
   return {

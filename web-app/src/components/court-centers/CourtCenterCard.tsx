@@ -8,12 +8,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { CourtCenter } from "@/features/court-centers/types";
+import { courtSportName } from "@/features/court-centers/types";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import ThreeDotMenu from "../ui/ThreeDotMenu";
 import { useMemo } from "react";
 import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
+import { useGetSportsQuery } from "@/lib/api/courtCenterApi";
 type CourtCenterCardProps = {
   center: CourtCenter;
   className?: string;
@@ -24,9 +26,13 @@ function getCoverImage(center: CourtCenter): string | null {
   return center.logo?.url ?? center.images[0]?.url ?? null;
 }
 
-function getSportNames(center: CourtCenter): string[] {
-  const sports = center.courts?.map((court) => court.sport.name) ?? [];
-  return [...new Set(sports)];
+function getSportNames(
+  center: CourtCenter,
+  sportsById: Map<number, string>,
+): string[] {
+  const sports =
+    center.courts?.map((court) => courtSportName(court, sportsById)) ?? [];
+  return [...new Set(sports.filter(Boolean))];
 }
 
 function getHref(center: CourtCenter, variant: "public" | "owner"): string {
@@ -42,8 +48,13 @@ export function CourtCenterCard({
   className,
   variant = "public",
 }: CourtCenterCardProps) {
+  const { data: sports = [] } = useGetSportsQuery();
+  const sportsById = useMemo(
+    () => new Map(sports.map((sport) => [sport.id, sport.name])),
+    [sports],
+  );
   const coverImage = getCoverImage(center);
-  const sportNames = getSportNames(center);
+  const sportNames = getSportNames(center, sportsById);
   const courtCount = center.courts?.length ?? 0;
   const href = getHref(center, variant);
 

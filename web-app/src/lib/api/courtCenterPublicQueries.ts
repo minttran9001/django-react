@@ -1,25 +1,38 @@
 "use client";
 
-import type { CourtCenter } from "@/features/court-centers/types";
+import type { CourtCenter, SlotsByCourt } from "@/features/court-centers/types";
 import {
   type CourtCenterQueryArgs,
+  type CourtCenterTimeslotsQueryArgs,
   useGetCourtCenterQuery,
+  useGetCourtCenterTimeslotsQuery,
   useGetCourtCentersQuery,
 } from "@/lib/api/courtCenterApi";
 import { useAppSelector } from "@/lib/hooks";
 import { marketplaceCourtCenterSelectors } from "@/lib/slices/marketplaceData/slice";
+import { useMemo } from "react";
+
+const EMPTY_SLOTS_BY_COURT: SlotsByCourt = {};
 
 export function usePublicCourtCenterQuery(
   args: CourtCenterQueryArgs,
   options?: { skip?: boolean; refetchOnMountOrArgChange?: boolean | number },
 ) {
   const query = useGetCourtCenterQuery(args, options);
+  // Select by the requested id, not by `query.data`, so a center already
+  // ingested by the search list renders before this request resolves.
   const center = useAppSelector((state) =>
-    query.data
-      ? marketplaceCourtCenterSelectors.selectById(state, query.data.id)
-      : undefined,
+    marketplaceCourtCenterSelectors.selectById(state, Number(args.id)),
   );
-  return { ...query, data: center };
+  return { ...query, data: center, isLoading: query.isLoading && !center };
+}
+
+export function usePublicCourtTimeslotsQuery(
+  args: CourtCenterTimeslotsQueryArgs,
+  options?: { skip?: boolean; refetchOnMountOrArgChange?: boolean | number },
+) {
+  const { data, ...rest } = useGetCourtCenterTimeslotsQuery(args, options);
+  return { ...rest, data: data ?? EMPTY_SLOTS_BY_COURT };
 }
 
 export function usePublicCourtCentersQuery(
@@ -34,12 +47,19 @@ export function usePublicCourtCentersQuery(
   },
   options?: { skip?: boolean },
 ) {
-  const query = useGetCourtCentersQuery(args, options);
-  const centers = useAppSelector((state) => {
-    const ids = query.data ?? [];
-    return ids
-      .map((id) => marketplaceCourtCenterSelectors.selectById(state, id))
-      .filter((center): center is CourtCenter => center != null);
+  const { data, ...rest } = useGetCourtCentersQuery(args, {
+    skip: options?.skip,
   });
-  return { ...query, data: centers };
+
+  const entities = useAppSelector(
+    marketplaceCourtCenterSelectors.selectEntities,
+  );
+  const centers = useMemo(
+    () =>
+      (data ?? [])
+        .map((id) => entities[id])
+        .filter((center): center is CourtCenter => center != null),
+    [data, entities],
+  );
+  return { ...rest, data: centers };
 }

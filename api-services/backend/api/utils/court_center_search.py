@@ -10,6 +10,25 @@ from rest_framework.exceptions import ValidationError
 from api.models import CourtCenter
 from api.utils.app_timezone import DEFAULT_TIMEZONE, now_time_in_tz, today_in_tz
 
+KM_PER_DEGREE_LAT = 111.0
+
+
+def location_bounding_box(
+    lat: float,
+    lng: float,
+    radius_km: float,
+) -> tuple[float, float, float, float]:
+    """Axis-aligned box slightly larger than the search circle (btree-indexable)."""
+    delta_lat = radius_km / KM_PER_DEGREE_LAT
+    km_per_degree_lng = KM_PER_DEGREE_LAT * max(abs(math.cos(math.radians(lat))), 1e-6)
+    delta_lng = radius_km / km_per_degree_lng
+    return (
+        lat - delta_lat,
+        lat + delta_lat,
+        lng - delta_lng,
+        lng + delta_lng,
+    )
+
 
 def apply_location_filter(
     qs: QuerySet[CourtCenter],
@@ -17,11 +36,16 @@ def apply_location_filter(
     lng: float,
     radius_km: float,
 ) -> QuerySet[CourtCenter]:
+    min_lat, max_lat, min_lng, max_lng = location_bounding_box(lat, lng, radius_km)
     qs = qs.filter(
         latitude__isnull=False,
         longitude__isnull=False,
+        latitude__gte=min_lat,
+        latitude__lte=max_lat,
+        longitude__gte=min_lng,
+        longitude__lte=max_lng,
     )
-    # Haversine distance in km
+    # Haversine distance in km — exact circle after the indexed box
     lat_rad = Radians(F("latitude"))
     lng_rad = Radians(F("longitude"))
     center_lat_rad = math.radians(lat)
@@ -93,7 +117,10 @@ def parse_search_params(query_params) -> dict:
         try:
             params["lat"] = float(lat)
             params["lng"] = float(lng)
-            params["radius_km"] = float(query_params.get("radius_km", 20))
+            raw_radius = query_params.get("radius_km")
+            if raw_radius is None:
+                raw_radius = query_params.get("radiusKm", 20)
+            params["radius_km"] = float(raw_radius)
         except ValueError as exc:
             raise ValidationError("Invalid location or radius values.") from exc
         if params["radius_km"] <= 0:

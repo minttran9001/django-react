@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { CourtCenter, CourtSchedule } from "@/features/court-centers/types";
+import { courtSportName } from "@/features/court-centers/types";
 import { DAY_OPTIONS, normalizeTime } from "@/features/court-centers/utils/wizard";
 
 type ReviewStepProps = {
@@ -32,8 +33,8 @@ const groupAvailabilityByDay = (schedules: CourtSchedule[]) => schedules.reduce<
 export function ReviewStep({ center }: ReviewStepProps) {
   const coverImage = center.logo?.url ?? center.images[0]?.url ?? null;
   const sportNames = [
-    ...new Set(center.courts?.map((court) => court.sport.name) ?? []),
-  ];
+    ...new Set(center.courts?.map((court) => courtSportName(court)) ?? []),
+  ].filter(Boolean);
 
 
   return (
@@ -100,7 +101,7 @@ export function ReviewStep({ center }: ReviewStepProps) {
               <Trophy className="size-4" />
               {court.title}
             </CardTitle>
-            <CardDescription>{court.sport.name}</CardDescription>
+            <CardDescription>{courtSportName(court)}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {court.description ? (

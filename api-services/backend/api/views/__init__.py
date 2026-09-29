@@ -2,6 +2,7 @@ from .auth import CookieTokenRefreshView, EmailTokenObtainPairView, LogoutView
 from .court_center import (
     CourtCenterCustomerDetailView,
     CourtCenterCustomerListView,
+    CourtCenterCustomerTimeslotsView,
     CourtCenterDraftCreateView,
     MyCourtCenterDetailsView,
     MyCourtCenterListView,
@@ -29,6 +30,7 @@ __all__ = [
     "CookieTokenRefreshView",
     "CourtCenterCustomerDetailView",
     "CourtCenterCustomerListView",
+    "CourtCenterCustomerTimeslotsView",
     "CourtCenterDraftCreateView",
     "MyCourtCenterDetailsView",
     "MyCourtCenterArchiveView",

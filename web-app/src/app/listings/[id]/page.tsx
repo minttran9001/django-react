@@ -1,24 +1,32 @@
+import { CourtCenterDetailsResolved } from "@/components/court-centers/CourtCenterDetailsResolved";
 import { CourtCenterDetailsView } from "@/components/court-centers/CourtCenterDetailsView";
 import { prefetchPublicCourtCenter } from "@/lib/courtCenter";
 import { formatApiDate } from "@/lib/dates";
-import {
-  collectQueryHydrations,
-  createQueryHydrationEntry,
-} from "@/lib/rtk-query/hydration";
-import { RtkQueryHydrator } from "@/providers/RtkQueryHydrator";
-import { cache } from "react";
+import { Suspense, cache } from "react";
 
+const cachedFetchCourtCenter = cache(async (id: string, date: string) => {
+  return prefetchPublicCourtCenter({ id, date });
+});
 
-const cachedFetchCourtCenter = cache(
-  async (id: string, date: string) => {
-    return prefetchPublicCourtCenter({ id, date });
-  }
-);
-
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const date = formatApiDate(new Date());
   const courtCenter = await cachedFetchCourtCenter(id, date);
+
+  if (!courtCenter) {
+    return {
+      title: "Court Center Not Found",
+      description: "Court Center Not Found",
+      openGraph: {
+        title: "Court Center Not Found",
+        description: "Court Center Not Found",
+      },
+    };
+  }
 
   return {
     title: courtCenter.title,
@@ -26,12 +34,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     openGraph: {
       title: courtCenter.title,
       description: courtCenter.description,
-      images: [courtCenter.image],
+      images: [courtCenter.images[0].url],
     },
     twitter: {
       title: courtCenter.title,
       description: courtCenter.description,
-      images: [courtCenter.image],
+      images: [courtCenter.images[0].url],
     },
     alternates: {
       canonical: `/listings/${id}`,
@@ -41,11 +49,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       follow: true,
     },
     icons: {
-      icon: courtCenter.image,
+      icon: courtCenter.images[0].url,
     },
   };
 }
-
 
 export default async function CourtCenterDetailsPage({
   params,
@@ -54,23 +61,15 @@ export default async function CourtCenterDetailsPage({
 }) {
   const { id } = await params;
   const date = formatApiDate(new Date());
-  const courtCenter = await cachedFetchCourtCenter(id, date);
-  const queryArg = { id, date };
 
+  // Deliberately not awaited: the server streams the resolved content into the
+  // HTML for crawlers, while the router can commit the navigation immediately
+  // and show the fallback, which renders from the search summary in the store.
+  const courtCenter = await cachedFetchCourtCenter(id, date);
 
   return (
-
-    <RtkQueryHydrator
-      entries={collectQueryHydrations(
-        createQueryHydrationEntry(
-          "courtCenterApi",
-          "getCourtCenter",
-          queryArg,
-          courtCenter,
-        ),
-      )}
-    >
-      <CourtCenterDetailsView id={id} />
-    </RtkQueryHydrator>
+    <Suspense fallback={<CourtCenterDetailsView id={id} />}>
+      <CourtCenterDetailsResolved id={id} courtCenter={courtCenter} />
+    </Suspense>
   );
 }

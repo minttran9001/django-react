@@ -28,10 +28,11 @@ import type {
   CourtSummary,
   ImageResource,
 } from "@/features/court-centers/types";
+import { courtSportName } from "@/features/court-centers/types";
 import { usePublicCourtCenterQuery } from "@/lib/api/courtCenterPublicQueries";
-import { formatApiDate } from "@/lib/dates";
 import { hasMapCoordinates } from "@/lib/mapbox/static-map";
 import { useGetMeQuery } from "@/lib/api/authApi";
+import { useGetSportsQuery } from "@/lib/api/courtCenterApi";
 import BookingPanel from "../booking/BookingPanel";
 import useDistanceFromCourtCenter from "@/hooks/useDistanceFromCourtCenter";
 import { useSetChatWidgetOpen, useSetNewMessageOpen } from "@/lib/slices/ui/actions";
@@ -54,9 +55,13 @@ function getGalleryImages(center: CourtCenter): ImageResource[] {
   return center.logo ? [center.logo] : [];
 }
 
-function getSportNames(center: CourtCenter): string[] {
-  const sports = center.courts?.map((court) => court.sport.name) ?? [];
-  return [...new Set(sports)];
+function getSportNames(
+  center: CourtCenter,
+  sportsById: Map<number, string>,
+): string[] {
+  const sports =
+    center.courts?.map((court) => courtSportName(court, sportsById)) ?? [];
+  return [...new Set(sports.filter(Boolean))];
 }
 
 function formatDate(value: string) {
@@ -79,8 +84,14 @@ function getMapsUrl(center: CourtCenter) {
   return null;
 }
 
-function CourtCard({ court }: { court: CourtSummary }) {
-  const coverImage = court.images[0]?.url ?? null;
+function CourtCard({
+  court,
+  sportsById,
+}: {
+  court: CourtSummary;
+  sportsById: Map<number, string>;
+}) {
+  const coverImage = court.images?.[0]?.url ?? null;
 
   return (
     <Card className="overflow-hidden py-0">
@@ -104,7 +115,7 @@ function CourtCard({ court }: { court: CourtSummary }) {
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="text-lg">{court.title}</CardTitle>
           <span className="shrink-0 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
-            {court.sport.name}
+            {courtSportName(court, sportsById)}
           </span>
         </div>
         {court.description ? (
@@ -115,9 +126,12 @@ function CourtCard({ court }: { court: CourtSummary }) {
       </CardHeader>
 
       <CardContent className="pb-4 text-xs text-muted-foreground">
-        {court.images.length > 0
-          ? `${court.images.length} ${court.images.length === 1 ? "photo" : "photos"}`
-          : "No photos uploaded"}
+        {(() => {
+          const photoCount = court.images?.length ?? 0;
+          return photoCount > 0
+            ? `${photoCount} ${photoCount === 1 ? "photo" : "photos"}`
+            : "No photos uploaded";
+        })()}
       </CardContent>
     </Card>
   );
@@ -126,18 +140,23 @@ function CourtCard({ court }: { court: CourtSummary }) {
 export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
   const { data: courtCenter, isLoading, isError } = usePublicCourtCenterQuery({
     id,
-    date: formatApiDate(new Date()),
   });
+  console.log({ courtCenter })
   const { data: user } = useGetMeQuery();
+  const { data: sports = [] } = useGetSportsQuery();
   const { distanceString } = useDistanceFromCourtCenter(courtCenter);
   const isOwnListing = user?.id === courtCenter?.owner.id;
+  const sportsById = useMemo(
+    () => new Map(sports.map((sport) => [sport.id, sport.name])),
+    [sports],
+  );
   const galleryImages = useMemo(
     () => (courtCenter ? getGalleryImages(courtCenter) : []),
     [courtCenter],
   );
   const sportNames = useMemo(
-    () => (courtCenter ? getSportNames(courtCenter) : []),
-    [courtCenter],
+    () => (courtCenter ? getSportNames(courtCenter, sportsById) : []),
+    [courtCenter, sportsById],
   );
   const mapsUrl = courtCenter ? getMapsUrl(courtCenter) : null;
   const courtCount = courtCenter?.courts?.length ?? 0;
@@ -313,7 +332,11 @@ export function CourtCenterDetailsView({ id }: CourtCenterDetailsViewProps) {
             {courtCount > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {courtCenter.courts?.map((court) => (
-                  <CourtCard key={court.id} court={court} />
+                  <CourtCard
+                    key={court.id}
+                    court={court}
+                    sportsById={sportsById}
+                  />
                 ))}
               </div>
             ) : (

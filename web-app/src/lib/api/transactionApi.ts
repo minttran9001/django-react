@@ -29,9 +29,9 @@ export const transactionApi = baseApi.injectEndpoints({
         async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
           try {
             await queryFulfilled;
-            dispatch(courtCenterApi.util.invalidateTags(["CourtCenters"]));
+            dispatch(courtCenterApi.util.invalidateTags(["CourtTimeslots"]));
           } catch {
-            // Leave court center cache unchanged when initiate fails.
+            // Leave slot cache unchanged when initiate fails.
           }
         },
         invalidatesTags: [{ type: "Transaction", id: "LIST" }],

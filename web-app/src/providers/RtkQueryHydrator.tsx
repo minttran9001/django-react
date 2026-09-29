@@ -12,7 +12,7 @@ import type { AppDispatch } from "@/lib/store";
 
 type RtkQueryHydratorProps = {
   entries: QueryHydrationEntry[];
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
 export function RtkQueryHydrator({ entries, children }: RtkQueryHydratorProps) {
@@ -26,5 +26,5 @@ export function RtkQueryHydrator({ entries, children }: RtkQueryHydratorProps) {
     }
   }, [entries, dispatch]);
 
-  return children;
+  return children ?? null;
 }

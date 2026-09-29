@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.db.models import Q
 from .court import Court
 
 
@@ -24,8 +24,10 @@ class CourtSlot(models.Model):
     class Meta:
         unique_together = [("court", "date", "start_time")]
         indexes = [
+            # index for all slots by court and date (Listing Details Page - Availability)
             models.Index(fields=["court", "date", "is_available"]),
-            models.Index(fields=["date", "is_available"]),
+            # index for available slots by a date (Search Page - Filter by Date)
+            models.Index(fields=["date","start_time"],include=['court'],condition=Q(is_available=True),name="available_slots_by_date"),
         ]
 
     def __str__(self):

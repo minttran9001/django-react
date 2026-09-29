@@ -32,17 +32,44 @@ export interface AvailableSlot {
   end: string;
 }
 
+export interface CourtTimeslots {
+  court: number;
+  slots: AvailableSlot[];
+}
+
+export interface CourtCenterTimeslots {
+  dateFrom: string;
+  dateTo: string;
+  courts: CourtTimeslots[];
+}
+
+/** Bookable slots keyed by court id, as consumed by the booking forms. */
+export type SlotsByCourt = Record<number, AvailableSlot[]>;
+
 export interface CourtSummary {
   id: number;
-  sport: Sport;
+  sport: Sport | number;
   title: string;
-  description: string;
-  images: ImageResource[];
+  description?: string;
+  images?: ImageResource[];
   schedules?: CourtSchedule[];
-  availableSlots?: AvailableSlot[];
-  pricePerHour: Money;
-  createdAt: string;
-  updatedAt: string;
+  pricePerHour?: Money;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export function courtSportId(court: Pick<CourtSummary, "sport">): number {
+  return typeof court.sport === "number" ? court.sport : court.sport.id;
+}
+
+export function courtSportName(
+  court: Pick<CourtSummary, "sport">,
+  sportsById?: Map<number, string>,
+): string {
+  if (typeof court.sport !== "number") {
+    return court.sport.name;
+  }
+  return sportsById?.get(court.sport) ?? "";
 }
 
 export type CourtCenterStatus = "draft" | "published";
@@ -54,7 +81,7 @@ export interface OwnerId {
 /** Owner fields exposed on public listing search — no private contact info. */
 export interface PublicOwner extends OwnerId {
   name: string;
-  avatar: ImageResource | null;
+  avatar?: ImageResource | null;
 }
 
 export interface User extends OwnerId {

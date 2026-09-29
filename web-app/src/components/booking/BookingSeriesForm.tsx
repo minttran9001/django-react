@@ -24,9 +24,17 @@ import {
   startOfMonth,
 } from "@/features/booking/utils/expandSeriesToSlots";
 import { formatTimeRange } from "@/features/court-centers/utils/scheduleCalendar";
-import type { AvailableSlot, CourtSummary } from "@/features/court-centers/types";
+import type {
+  AvailableSlot,
+  CourtSummary,
+  SlotsByCourt,
+} from "@/features/court-centers/types";
+import { courtSportId, courtSportName } from "@/features/court-centers/types";
 import { useGetSportsQuery } from "@/lib/api/courtCenterApi";
-import { usePublicCourtCenterQuery } from "@/lib/api/courtCenterPublicQueries";
+import {
+  usePublicCourtCenterQuery,
+  usePublicCourtTimeslotsQuery,
+} from "@/lib/api/courtCenterPublicQueries";
 import { formatApiDate, normalizeToDay } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import OrderBreakdownLineItems from "./OrderBreakdownLineItems";
@@ -76,11 +84,12 @@ type BookingSeriesFormProps = {
   className?: string;
   courtCenterId: string;
   onSubmit: (data: BookingSeriesFormValues) => void;
-} & Omit<BookingSeriesFormContentProps, "form" | "courts">;
+} & Omit<BookingSeriesFormContentProps, "form" | "courts" | "slotsByCourt">;
 
 type BookingSeriesFormContentProps = {
   form: UseFormReturn<BookingSeriesFormValues>;
   courts: CourtSummary[];
+  slotsByCourt: SlotsByCourt;
   isLoadingCourts?: boolean;
   isLoading?: boolean;
   error?: ApiErrorLike;
@@ -120,6 +129,7 @@ function FieldSeriesTimeSlots({
 const BookingSeriesFormContent = ({
   form,
   courts,
+  slotsByCourt,
   isLoadingCourts,
   isLoading,
   error,
@@ -152,10 +162,10 @@ const BookingSeriesFormContent = ({
   const courtItems = useMemo(
     () =>
       courts
-        .filter((court) => court.sport.id === Number(selectedSportId))
+        .filter((court) => courtSportId(court) === Number(selectedSportId))
         .map((court) => ({
           value: String(court.id),
-          label: `Court ${court.title} (${court.sport.name})`,
+          label: `Court ${court.title} (${courtSportName(court)})`,
         })),
     [courts, selectedSportId],
   );
@@ -205,7 +215,9 @@ const BookingSeriesFormContent = ({
   );
 
 
-  const availableSlots = selectedCourt?.availableSlots ?? [];
+  const availableSlots = selectedCourt
+    ? slotsByCourt[selectedCourt.id] ?? []
+    : [];
 
 
   const hasPattern =
@@ -402,7 +414,10 @@ function BookingSeriesFormWithCourtData({
   form,
   courtCenterId,
   ...props
-}: Omit<BookingSeriesFormContentProps, "courts" | "isLoadingCourts"> & {
+}: Omit<
+  BookingSeriesFormContentProps,
+  "courts" | "slotsByCourt" | "isLoadingCourts"
+> & {
   courtCenterId: string;
 }) {
   const startDate = form.watch("startDate");
@@ -415,6 +430,15 @@ function BookingSeriesFormWithCourtData({
     isLoading: isCourtCenterLoading,
     isFetching: isCourtCenterFetching,
   } = usePublicCourtCenterQuery(
+    { id: courtCenterId },
+    { skip: !courtCenterId },
+  );
+
+  const {
+    data: slotsByCourt,
+    isLoading: isSlotsLoading,
+    isFetching: isSlotsFetching,
+  } = usePublicCourtTimeslotsQuery(
     {
       id: courtCenterId,
       dateFrom,
@@ -429,7 +453,13 @@ function BookingSeriesFormWithCourtData({
     <BookingSeriesFormContent
       form={form}
       courts={courts}
-      isLoadingCourts={isCourtCenterLoading || isCourtCenterFetching}
+      slotsByCourt={slotsByCourt}
+      isLoadingCourts={
+        isCourtCenterLoading ||
+        isCourtCenterFetching ||
+        isSlotsLoading ||
+        isSlotsFetching
+      }
       {...props}
     />
   );

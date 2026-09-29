@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import type { FieldValues } from "react-hook-form";
 
 import MultiSelect from "@/components/ui/multi-select";
@@ -36,6 +37,7 @@ export function FieldMultiSelectComponent({
   ...selectProps
 }: FieldMultiSelectComponentProps) {
   const errorId = getFieldErrorId(id, error);
+  const noop = useCallback(() => {}, []);
 
   return (
     <FieldShell
@@ -49,7 +51,7 @@ export function FieldMultiSelectComponent({
         <MultiSelect
           items={selectProps.items}
           value={selectProps.value}
-          onChange={selectProps.onChange ?? (() => {})}
+          onChange={selectProps.onChange ?? noop}
           placeholder={selectProps.placeholder}
         />
       </div>
@@ -72,6 +74,8 @@ type FieldMultiSelectProps<TFieldValues extends FieldValues> =
       onValueChange?: (value: string[]) => void;
     };
 
+const EMPTY_VALUE: string[] = [];
+
 export function FieldMultiSelect<TFieldValues extends FieldValues>({
   name,
   label,
@@ -91,7 +95,7 @@ export function FieldMultiSelect<TFieldValues extends FieldValues>({
       id={id}
       label={label}
       description={description}
-      value={field.value ?? []}
+      value={field.value ?? EMPTY_VALUE}
       onChange={(value) => {
         field.onChange(value);
         onValueChange?.(value);

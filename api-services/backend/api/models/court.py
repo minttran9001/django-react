@@ -17,7 +17,10 @@ class Court(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["center_id","sport_id","-created_at"]), #default index for center, sport and created_at
+            # index for finding courts by center and sport (Search Page - Filter by Center and Sport)
+            models.Index(fields=["center","sport"]),
+            # index for finding center by sport (Search Page - Filter by Sport)
+            models.Index(fields=["sport","center"])
         ]
     
     def __str__(self):

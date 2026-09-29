@@ -11,26 +11,24 @@ import FiltersContainer from "./FiltersContainer";
 
 export function CourtCenterListView() {
   const searchParams = useSearchParams();
-  const lat = searchParams.get("lat") ? Number(searchParams.get("lat")) : undefined;
-  const lng = searchParams.get("lng") ? Number(searchParams.get("lng")) : undefined;
-  const sportIds = searchParams.get("sportIds")
-    ? searchParams.get("sportIds")?.split(",")
-    : undefined;
-  const date = searchParams.get("date")
-    ? formatApiDate(new Date(searchParams.get("date") ?? ""))
-    : undefined;
-  const radiusKm = searchParams.get("radiusKm")
-    ? Number(searchParams.get("radiusKm"))
-    : undefined;
+  const latParam = searchParams.get("lat");
+  const lngParam = searchParams.get("lng");
+  const sportIdsParam = searchParams.get("sportIds");
+  const dateParam = searchParams.get("date");
+  const radiusKmParam = searchParams.get("radiusKm");
 
   const filters = useMemo(() => {
+    const lat = latParam ? Number(latParam) : undefined;
+    const lng = lngParam ? Number(lngParam) : undefined;
+    const radiusKm = radiusKmParam ? Number(radiusKmParam) : undefined;
+
     return {
       ...(lat && lng && { lat, lng }),
-      ...(sportIds && { sportIds }),
-      ...(date && { date }),
+      ...(sportIdsParam && { sportIds: sportIdsParam.split(",") }),
+      ...(dateParam && { date: formatApiDate(new Date(dateParam)) }),
       ...(radiusKm && { radiusKm }),
     };
-  }, [date, lat, lng, sportIds, radiusKm]);
+  }, [dateParam, latParam, lngParam, sportIdsParam, radiusKmParam]);
 
   const { data: courtCenters = [], isLoading, isError, isFetching } =
     usePublicCourtCentersQuery(filters);

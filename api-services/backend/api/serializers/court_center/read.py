@@ -1,19 +1,20 @@
 from rest_framework import serializers
 
-from api.models import Court
+from api.models import Court, CourtCenter
 
-from ..line_items import SlotInputSerializer
+from ..image import PrefetchedCenterImagesMixin, PrefetchedGalleryMixin
 from ..money import MoneySerializer
 from ..sport import SportSerializer
-from ..image import ImageResourceSerializer
 from ..court_schedule import CourtScheduleSerializer
-
+from ..user import PublicOwnerListSerializer
 from .base import CourtCenterSerializer
 
 
-class CourtSummarySerializer(serializers.ModelSerializer):
+class CourtSummarySerializer(
+    PrefetchedGalleryMixin,
+    serializers.ModelSerializer,
+):
     sport = SportSerializer(read_only=True)
-    images = ImageResourceSerializer(source="gallery", many=True, read_only=True)
     schedules = CourtScheduleSerializer(many=True, read_only=True)
     price_per_hour = serializers.SerializerMethodField()
 
@@ -39,10 +40,11 @@ class CourtSummarySerializer(serializers.ModelSerializer):
         }).data
 
 
-class CourtPublicSummarySerializer(serializers.ModelSerializer):
+class CourtPublicSummarySerializer(
+    PrefetchedGalleryMixin,
+    serializers.ModelSerializer,
+):
     sport = SportSerializer(read_only=True)
-    images = ImageResourceSerializer(source="gallery", many=True, read_only=True)
-    available_slots = serializers.SerializerMethodField()
     price_per_hour = serializers.SerializerMethodField()
 
     class Meta:
@@ -53,17 +55,11 @@ class CourtPublicSummarySerializer(serializers.ModelSerializer):
             "title",
             "description",
             "images",
-            "available_slots",
             "price_per_hour",
             "created_at",
             "updated_at",
         ]
         read_only_fields = fields
-
-    def get_available_slots(self, court):
-        slots_by_court = self.context.get("available_slots_by_court", {})
-        slots = slots_by_court.get(court.id, [])
-        return SlotInputSerializer(slots, many=True).data
 
     def get_price_per_hour(self, court):
         return MoneySerializer({
@@ -84,3 +80,42 @@ class CourtCenterPublicDetailSerializer(CourtCenterSerializer):
 
     class Meta(CourtCenterSerializer.Meta):
         fields = [*CourtCenterSerializer.Meta.fields, "courts"]
+
+
+class CourtPublicListSerializer(serializers.ModelSerializer):
+    # Swap to SportSerializer() if list should embed {id, name, ...}.
+    sport = serializers.IntegerField(source="sport_id", read_only=True)
+
+    class Meta:
+        model = Court
+        fields = ["id", "sport", "title"]
+        read_only_fields = fields
+
+
+class CourtCenterPublicListSerializer(
+    PrefetchedCenterImagesMixin,
+    serializers.ModelSerializer,
+):
+    owner = PublicOwnerListSerializer(read_only=True)
+    courts = CourtPublicListSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CourtCenter
+        fields = [
+            "id",
+            "owner",
+            "title",
+            "description",
+            "latitude",
+            "longitude",
+            "logo",
+            "images",
+            "address",
+            "courts",
+            "status",
+            "created_at",
+            "updated_at",
+            "review_count",
+            "review_average_rating",
+        ]
+        read_only_fields = fields

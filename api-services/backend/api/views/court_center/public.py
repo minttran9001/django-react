@@ -13,10 +13,19 @@ from api.utils.court_center_search import (
     parse_slot_range,
 )
 
-from ...serializers import CourtCenterPublicDetailSerializer, SportSerializer
+from ...serializers import (
+    CourtCenterPublicDetailSerializer,
+    CourtCenterPublicListSerializer,
+    CourtCenterTimeslotsSerializer,
+    SportSerializer,
+)
 from api.utils.typed_resource import RESOURCE_COURT_CENTER, typed_resource
 
-from ._base import build_slot_context, get_court_center_queryset
+from ._base import (
+    LIST_QUERY_OPTIONS,
+    PUBLIC_DETAIL_QUERY_OPTIONS,
+    get_court_center_queryset,
+)
 
 
 class SportListView(generics.ListAPIView):
@@ -26,11 +35,12 @@ class SportListView(generics.ListAPIView):
 
 
 class CourtCenterCustomerListView(generics.ListAPIView):
-    serializer_class = CourtCenterPublicDetailSerializer
+    serializer_class = CourtCenterPublicListSerializer
     permission_classes = [AllowAny]
+    query_options = LIST_QUERY_OPTIONS
 
     def get_queryset(self):
-        qs = get_court_center_queryset().filter(
+        qs = get_court_center_queryset(self.query_options).filter(
             status=CourtCenter.Status.PUBLISHED
         )
         search_params = parse_search_params(self.request.query_params)
@@ -47,23 +57,7 @@ class CourtCenterCustomerListView(generics.ListAPIView):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         centers = list(page if page is not None else queryset)
-        courts = [court for center in centers for court in center.courts.all()]
-        tz = timezone_from_query_params(request.query_params)
-        date_from, date_to = parse_slot_range(request.query_params, tz)
-        context = {
-            **self.get_serializer_context(),
-            "owner_visibility": "public",
-            "slot_date": date_from,
-            "date_from": date_from,
-            "date_to": date_to,
-            "available_slots_by_court": build_available_slots_by_court(
-                courts,
-                tz=tz,
-                date_from=date_from,
-                date_to=date_to,
-            ),
-        }
-        serializer = self.serializer_class(centers, many=True, context=context)
+        serializer = self.get_serializer(centers, many=True)
         payload = typed_resource(RESOURCE_COURT_CENTER, serializer.data)
         if page is not None:
             return self.get_paginated_response(payload)
@@ -75,15 +69,46 @@ class CourtCenterCustomerDetailView(APIView):
 
     def get(self, request, pk, *args, **kwargs):
         center = get_object_or_404(
-            get_court_center_queryset(),
+            get_court_center_queryset(PUBLIC_DETAIL_QUERY_OPTIONS),
             pk=pk,
             status=CourtCenter.Status.PUBLISHED,
         )
         serializer = CourtCenterPublicDetailSerializer(
             center,
-            context=build_slot_context(request, center),
+            context={"owner_visibility": "public"},
         )
         return Response(
             typed_resource(RESOURCE_COURT_CENTER, serializer.data),
             status=status.HTTP_200_OK,
         )
+
+
+class CourtCenterCustomerTimeslotsView(APIView):
+    """Bookable slots per court, read straight off the CourtSlot index."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk, *args, **kwargs):
+        center = get_object_or_404(
+            CourtCenter,
+            pk=pk,
+            status=CourtCenter.Status.PUBLISHED,
+        )
+        tz = timezone_from_query_params(request.query_params)
+        date_from, date_to = parse_slot_range(request.query_params, tz)
+        courts = list(center.courts.only("id"))
+        slots_by_court = build_available_slots_by_court(
+            courts,
+            tz=tz,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        serializer = CourtCenterTimeslotsSerializer({
+            "date_from": date_from,
+            "date_to": date_to,
+            "courts": [
+                {"court": court.id, "slots": slots_by_court.get(court.id, [])}
+                for court in courts
+            ],
+        })
+        return Response(serializer.data, status=status.HTTP_200_OK)

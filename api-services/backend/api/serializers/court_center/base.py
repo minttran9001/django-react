@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from api.models import CourtCenter
 
-from ..image import ImageResourceSerializer
+from ..image import ImageResourceSerializer, PrefetchedCenterImagesMixin
 from ..user import PublicOwnerSerializer, UserIdSerializer, UserReadSerializer
 
 
@@ -22,10 +22,11 @@ class CourtCenterSummarySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class CourtCenterSerializer(serializers.ModelSerializer):
+class CourtCenterSerializer(
+    PrefetchedCenterImagesMixin,
+    serializers.ModelSerializer,
+):
     owner = serializers.SerializerMethodField()
-    logo = ImageResourceSerializer(read_only=True)
-    images = ImageResourceSerializer(source="gallery", many=True, read_only=True)
 
     class Meta:
         model = CourtCenter

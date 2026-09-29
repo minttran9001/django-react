@@ -6,6 +6,7 @@ import type {
   CourtCenter,
   ImageResource,
 } from "@/features/court-centers/types";
+import { courtSportId } from "@/features/court-centers/types";
 
 export const WIZARD_STEPS = [
   { id: 1, label: "Basic" },
@@ -58,7 +59,7 @@ export function centerToCourtsValues(center: CourtCenter): CourtsStepValues {
     courts:
       center.courts?.map((court) => ({
         id: court.id,
-        sportId: court.sport.id,
+        sportId: courtSportId(court),
         title: court.title,
         description: court.description ?? "",
         pricePerHour: {
@@ -103,7 +104,7 @@ export function centerToImageState(center: CourtCenter) {
   const courtImages: Record<number, ImageResource[]> = {};
 
   center.courts?.forEach((court, index) => {
-    courtImages[index] = court.images;
+    courtImages[index] = court.images ?? [];
   });
 
   return {

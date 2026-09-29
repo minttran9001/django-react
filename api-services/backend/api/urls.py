@@ -12,6 +12,7 @@ from .views import (
     CourtCenterDraftCreateView,
     CourtCenterCustomerDetailView,
     CourtCenterCustomerListView,
+    CourtCenterCustomerTimeslotsView,
     MyCourtCenterListView,
     ImageUploadView,
     MyCourtCenterDetailsView,
@@ -50,6 +51,7 @@ urlpatterns = [
     # court center
     path('court-centers', CourtCenterCustomerListView.as_view(), name='court_center_customer_list'),
     path('court-centers/<int:pk>', CourtCenterCustomerDetailView.as_view(), name='court_center_customer_detail'),
+    path('court-centers/<int:pk>/timeslots', CourtCenterCustomerTimeslotsView.as_view(), name='court_center_customer_timeslots'),
     path('court-centers/mine', MyCourtCenterListView.as_view(), name='court_center_owner_list'),
     path('court-centers/create-draft', CourtCenterDraftCreateView.as_view(), name='court_center_create_draft'),
     path('court-centers/mine/<int:pk>', MyCourtCenterDetailsView.as_view(), name='court_center_detail'),

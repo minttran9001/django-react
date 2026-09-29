@@ -31,8 +31,8 @@ class CourtCenter(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["status","-created_at"]), # default index for status and created_at
-            models.Index(fields=["status","latitude", "longitude"]), # geo prefilter for status and latitude and longitude
+            models.Index(fields=["status", "-created_at"]),
+            models.Index(fields=["status", "latitude"]),
         ]
 
     def __str__(self):

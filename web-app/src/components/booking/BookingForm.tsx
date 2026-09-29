@@ -16,9 +16,17 @@ import {
   bookingSchema,
 } from "@/features/booking/schemas/bookingSchema";
 import { type TimeSlot } from "@/features/booking/utils/slots";
-import type { AvailableSlot, CourtSummary } from "@/features/court-centers/types";
+import type {
+  AvailableSlot,
+  CourtSummary,
+  SlotsByCourt,
+} from "@/features/court-centers/types";
+import { courtSportId, courtSportName } from "@/features/court-centers/types";
 import { useGetSportsQuery } from "@/lib/api/courtCenterApi";
-import { usePublicCourtCenterQuery } from "@/lib/api/courtCenterPublicQueries";
+import {
+  usePublicCourtCenterQuery,
+  usePublicCourtTimeslotsQuery,
+} from "@/lib/api/courtCenterPublicQueries";
 import { formatApiDate, getDayKey, normalizeToDay, type DayLabel } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import OrderBreakdownLineItems from "./OrderBreakdownLineItems";
@@ -79,11 +87,12 @@ type BookingFormProps = {
   className?: string;
   courtCenterId: string;
   onSubmit: (data: BookingFormValues) => void;
-} & Omit<BookingFormContentProps, "form" | "courts">;
+} & Omit<BookingFormContentProps, "form" | "courts" | "slotsByCourt">;
 
 type BookingFormContentProps = {
   form: UseFormReturn<BookingFormValues>;
   courts: CourtSummary[];
+  slotsByCourt: SlotsByCourt;
   isLoadingCourts?: boolean;
   isLoading?: boolean;
   error?: ApiErrorLike;
@@ -92,6 +101,7 @@ type BookingFormContentProps = {
 const BookingFormContent = ({
   form,
   courts,
+  slotsByCourt,
   isLoadingCourts,
   isLoading,
   error,
@@ -118,9 +128,9 @@ const BookingFormContent = ({
   const selectedSportId = form.watch("selectedSportId");
 
   const courtItems = useMemo(
-    () => courts.filter((court) => court.sport.id === Number(selectedSportId)).map((court) => ({
+    () => courts.filter((court) => courtSportId(court) === Number(selectedSportId)).map((court) => ({
       value: String(court.id),
-      label: `Court ${court.title} (${court.sport.name})`,
+      label: `Court ${court.title} (${courtSportName(court)})`,
     })),
     [courts, selectedSportId],
   );
@@ -149,9 +159,14 @@ const BookingFormContent = ({
     [courts, courtId],
   );
 
+  const courtSlots = useMemo(
+    () => (selectedCourt ? slotsByCourt[selectedCourt.id] ?? [] : []),
+    [selectedCourt, slotsByCourt],
+  );
+
   const availableSlots = useMemo(
-    () => (selectedCourt?.availableSlots ?? []).map(toTimeSlot),
-    [selectedCourt],
+    () => courtSlots.map(toTimeSlot),
+    [courtSlots],
   );
 
   useEffect(() => {
@@ -160,7 +175,7 @@ const BookingFormContent = ({
     }
 
     const allowedKeys = new Set(
-      (selectedCourt.availableSlots ?? []).map((slot) =>
+      courtSlots.map((slot) =>
         `${slot.date}-${slot.start.slice(0, 5)}-${slot.end.slice(0, 5)}`,
       ),
     );
@@ -173,7 +188,7 @@ const BookingFormContent = ({
     if (nextSlots.length !== selectedSlots.length) {
       form.setValue("slots", nextSlots);
     }
-  }, [form, selectedCourt, selectedSlots]);
+  }, [courtSlots, form, selectedCourt, selectedSlots]);
 
   const canBook = date && selectedCourt && selectedSlots.length > 0 && courts.length > 0;
   const dayLabels = useMemo(
@@ -289,7 +304,10 @@ function BookingFormWithCourtData({
   form,
   courtCenterId,
   ...props
-}: Omit<BookingFormContentProps, "courts" | "isLoadingCourts"> & {
+}: Omit<
+  BookingFormContentProps,
+  "courts" | "slotsByCourt" | "isLoadingCourts"
+> & {
   courtCenterId: string;
 }) {
   const date = form.watch("selectedDate");
@@ -299,6 +317,15 @@ function BookingFormWithCourtData({
     isLoading: isCourtCenterLoading,
     isFetching: isCourtCenterFetching,
   } = usePublicCourtCenterQuery(
+    { id: courtCenterId },
+    { skip: !courtCenterId },
+  );
+
+  const {
+    data: slotsByCourt,
+    isLoading: isSlotsLoading,
+    isFetching: isSlotsFetching,
+  } = usePublicCourtTimeslotsQuery(
     {
       id: courtCenterId,
       date: date ? formatApiDate(normalizeToDay(date)) : undefined,
@@ -314,7 +341,13 @@ function BookingFormWithCourtData({
     <BookingFormContent
       form={form}
       courts={courts}
-      isLoadingCourts={isCourtCenterLoading || isCourtCenterFetching}
+      slotsByCourt={slotsByCourt}
+      isLoadingCourts={
+        isCourtCenterLoading ||
+        isCourtCenterFetching ||
+        isSlotsLoading ||
+        isSlotsFetching
+      }
       {...props}
     />
   );

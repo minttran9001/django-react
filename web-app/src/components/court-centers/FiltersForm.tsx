@@ -14,6 +14,7 @@ import {
 } from "@/components/form";
 import { useGetSportsQuery } from "@/lib/api/courtCenterApi";
 import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 
 type FiltersFormProps = {
   onSubmit: (data: CourtCenterSearchFormValues) => void;
@@ -23,10 +24,14 @@ type FiltersFormProps = {
 const FiltersForm = ({ onSubmit, initialValues }: FiltersFormProps) => {
 
   const { data: sports = [] } = useGetSportsQuery();
-  const sportOptions = sports.map((sport) => ({
-    label: sport.name,
-    value: sport.id.toString(),
-  }));
+  const sportOptions = useMemo(
+    () =>
+      sports.map((sport) => ({
+        label: sport.name,
+        value: sport.id.toString(),
+      })),
+    [sports],
+  );
 
 
   const today = new Date();

@@ -2,11 +2,13 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 
 import type {
   CourtCenter,
+  CourtCenterTimeslots,
   CourtsUpdateRequest,
   DraftCreateRequest,
   DraftUpdateRequest,
   LocationUpdateRequest,
   SchedulesUpdateRequest,
+  SlotsByCourt,
   Sport,
   UploadImagesResponse,
 } from "@/features/court-centers/types";
@@ -15,30 +17,24 @@ import { getUserTimezone } from "@/lib/dates";
 
 export type CourtCenterQueryArgs = {
   id: string;
+};
+
+export type CourtCenterTimeslotsQueryArgs = {
+  id: string;
   date?: string;
-  timezone?: string;
   dateFrom?: string;
   dateTo?: string;
+  timezone?: string;
 };
 
 function withTimezone(timezone?: string) {
   return timezone ?? getUserTimezone();
 }
 
-function serializeCourtCenterArgs({
-  id,
-  date,
-  dateFrom,
-  dateTo,
-  timezone,
-}: CourtCenterQueryArgs) {
-  return `${id}|${date ?? ""}|${dateFrom ?? ""}|${dateTo ?? ""}|${withTimezone(timezone)}`;
-}
-
 export const courtCenterApi = createApi({
   reducerPath: "courtCenterApi",
   baseQuery: marketplaceBaseQuery,
-  tagTypes: ["Sports", "CourtCenters", "MyCourtCenters"],
+  tagTypes: ["Sports", "CourtCenters", "CourtTimeslots", "MyCourtCenters"],
   endpoints: (builder) => ({
     getCourtCenters: builder.query<
       number[],
@@ -76,8 +72,16 @@ export const courtCenterApi = createApi({
           : [{ type: "CourtCenters", id: "LIST" }],
     }),
     getCourtCenter: builder.query<{ id: number }, CourtCenterQueryArgs>({
+      query: ({ id }) => `/court-centers/${id}`,
+      transformResponse: (center: CourtCenter) => ({ id: center.id }),
+      providesTags: (_result, _error, { id }) => [{ type: "CourtCenters", id }],
+    }),
+    getCourtCenterTimeslots: builder.query<
+      SlotsByCourt,
+      CourtCenterTimeslotsQueryArgs
+    >({
       query: ({ id, date, dateFrom, dateTo, timezone }) => ({
-        url: `/court-centers/${id}`,
+        url: `/court-centers/${id}/timeslots`,
         params: {
           ...(date ? { date } : {}),
           ...(dateFrom ? { dateFrom } : {}),
@@ -85,10 +89,13 @@ export const courtCenterApi = createApi({
           timezone: withTimezone(timezone),
         },
       }),
-      transformResponse: (center: CourtCenter) => ({ id: center.id }),
-      serializeQueryArgs: ({ queryArgs }) =>
-        serializeCourtCenterArgs(queryArgs),
-      providesTags: (_result, _error, { id }) => [{ type: "CourtCenters", id }],
+      transformResponse: (timeslots: CourtCenterTimeslots) =>
+        Object.fromEntries(
+          timeslots.courts.map(({ court, slots }) => [court, slots]),
+        ),
+      providesTags: (_result, _error, { id }) => [
+        { type: "CourtTimeslots", id },
+      ],
     }),
     getMyCourtCenters: builder.query<CourtCenter[], void>({
       query: () => "/court-centers/mine",
@@ -188,7 +195,9 @@ export const courtCenterApi = createApi({
 
 export const {
   useGetCourtCentersQuery,
+  useLazyGetCourtCentersQuery,
   useGetCourtCenterQuery,
+  useGetCourtCenterTimeslotsQuery,
   useGetMyCourtCentersQuery,
   useGetMyCourtCenterQuery,
   useGetSportsQuery,

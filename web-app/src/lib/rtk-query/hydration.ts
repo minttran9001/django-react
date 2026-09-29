@@ -2,10 +2,7 @@ import type { AppDispatch } from "@/lib/store";
 import { ingestTyped } from "@/lib/marketplace/ingest";
 import type { CourtCenter } from "@/features/court-centers/types";
 
-import type {
-  RtkQueryApiId,
-  RtkQueryEndpointName,
-} from "./registry";
+import type { RtkQueryApiId, RtkQueryEndpointName } from "./registry";
 import { rtkQueryRegistry } from "./registry";
 
 /** Erased storage shape used by collect/apply (endpoint names are checked at create time). */
@@ -49,28 +46,34 @@ export function applyQueryHydrations(
   entries: QueryHydrationEntry[],
 ) {
   entries.forEach(({ apiId, endpointName, arg, data }) => {
+    // `upsertQueryEntries` is a plain action, unlike the `upsertQueryData`
+    // thunk, so the cache is populated before the caller's render continues.
     const api = rtkQueryRegistry[apiId] as unknown as {
       util: {
-        upsertQueryData: (
-          endpointName: string,
-          arg: unknown,
-          data: unknown,
+        upsertQueryEntries: (
+          entries: Array<{
+            endpointName: string;
+            arg: unknown;
+            value: unknown;
+          }>,
         ) => Parameters<AppDispatch>[0];
       };
     };
 
     const cacheData = toQueryCacheData(dispatch, apiId, endpointName, data);
-    dispatch(api.util.upsertQueryData(endpointName, arg, cacheData));
+    dispatch(
+      api.util.upsertQueryEntries([{ endpointName, arg, value: cacheData }]),
+    );
   });
 }
 
 function isCourtCenter(value: unknown): value is CourtCenter {
   return Boolean(
     value &&
-      typeof value === "object" &&
-      "id" in value &&
-      "title" in value &&
-      "owner" in value,
+    typeof value === "object" &&
+    "id" in value &&
+    "title" in value &&
+    "owner" in value,
   );
 }
 
