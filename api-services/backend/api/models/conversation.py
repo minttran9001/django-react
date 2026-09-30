@@ -16,7 +16,13 @@ class Conversation(models.Model):
     last_message_at = models.DateTimeField(null=True, blank=True)
     # Last message content
     last_message_content = models.TextField(null=True, blank=True)
-    # Last message sender
-    last_message_sender = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="last_message_sender", null=True, blank=True)
+    # Last message sender (SET_NULL: deleting a Member must not cascade-wipe the Conversation)
+    last_message_sender = models.ForeignKey(
+        Member,
+        on_delete=models.SET_NULL,
+        related_name="last_message_sender",
+        null=True,
+        blank=True,
+    )
     # Name of the conversation
     name = models.CharField(max_length=255, null=True, blank=True)

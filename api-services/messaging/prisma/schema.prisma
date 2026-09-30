@@ -84,7 +84,7 @@ model Conversation {
   lastMessageContent  String?   @map("last_message_content")
   name                String?   @db.VarChar(255)
   lastMessageSenderId BigInt?   @map("last_message_sender_id")
-  lastMessageSender   Member?   @relation("ConversationLastSender", fields: [lastMessageSenderId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_conversation_last_message_sender__d53375b5_fk_api_membe")
+  lastMessageSender   Member?   @relation("ConversationLastSender", fields: [lastMessageSenderId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "api_conversation_last_message_sender__d53375b5_fk_api_membe")
   members             Member[]  @relation("ConversationMembers")
   messages            Message[]
 
