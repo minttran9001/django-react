@@ -81,7 +81,7 @@ export function formatMessage(message: {
   body: string | null;
   status: string;
   createdAt: Date;
-  sender: UserWithProfile;
+  sender: UserWithProfile | null;
 }) {
   return {
     id: requireId(message.id),
@@ -90,7 +90,13 @@ export function formatMessage(message: {
     body: message.body,
     status: message.status,
     createdAt: message.createdAt.toISOString(),
-    sender: formatPublicUser(message.sender),
+    sender: message.sender
+      ? formatPublicUser(message.sender)
+      : typedResource(RESOURCE_USER, {
+          id: null,
+          name: "",
+          avatar: null,
+        }),
   };
 }
 

@@ -14,7 +14,14 @@ class Message(models.Model):
         on_delete=models.CASCADE,
         related_name="messages",
     )
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages_sender")
+    # SET_NULL: deleting a User must not wipe peer chat history for messages they sent
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="messages_sender",
+        null=True,
+        blank=True,
+    )
     body = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -123,10 +123,10 @@ model Message {
   clientId       String?      @map("client_id") @db.VarChar(255)
   status         String       @db.VarChar(255)
   conversationId BigInt       @map("conversation_id")
-  senderId       Int          @map("sender_id")
+  senderId       Int?         @map("sender_id")
   readBy         Member[]     @relation("MemberLastRead")
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_message_conversation_id_e0f0e1a5_fk_api_conversation_id")
-  sender         AuthUser     @relation("MessageSender", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "api_message_sender_id_fa6d8ff2_fk_auth_user_id")
+  sender         AuthUser?    @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "api_message_sender_id_fa6d8ff2_fk_auth_user_id")
 
   @@unique([conversationId, clientId], map: "unique_conversation_client_id")
   @@index([conversationId, id(sort: Desc)], map: "api_message_convers_fa3024_idx")

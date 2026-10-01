@@ -19,7 +19,7 @@ class MessageListQuerySerializer(serializers.Serializer):
 
 
 class ReadMessageListSerializer(serializers.ModelSerializer):
-    sender = PublicOwnerSerializer(read_only=True)
+    sender = PublicOwnerSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Message
