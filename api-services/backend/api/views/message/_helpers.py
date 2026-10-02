@@ -4,7 +4,7 @@ from django.db.models import F
 from api.models import Conversation, Member, UserProfile, Message
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 class NotConversationMemberError(PermissionError):
     """User is not a member of the conversation."""
@@ -87,18 +87,28 @@ def resolve_conversation_for_send_message(user, data):
 
 @transaction.atomic
 def persist_message(conversation: Conversation, sender: User, sender_member: Member, *, client_id: str, body: str, created_at: datetime) -> tuple[Message, bool]:
-    message, created = Message.objects.get_or_create(
-        client_id=client_id,
-        defaults={
-            "conversation": conversation,
-            "sender": sender,
-            "body": body,
-            'status': Message.Status.ACKED,
-        }
-    )
-    if created:
-        Message.objects.filter(pk=message.pk).update(created_at=created_at)
-        message.created_at = created_at
+    # Idempotency key is (conversation, client_id) — matching UniqueConstraint and Nest.
+    # Looking up by client_id alone returns a message from another conversation and still
+    # mutates this conversation's last_message / unread (wrong message + unread inflation).
+    try:
+        message, created = Message.objects.get_or_create(
+            conversation=conversation,
+            client_id=client_id,
+            defaults={
+                "sender": sender,
+                "body": body,
+                "status": Message.Status.ACKED,
+            },
+        )
+    except IntegrityError:
+        message = Message.objects.get(conversation=conversation, client_id=client_id)
+        created = False
+
+    if not created:
+        return message, False
+
+    Message.objects.filter(pk=message.pk).update(created_at=created_at)
+    message.created_at = created_at
     conversation.last_message_at = created_at
     conversation.last_message_content = body
     conversation.last_message_sender = sender_member
@@ -113,4 +123,4 @@ def persist_message(conversation: Conversation, sender: User, sender_member: Mem
     Member.objects.filter(conversation=conversation).exclude(user=sender).update(
         unread=F("unread") + 1
     )
-    return message, created
+    return message, True
