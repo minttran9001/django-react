@@ -206,14 +206,22 @@ export class MessageService {
       });
       message.createdAt = createdAt;
 
-      await tx.conversation.update({
-        where: { id: conversationId },
-        data: {
-          lastMessageAt: createdAt,
-          lastMessageContent: body,
-          lastMessageSenderId: senderMemberId,
-        },
-      });
+      // Only advance last-message fields when this row is actually newer.
+      // Outbox drains and concurrent sends can persist an older createdAt after
+      // a newer message; unconditional UPDATE would bury the real preview/sort.
+      await tx.$executeRaw`
+        UPDATE api_conversation
+        SET
+          last_message_at = ${createdAt},
+          last_message_content = ${body},
+          last_message_sender_id = ${senderMemberId},
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${conversationId}
+          AND (
+            last_message_at IS NULL
+            OR last_message_at <= ${createdAt}
+          )
+      `;
 
       await tx.member.updateMany({
         where: {
