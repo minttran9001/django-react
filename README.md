@@ -69,6 +69,8 @@ pip install -r requirements.txt
 
 # Copy env and add your Neon connection string (same format as court-booking)
 cp .env.example .env
+# DJANGO_DEBUG=true                         # local only — omit/false in production
+# DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1  # required when DJANGO_DEBUG is false
 # DATABASE_URL=postgresql://...@ep-xxx-pooler.us-east-2.aws.neon.tech/mint-db?sslmode=require
 
 python manage.py makemigrations api

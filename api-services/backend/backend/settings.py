@@ -15,6 +15,9 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
 import os
+import sys
+
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv()
 
@@ -28,10 +31,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-vc6x$*=h1$s#tkmnyn$_yakek+fe9ea!114&z^5^)%%6_#q0wd'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+# SECURITY WARNING: don't run with debug turned on in production!
+# Default False so a missing env var cannot ship a public DEBUG traceback
+# surface (which leaks SECRET_KEY, DATABASE_URL, tokens, etc.).
+DEBUG = _env_bool("DJANGO_DEBUG", default=False)
+
+# Never hardcode ['*']. Require an explicit host list outside DEBUG/tests.
+_raw_allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "").strip()
+if _raw_allowed_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in _raw_allowed_hosts.split(",") if h.strip()]
+elif DEBUG or "test" in sys.argv:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+else:
+    raise ImproperlyConfigured(
+        "DJANGO_ALLOWED_HOSTS environment variable must be set when "
+        "DJANGO_DEBUG is false (see api-services/backend/.env.example)."
+    )
 
 APPEND_SLASH = False
 
