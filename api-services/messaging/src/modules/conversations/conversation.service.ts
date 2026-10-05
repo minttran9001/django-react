@@ -137,19 +137,37 @@ export class ConversationService {
         throw new HttpError("Not found.", 404, "not_found");
       }
 
-      const member = await tx.member.findFirst({
-        where: {
-          userId,
-          conversationId: BigInt(conversationId),
-        },
-      });
-      if (!member) {
+      // Lock the membership row for the rest of the transaction so a concurrent
+      // persistMessage unread increment cannot be overwritten by a stale recount
+      // (Django uses select_for_update() here for the same reason).
+      const lockedMembers = await tx.$queryRaw<
+        Array<{
+          id: bigint;
+          unread: number;
+          last_read_message_id: bigint | null;
+          last_read_message_created_at: Date | null;
+        }>
+      >`
+        SELECT id, unread, last_read_message_id, last_read_message_created_at
+        FROM api_member
+        WHERE user_id = ${userId}
+          AND conversation_id = ${BigInt(conversationId)}
+        FOR UPDATE
+      `;
+      const locked = lockedMembers[0];
+      if (!locked) {
         throw new HttpError(
           "You are not a member of this conversation",
           403,
           "NOT_CONVERSATION_MEMBER",
         );
       }
+      const member = {
+        id: locked.id,
+        unread: locked.unread,
+        lastReadMessageId: locked.last_read_message_id,
+        lastReadMessageCreatedAt: locked.last_read_message_created_at,
+      };
 
       const upper = new Date(createdAt.getTime() + 1);
 
