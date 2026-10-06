@@ -206,7 +206,18 @@ def extend_slots_horizon(
 
 
 def prune_past_slots(before_date: date | None = None) -> int:
-    """Delete slot rows for past dates to keep the table lean."""
-    cutoff = before_date or date.today()
+    """Delete old CourtSlot rows to keep the table lean.
+
+    When ``before_date`` is omitted, keep a one-calendar-day grace relative to
+    UTC ``date.today()``. A naive ``date__lt=today`` at the daily 01:00 UTC cron
+    would delete "yesterday" while that calendar evening is still in the future
+    for western zones (e.g. 01:00 UTC Tuesday = Monday 17:00 America/Los_Angeles),
+    and search with ``?timezone=America/Los_Angeles`` still treats that date as
+    today — wiping bookable inventory for the rest of the local evening.
+    """
+    if before_date is None:
+        cutoff = date.today() - timedelta(days=1)
+    else:
+        cutoff = before_date
     deleted, _ = CourtSlot.objects.filter(date__lt=cutoff).delete()
     return deleted
