@@ -1,5 +1,6 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from datetime import timedelta
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from api.serializers import (
@@ -32,7 +33,14 @@ class SendMessageView(APIView):
             conversation, sender_member, conv_created = resolve_conversation_for_send_message(request.user, data)
             client_id = data["client_id"]
             body = data["body"]
-            created_at = data.get("created_at", timezone.now())
+            # Client timestamps are for outbox ordering only. Far-future values
+            # pin the conversation and make peer unread impossible to clear
+            # (seen watermarks use created_at). Clamp to a small clock-skew window.
+            now = timezone.now()
+            created_at = data.get("created_at", now)
+            max_future = now + timedelta(minutes=5)
+            if created_at > max_future:
+                created_at = now
             # Same shape as message list; camelCase avatar for WS (no DRF camel middleware)
             # 1) fan-out sớm
             pending = {

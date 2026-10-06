@@ -1,13 +1,14 @@
 from datetime import datetime
 from django.utils import timezone
 from django.db.models import F
+from django.db import IntegrityError
 from api.models import Conversation, Member, UserProfile, Message
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 
 class NotConversationMemberError(PermissionError):
-    """User is not a member of the conversation."""
+    """User is not a member of this conversation."""
 
 
 def _display_name(user: User) -> str:
@@ -87,29 +88,55 @@ def resolve_conversation_for_send_message(user, data):
 
 @transaction.atomic
 def persist_message(conversation: Conversation, sender: User, sender_member: Member, *, client_id: str, body: str, created_at: datetime) -> tuple[Message, bool]:
-    message, created = Message.objects.get_or_create(
-        client_id=client_id,
-        defaults={
-            "conversation": conversation,
-            "sender": sender,
-            "body": body,
-            'status': Message.Status.ACKED,
-        }
+    """
+    Idempotent create keyed on (conversation, client_id).
+
+    Side effects (last_message_*, unread) run only for newly created rows.
+    last_message_* advances only when created_at is >= the current value so
+    outbox drains with older client timestamps cannot bury a newer preview.
+    """
+    try:
+        message, created = Message.objects.get_or_create(
+            conversation=conversation,
+            client_id=client_id,
+            defaults={
+                "sender": sender,
+                "body": body,
+                "status": Message.Status.ACKED,
+            },
+        )
+    except IntegrityError:
+        message = Message.objects.get(conversation=conversation, client_id=client_id)
+        created = False
+
+    if not created:
+        return message, created
+
+    Message.objects.filter(pk=message.pk).update(created_at=created_at)
+    message.created_at = created_at
+
+    conversation_locked = (
+        Conversation.objects.select_for_update().get(pk=conversation.pk)
     )
-    if created:
-        Message.objects.filter(pk=message.pk).update(created_at=created_at)
-        message.created_at = created_at
-    conversation.last_message_at = created_at
-    conversation.last_message_content = body
-    conversation.last_message_sender = sender_member
-    conversation.save(
-        update_fields=[
-            "last_message_at",
-            "last_message_content",
-            "last_message_sender",
-            "updated_at",
-        ]
-    )
+    if (
+        conversation_locked.last_message_at is None
+        or conversation_locked.last_message_at <= created_at
+    ):
+        conversation_locked.last_message_at = created_at
+        conversation_locked.last_message_content = body
+        conversation_locked.last_message_sender = sender_member
+        conversation_locked.save(
+            update_fields=[
+                "last_message_at",
+                "last_message_content",
+                "last_message_sender",
+                "updated_at",
+            ]
+        )
+        conversation.last_message_at = conversation_locked.last_message_at
+        conversation.last_message_content = conversation_locked.last_message_content
+        conversation.last_message_sender = conversation_locked.last_message_sender
+
     Member.objects.filter(conversation=conversation).exclude(user=sender).update(
         unread=F("unread") + 1
     )

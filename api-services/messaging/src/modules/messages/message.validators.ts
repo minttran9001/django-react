@@ -65,6 +65,13 @@ export function parseSendMessageBody(
         createdAt: ["A valid date is required."],
       });
     }
+    // Far-future client timestamps pin last_message_at and make peer unread
+    // impossible to clear (seen watermarks compare created_at). Allow a small
+    // clock-skew window for legitimate outbox clients, then clamp to now.
+    const maxFutureMs = 5 * 60 * 1000;
+    if (createdAt.getTime() > Date.now() + maxFutureMs) {
+      createdAt = new Date();
+    }
   }
 
   if (conversationId == null) {

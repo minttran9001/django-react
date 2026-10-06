@@ -14,7 +14,7 @@ python manage.py generate_court_slots --court-id 42
 # Use a custom horizon (default 60 days):
 python manage.py generate_court_slots --days 90
 
-# Prune slots older than today:
+# Prune slots older than the UTC grace cutoff (keeps yesterday for western evenings):
 python manage.py generate_court_slots --prune
 
 Cron example (daily at 01:00):

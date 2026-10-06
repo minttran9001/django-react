@@ -31,12 +31,16 @@ export class MessageService {
     return user?.email || String(userId);
   }
 
-  private async ensureMember(conversationId: bigint, userId: number) {
-    const existing = await this.prisma.member.findFirst({
+  private async ensureMember(
+    conversationId: bigint,
+    userId: number,
+    db: Pick<PrismaService, "member"> = this.prisma,
+  ) {
+    const existing = await db.member.findFirst({
       where: { conversationId, userId },
     });
     if (existing) return existing;
-    return this.prisma.member.create({
+    return db.member.create({
       data: {
         conversationId,
         userId,
@@ -45,6 +49,40 @@ export class MessageService {
         createdAt: new Date(),
       },
     });
+  }
+
+  /**
+   * Serialize DM get-or-create for a user pair. Without this lock, concurrent
+   * first messages (both peers, or double-submit) each miss findDm and create
+   * a separate conversation — splitting the thread and stranding messages.
+   */
+  private async lockDmPair(
+    db: Pick<PrismaService, "$executeRaw">,
+    userId: number,
+    peerId: number,
+  ) {
+    const lo = Math.min(userId, peerId);
+    const hi = Math.max(userId, peerId);
+    await db.$executeRaw`SELECT pg_advisory_xact_lock(${lo}::int, ${hi}::int)`;
+  }
+
+  private async findDmForUpdate(
+    db: Pick<PrismaService, "conversation">,
+    userId: number,
+    peerId: number,
+  ) {
+    const candidates = await db.conversation.findMany({
+      where: {
+        type: "dm",
+        AND: [
+          { members: { some: { userId } } },
+          { members: { some: { userId: peerId } } },
+        ],
+      },
+      include: conversationInclude,
+      orderBy: [{ lastMessageAt: "desc" }, { id: "desc" }],
+    });
+    return candidates[0] ?? null;
   }
 
   private async createConversationWithMembers(
@@ -63,28 +101,37 @@ export class MessageService {
         throw new HttpError("User not found.", 404, "not_found");
       }
 
-      const existing = await this.conversationService.findDm(userId, peerId);
-      if (existing) {
-        const senderMember = await this.ensureMember(existing.id, userId);
-        return { conversation: existing, senderMember, created: false };
-      }
-
       const defaultName = name || (await this.displayName(peerId));
-      const conversation = await this.prisma.conversation.create({
-        data: {
-          type: "dm",
-          name: defaultName,
-          createdAt: new Date(),
-        },
-        include: conversationInclude,
+
+      return this.prisma.$transaction(async (tx) => {
+        await this.lockDmPair(tx, userId, peerId);
+
+        const existing = await this.findDmForUpdate(tx, userId, peerId);
+        if (existing) {
+          const senderMember = await this.ensureMember(existing.id, userId, tx);
+          return { conversation: existing, senderMember, created: false };
+        }
+
+        const conversation = await tx.conversation.create({
+          data: {
+            type: "dm",
+            name: defaultName,
+            createdAt: new Date(),
+          },
+          include: conversationInclude,
+        });
+        await this.ensureMember(conversation.id, peerId, tx);
+        const senderMember = await this.ensureMember(
+          conversation.id,
+          userId,
+          tx,
+        );
+        const full = await tx.conversation.findUniqueOrThrow({
+          where: { id: conversation.id },
+          include: conversationInclude,
+        });
+        return { conversation: full, senderMember, created: true };
       });
-      await this.ensureMember(conversation.id, peerId);
-      const senderMember = await this.ensureMember(conversation.id, userId);
-      const full = await this.prisma.conversation.findUniqueOrThrow({
-        where: { id: conversation.id },
-        include: conversationInclude,
-      });
-      return { conversation: full, senderMember, created: true };
     }
 
     const conversation = await this.prisma.conversation.create({
