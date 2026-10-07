@@ -28,18 +28,21 @@ export async function generateMetadata({
     };
   }
 
+  const coverImageUrl =
+    courtCenter.logo?.url ?? courtCenter.images[0]?.url ?? undefined;
+
   return {
     title: courtCenter.title,
     description: courtCenter.description,
     openGraph: {
       title: courtCenter.title,
       description: courtCenter.description,
-      images: [courtCenter.images[0].url],
+      ...(coverImageUrl ? { images: [coverImageUrl] } : {}),
     },
     twitter: {
       title: courtCenter.title,
       description: courtCenter.description,
-      images: [courtCenter.images[0].url],
+      ...(coverImageUrl ? { images: [coverImageUrl] } : {}),
     },
     alternates: {
       canonical: `/listings/${id}`,
@@ -48,9 +51,7 @@ export async function generateMetadata({
       index: true,
       follow: true,
     },
-    icons: {
-      icon: courtCenter.images[0].url,
-    },
+    ...(coverImageUrl ? { icons: { icon: coverImageUrl } } : {}),
   };
 }
 
