@@ -1,3 +1,5 @@
+import { addDays, startOfWeek } from "date-fns";
+
 import { normalizeToDay } from "@/lib/dates";
 
 import type {
@@ -19,15 +21,6 @@ export const WEEK_OF_MONTH_OPTIONS = [
   { value: 5, label: "Week 5", hint: "Days 29–31" },
 ];
 
-function dateToDayOfWeek(date: Date): number {
-  const jsDay = date.getDay();
-  return jsDay === 0 ? 6 : jsDay - 1;
-}
-
-export function weekOfMonth(date: Date): number {
-  return Math.floor((date.getDate() - 1) / 7) + 1;
-}
-
 export function startOfMonth(date: Date): Date {
   const value = new Date(date);
   value.setDate(1);
@@ -41,17 +34,46 @@ export function endOfMonth(date: Date): Date {
   return value;
 }
 
-function dateMatchesRules(date: Date, rules: RecurrenceRule[]): boolean {
-  const wom = weekOfMonth(date);
-  const dow = dateToDayOfWeek(date);
+function sameMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
 
-  for (const rule of rules) {
-    if (rule.weeks.includes(wom) && rule.days.includes(dow)) {
-      return true;
+/**
+ * Sunday-start calendar week index within the month (1-based), matching
+ * MonthlyPatternBuilder.getWeekOptions.
+ */
+export function calendarWeekIndexInMonth(date: Date): number {
+  const day = normalizeToDay(date);
+  const monthStart = startOfMonth(day);
+  const monthEnd = endOfMonth(day);
+  let weekStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  let weekIndex = 1;
+
+  while (weekStart <= monthEnd) {
+    const weekEnd = addDays(weekStart, 6);
+    if (day >= weekStart && day <= weekEnd) {
+      return weekIndex;
     }
+    weekStart = addDays(weekStart, 7);
+    weekIndex += 1;
   }
 
-  return false;
+  return weekIndex;
+}
+
+function dateMatchesRules(date: Date, rules: RecurrenceRule[]): boolean {
+  const rule = rules.find((candidate) => sameMonth(candidate.month, date));
+  if (!rule) {
+    return false;
+  }
+
+  const weekIndex = calendarWeekIndexInMonth(date);
+  // MonthlyPatternBuilder stores JS getDay() values (Sunday = 0).
+  const dow = date.getDay();
+
+  return rule.weeks.some(
+    (weekRule) => weekRule.week === weekIndex && weekRule.days.includes(dow),
+  );
 }
 
 export function expandSeriesToSlots(
@@ -60,16 +82,23 @@ export function expandSeriesToSlots(
   startDate: Date,
   endDate: Date,
 ): ExpandedSlot[] {
-  const rangeStart = startOfMonth(startDate);
-  const rangeEnd = endOfMonth(endDate);
+  const boundStart = normalizeToDay(startDate);
+  const boundEnd = normalizeToDay(endDate);
+  const iterStart = startOfMonth(startDate);
+  const iterEnd = endOfMonth(endDate);
   const slots: ExpandedSlot[] = [];
-  const current = new Date(rangeStart);
+  const current = new Date(iterStart);
 
-  while (current <= rangeEnd) {
-    if (dateMatchesRules(current, rules)) {
+  while (current <= iterEnd) {
+    const day = normalizeToDay(current);
+    if (
+      day >= boundStart &&
+      day <= boundEnd &&
+      dateMatchesRules(day, rules)
+    ) {
       for (const timeSlot of timeSlots) {
         slots.push({
-          date: normalizeToDay(current),
+          date: day,
           start: timeSlot.start,
           end: timeSlot.end,
         });
@@ -87,13 +116,20 @@ export function findFirstMatchingDate(
   startDate: Date,
   endDate: Date,
 ): Date | undefined {
-  const rangeStart = startOfMonth(startDate);
-  const rangeEnd = endOfMonth(endDate);
-  const current = new Date(rangeStart);
+  const boundStart = normalizeToDay(startDate);
+  const boundEnd = normalizeToDay(endDate);
+  const iterStart = startOfMonth(startDate);
+  const iterEnd = endOfMonth(endDate);
+  const current = new Date(iterStart);
 
-  while (current <= rangeEnd) {
-    if (dateMatchesRules(current, rules)) {
-      return normalizeToDay(current);
+  while (current <= iterEnd) {
+    const day = normalizeToDay(current);
+    if (
+      day >= boundStart &&
+      day <= boundEnd &&
+      dateMatchesRules(day, rules)
+    ) {
+      return day;
     }
 
     current.setDate(current.getDate() + 1);
