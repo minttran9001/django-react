@@ -97,13 +97,10 @@ export function formatMessage(message: {
 export function formatMessageResource(
   message: Parameters<typeof formatMessage>[0],
 ) {
-  return typedResource(RESOURCE_MESSAGE, {
-    id: requireId(message.id),
-    clientId: message.clientId,
-    body: message.body,
-    status: message.status,
-    createdAt: message.createdAt.toISOString(),
-  });
+  // Must match list/WS shape: HTTP send ACK is ingested over the optimistic
+  // row and written to IndexedDB. Omitting sender/conversationId wipes those
+  // fields and crashes MessageList on message.sender.id.
+  return typedResource(RESOURCE_MESSAGE, formatMessage(message));
 }
 
 export function formatMessageListEnvelope(data: {

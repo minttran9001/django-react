@@ -90,6 +90,12 @@ function mergeIncomingMessages(
       ...message,
       id: message.id > 0 ? message.id : existing.id,
       createdAt: existing.createdAt,
+      // Truncated HTTP send ACK must not wipe optimistic sender/conversationId.
+      sender: message.sender?.id != null ? message.sender : existing.sender,
+      conversationId:
+        message.conversationId != null
+          ? message.conversationId
+          : existing.conversationId,
     };
   });
 }

@@ -24,7 +24,26 @@ import { ingestTyped } from "@/lib/marketplace/ingest";
 import {
   updateMarketplaceConversation,
   marketplaceConversationSelectors,
+  marketplaceMessageSelectors,
 } from "@/lib/slices/marketplaceData/slice";
+
+/** Merge HTTP send ACK with optimistic row so truncated payloads cannot wipe sender. */
+function mergeSendAckMessage(
+  incoming: ChatMessage,
+  existing: ChatMessage | undefined,
+): ChatMessage {
+  if (!existing) return normalizeChatMessage(incoming);
+  return normalizeChatMessage({
+    ...incoming,
+    id: incoming.id > 0 ? incoming.id : existing.id,
+    createdAt: existing.createdAt,
+    sender: incoming.sender?.id != null ? incoming.sender : existing.sender,
+    conversationId:
+      incoming.conversationId != null
+        ? incoming.conversationId
+        : existing.conversationId,
+  });
+}
 
 const DEFAULT_PAGE_SIZE = 100;
 
@@ -319,8 +338,13 @@ export const messageApi = createApi({
               await db.putConversation(payload.conversation);
             }
             if (payload.message) {
-              ingestMessages(dispatch, [payload.message]);
-              await db.putMessages([payload.message]);
+              const existing = marketplaceMessageSelectors.selectById(
+                getState() as never,
+                payload.message.clientId,
+              );
+              const merged = mergeSendAckMessage(payload.message, existing);
+              ingestMessages(dispatch, [merged]);
+              await db.putMessages([merged]);
             }
           }
           return response;
