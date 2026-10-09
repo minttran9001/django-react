@@ -14,7 +14,7 @@ from rest_framework import status
 from api.utils.exceptions import error_response
 from api.utils.typed_resource import RESOURCE_CONVERSATION, RESOURCE_MESSAGE, typed_resource
 from django.utils import timezone
-from api.models import Member
+from api.models import Member, Message
 
 
 class SendMessageView(APIView):
@@ -33,34 +33,42 @@ class SendMessageView(APIView):
             client_id = data["client_id"]
             body = data["body"]
             created_at = data.get("created_at", timezone.now())
-            # Same shape as message list; camelCase avatar for WS (no DRF camel middleware)
-            # 1) fan-out sớm
-            pending = {
-                "type": "message.created",
-                "conversationId": conversation.id,
-                "message": {
-                    "id": None,
-                    "clientId": client_id,
-                    "conversationId": conversation.id,
-                    "body": body,
-                    "status": "sent",
-                    "createdAt": created_at.isoformat(),
-                    "sender": {
-                        "id": request.user.id,
-                    },
-                },
-            }
             member_ids = list(Member.objects.filter(conversation=conversation).values_list("user_id", flat=True))
             channel_layer = get_channel_layer()
-            for member_id in member_ids:
-                async_to_sync(channel_layer.group_send)(
-                    f"user_{member_id}",
-                    {
-                        "type": "chat.message",
-                        "payload": pending,
+
+            # Skip message.created on idempotent retries — peers bump unread on
+            # every created event, and client outbox drains can re-POST the same client_id.
+            already_persisted = Message.objects.filter(
+                conversation=conversation, client_id=client_id
+            ).exists()
+
+            if not already_persisted:
+                # Same shape as message list; camelCase avatar for WS (no DRF camel middleware)
+                # 1) fan-out sớm
+                pending = {
+                    "type": "message.created",
+                    "conversationId": conversation.id,
+                    "message": {
+                        "id": None,
+                        "clientId": client_id,
+                        "conversationId": conversation.id,
+                        "body": body,
+                        "status": "sent",
+                        "createdAt": created_at.isoformat(),
+                        "sender": {
+                            "id": request.user.id,
+                        },
                     },
-                )
-            pending_sent = True
+                }
+                for member_id in member_ids:
+                    async_to_sync(channel_layer.group_send)(
+                        f"user_{member_id}",
+                        {
+                            "type": "chat.message",
+                            "payload": pending,
+                        },
+                    )
+                pending_sent = True
 
             # 2) persist
             message, msg_created = persist_message(

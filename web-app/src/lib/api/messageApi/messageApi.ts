@@ -322,6 +322,9 @@ export const messageApi = createApi({
               ingestMessages(dispatch, [payload.message]);
               await db.putMessages([payload.message]);
             }
+            // HTTP success is authoritative — do not wait for WS ACK, or
+            // reconnect drainOutbox will re-POST and re-fanout message.created.
+            await db.deleteOutboxByClientId(optimistic.clientId);
           }
           return response;
         } catch (error) {
@@ -425,14 +428,24 @@ export const messageApi = createApi({
         for (const item of outbox) {
           let attempts = item.attempts ?? 0;
           let delay = getDelay(attempts);
+          let sent = false;
           while (attempts < MAX_ATTEMPTS) {
             await new Promise((resolve) => setTimeout(resolve, delay));
             const response = await handleSendMessage(item, baseQuery);
             if (!response.error) {
+              await db.deleteOutboxByClientId(item.clientId);
+              sent = true;
+              count++;
               break;
             }
             attempts++;
             delay = getDelay(attempts);
+            item.attempts = attempts;
+            item.lastAttemptAt = Date.now();
+            await db.putOutbox(item);
+          }
+          if (sent) {
+            continue;
           }
           if (attempts === MAX_ATTEMPTS) {
             console.log(
@@ -448,13 +461,10 @@ export const messageApi = createApi({
               console.log(
                 "Deleting outbox and messages because last attempt was too old",
               );
-              await db.outbox.delete(item.clientId);
-              await db.messages.delete(item.clientId);
-              break;
+              await db.deleteOutboxByClientId(item.clientId);
+              await db.messages.where("clientId").equals(item.clientId).delete();
             }
           }
-
-          count++;
         }
 
         return { data: { count } };

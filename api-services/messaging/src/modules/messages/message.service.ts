@@ -247,20 +247,34 @@ export class MessageService {
       const createdAt = data.createdAt ?? new Date();
       const body = data.body;
 
-      this.fanout.fanoutToUsers(memberUserIds, {
-        type: "message.created",
-        conversationId: requireId(conversation.id),
-        message: {
-          id: null,
-          clientId,
-          conversationId: requireId(conversation.id),
-          body,
-          status: "sent",
-          createdAt: createdAt.toISOString(),
-          sender: { id: userId },
+      // Skip message.created on idempotent retries — peers bump unread on
+      // every created event, and outbox drains can re-POST the same clientId.
+      const alreadyPersisted = await this.prisma.message.findUnique({
+        where: {
+          conversationId_clientId: {
+            conversationId: conversation.id,
+            clientId,
+          },
         },
+        select: { id: true },
       });
-      pendingSent = true;
+
+      if (!alreadyPersisted) {
+        this.fanout.fanoutToUsers(memberUserIds, {
+          type: "message.created",
+          conversationId: requireId(conversation.id),
+          message: {
+            id: null,
+            clientId,
+            conversationId: requireId(conversation.id),
+            body,
+            status: "sent",
+            createdAt: createdAt.toISOString(),
+            sender: { id: userId },
+          },
+        });
+        pendingSent = true;
+      }
 
       const { message, created: msgCreated } = await this.persistMessage(
         conversation.id,
